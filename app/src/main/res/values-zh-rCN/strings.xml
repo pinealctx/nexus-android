@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Nexus</string>
+
+    <!-- Navigation -->
+    <string name="tab_chats">消息</string>
+    <string name="tab_contacts">通讯录</string>
+    <string name="tab_discover">发现</string>
+    <string name="tab_me">我</string>
+
+    <!-- Connection Status -->
+    <string name="status_connecting">连接中…</string>
+    <string name="status_reconnecting">重新连接中…</string>
+    <string name="status_disconnected">已断开连接</string>
+    <string name="status_connected">已连接</string>
+
+    <!-- Chat -->
+    <string name="chat_title">聊天</string>
+    <string name="chat_placeholder">输入消息</string>
+    <string name="chat_send">发送</string>
+    <string name="chat_emoji">表情</string>
+    <string name="message_recalled">消息已撤回</string>
+    <string name="message_edited">(已编辑)</string>
+    <string name="message_unsupported">[不支持的消息类型]</string>
+
+    <!-- Conversations -->
+    <string name="conversations_empty">暂无会话</string>
+    <string name="conversations_title">Nexus</string>
+
+    <!-- Contacts -->
+    <string name="contacts_title">通讯录</string>
+    <string name="contacts_empty">暂无联系人</string>
+    <string name="contacts_search">搜索用户</string>
+    <string name="contacts_friend_requests">好友请求</string>
+
+    <!-- Friend Requests -->
+    <string name="friend_requests_title">好友请求</string>
+    <string name="friend_requests_empty">暂无待处理请求</string>
+    <string name="friend_requests_accept">接受</string>
+    <string name="friend_requests_reject">拒绝</string>
+    <string name="friend_requests_retry">重试</string>
+
+    <!-- Search -->
+    <string name="search_title">搜索用户</string>
+    <string name="search_placeholder">输入用户名或昵称搜索</string>
+    <string name="search_clear">清除</string>
+    <string name="search_no_results">未找到用户</string>
+    <string name="search_hint">输入用户名或昵称进行搜索</string>
+    <string name="search_add_friend">添加好友</string>
+
+    <!-- Group -->
+    <string name="group_title">群组</string>
+    <string name="group_members">成员 (%d)</string>
+    <string name="group_leave">退出群组</string>
+    <string name="group_leave_confirm_title">退出群组</string>
+    <string name="group_leave_confirm_message">确定要退出该群组吗？</string>
+    <string name="group_role_owner">群主</string>
+    <string name="group_role_admin">管理员</string>
+    <string name="group_role_member">成员</string>
+
+    <!-- Settings -->
+    <string name="settings_title">设置</string>
+    <string name="settings_account">账号</string>
+    <string name="settings_account_desc">手机号、邮箱、密码</string>
+    <string name="settings_notifications">通知</string>
+    <string name="settings_notifications_desc">消息提醒、声音</string>
+    <string name="settings_privacy">隐私</string>
+    <string name="settings_privacy_desc">黑名单、可见性</string>
+    <string name="settings_about">关于</string>
+    <string name="settings_about_desc">版本 %s</string>
+    <string name="settings_logout">退出登录</string>
+    <string name="settings_logout_title">退出登录</string>
+    <string name="settings_logout_message">确定要退出登录吗？</string>
+
+    <!-- Common -->
+    <string name="back">返回</string>
+    <string name="cancel">取消</string>
+    <string name="confirm">确认</string>
+    <string name="error_unknown">未知错误</string>
+    <string name="loading">加载中…</string>
+
+    <!-- Login -->
+    <string name="login_title">登录</string>
+    <string name="login_phone">手机号</string>
+    <string name="login_email">邮箱</string>
+    <string name="login_send_code">发送验证码</string>
+    <string name="login_verify">验证</string>
+    <string name="login_code_placeholder">输入验证码</string>
+    <string name="login_resend">重新发送 (%d)</string>
+
+    <!-- Notifications -->
+    <string name="notification_channel_messages">消息</string>
+    <string name="notification_channel_messages_desc">新消息通知</string>
+    <string name="notification_channel_friend_requests">好友请求</string>
+    <string name="notification_new_message">新消息</string>
+    <string name="notification_new_message_body">你收到了一条新消息</string>
+
+    <!-- Profile -->
+    <string name="profile_message">发消息</string>
+    <string name="profile_add_friend">添加好友</string>
+    <string name="profile_block">拉黑</string>
+
+    <!-- Foreground Service -->
+    <string name="service_sync_channel">消息同步</string>
+    <string name="service_sync_description">保持消息同步连接</string>
+</resources>

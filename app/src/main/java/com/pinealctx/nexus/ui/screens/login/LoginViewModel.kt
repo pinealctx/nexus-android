@@ -1,0 +1,129 @@
+package com.pinealctx.nexus.ui.screens.login
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.pinealctx.nexus.core.NexusCoreWrapper
+import com.pinealctx.nexus.core.SecureStorage
+import com.pinealctx.nexus.core.SyncManager
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+enum class LoginStep { INPUT_IDENTITY, INPUT_CODE }
+
+data class LoginUiState(
+    val step: LoginStep = LoginStep.INPUT_IDENTITY,
+    val phoneEnabled: Boolean = true,
+    val emailEnabled: Boolean = false,
+    val isLoading: Boolean = false,
+    val error: String? = null,
+    val isLoggedIn: Boolean = false,
+    val countdown: Int = 0,
+    val useEmail: Boolean = false
+)
+
+@HiltViewModel
+class LoginViewModel @Inject constructor(
+    private val core: NexusCoreWrapper,
+    private val secureStorage: SecureStorage,
+    private val syncManager: SyncManager
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow(LoginUiState())
+    val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
+
+    private var verifyToken: String = ""
+
+    init {
+        checkExistingSession()
+        loadClientConfig()
+    }
+
+    private fun checkExistingSession() {
+        if (core.isAuthenticated()) {
+            _uiState.value = _uiState.value.copy(isLoggedIn = true)
+        }
+    }
+
+    private fun loadClientConfig() {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val config = core.getClientConfig()
+                _uiState.value = _uiState.value.copy(
+                    phoneEnabled = config.phoneEnabled,
+                    emailEnabled = config.emailEnabled
+                )
+            } catch (_: Exception) {}
+        }
+    }
+
+    fun toggleLoginMethod() {
+        _uiState.value = _uiState.value.copy(
+            useEmail = !_uiState.value.useEmail,
+            error = null
+        )
+    }
+
+    fun requestCode(identityValue: String) {
+        val identityType = if (_uiState.value.useEmail) 1 else 2
+        viewModelScope.launch(Dispatchers.IO) {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            try {
+                val result = core.requestVerifyCode(identityType, identityValue)
+                verifyToken = result.verifyToken
+                _uiState.value = _uiState.value.copy(
+                    step = LoginStep.INPUT_CODE,
+                    isLoading = false,
+                    countdown = result.expiresIn.coerceAtMost(60)
+                )
+                startCountdown()
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = e.message ?: "Failed to send code"
+                )
+            }
+        }
+    }
+
+    fun verifyCode(code: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            try {
+                val result = core.verifyCode(verifyToken, code)
+                secureStorage.saveTokens(result.accessToken, result.refreshToken, result.expiresIn, result.userId)
+                syncManager.startSession()
+                _uiState.value = _uiState.value.copy(isLoading = false, isLoggedIn = true)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = e.message ?: "Verification failed"
+                )
+            }
+        }
+    }
+
+    fun goBack() {
+        _uiState.value = _uiState.value.copy(step = LoginStep.INPUT_IDENTITY, error = null)
+    }
+
+    fun clearError() {
+        _uiState.value = _uiState.value.copy(error = null)
+    }
+
+    private fun startCountdown() {
+        viewModelScope.launch {
+            var remaining = _uiState.value.countdown
+            while (remaining > 0) {
+                delay(1000)
+                remaining--
+                _uiState.value = _uiState.value.copy(countdown = remaining)
+            }
+        }
+    }
+}

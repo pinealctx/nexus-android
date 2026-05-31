@@ -1,0 +1,174 @@
+package com.pinealctx.nexus.ui.screens.settings
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsScreen(
+    onBack: () -> Unit,
+    onLogout: () -> Unit,
+    viewModel: SettingsViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    var showLogoutDialog by remember { mutableStateOf(false) }
+
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = { Text("Logout") },
+            text = { Text("Are you sure you want to logout?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showLogoutDialog = false
+                    viewModel.logout()
+                    onLogout()
+                }) {
+                    Text("Logout", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Settings") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            // Profile section
+            if (uiState.profile != null) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            modifier = Modifier.size(56.dp),
+                            shape = MaterialTheme.shapes.medium,
+                            color = MaterialTheme.colorScheme.primaryContainer
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = (uiState.profile?.nickname?.firstOrNull()
+                                        ?: uiState.profile?.username?.firstOrNull()
+                                        ?: '?').toString(),
+                                    style = MaterialTheme.typography.headlineSmall
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text(
+                                text = uiState.profile?.nickname ?: "",
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Text(
+                                text = "@${uiState.profile?.username ?: ""}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            if (!uiState.profile?.signature.isNullOrBlank()) {
+                                Text(
+                                    text = uiState.profile?.signature ?: "",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Settings sections
+            HorizontalDivider()
+
+            ListItem(
+                headlineContent = { Text("Account") },
+                supportingContent = { Text("Phone, email, password") },
+                leadingContent = {
+                    Icon(Icons.Filled.AccountCircle, contentDescription = null)
+                },
+                modifier = Modifier.clickable { /* TODO: navigate to account settings */ }
+            )
+            HorizontalDivider()
+
+            ListItem(
+                headlineContent = { Text("Notifications") },
+                supportingContent = { Text("Message alerts, sounds") },
+                leadingContent = {
+                    Icon(Icons.Filled.Notifications, contentDescription = null)
+                },
+                modifier = Modifier.clickable { /* TODO: navigate to notification settings */ }
+            )
+            HorizontalDivider()
+
+            ListItem(
+                headlineContent = { Text("Privacy") },
+                supportingContent = { Text("Blocked users, visibility") },
+                leadingContent = {
+                    Icon(Icons.Filled.Lock, contentDescription = null)
+                },
+                modifier = Modifier.clickable { /* TODO: navigate to privacy settings */ }
+            )
+            HorizontalDivider()
+
+            ListItem(
+                headlineContent = { Text("About") },
+                supportingContent = { Text("Version 0.1.0") },
+                leadingContent = {
+                    Icon(Icons.Filled.Info, contentDescription = null)
+                },
+                modifier = Modifier.clickable { /* TODO: navigate to about */ }
+            )
+            HorizontalDivider()
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            // Logout button
+            Button(
+                onClick = { showLogoutDialog = true },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error
+                )
+            ) {
+                Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Logout")
+            }
+        }
+    }
+}

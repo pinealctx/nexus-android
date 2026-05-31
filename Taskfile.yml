@@ -1,0 +1,33 @@
+# Nexus Android — Taskfile
+version: '3'
+
+tasks:
+  build:
+    desc: Build debug APK
+    cmds:
+      - ./gradlew assembleDebug
+
+  build-release:
+    desc: Build release APK
+    cmds:
+      - ./gradlew assembleRelease
+
+  test:
+    desc: Run unit tests
+    cmds:
+      - ./gradlew test
+
+  lint:
+    desc: Run Android lint
+    cmds:
+      - ./gradlew lint
+
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - ./gradlew clean
+
+  install:
+    desc: Install debug APK on connected device
+    cmds:
+      - ./gradlew installDebug
