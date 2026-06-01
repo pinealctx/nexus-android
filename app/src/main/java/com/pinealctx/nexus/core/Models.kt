@@ -26,11 +26,14 @@ data class ConversationData(
     val conversationId: String,
     val conversationType: Int,
     val peerId: Int,
+    val lastMessageId: Long,
     val lastMessageTime: Long,
     val lastMessagePreview: String?,
     val isMuted: Boolean,
-    val unreadCount: Long
-)
+    val readUpToMessageId: Long
+) {
+    val unreadCount: Long get() = (lastMessageId - readUpToMessageId).coerceAtLeast(0)
+}
 
 // Messages
 data class MessageData(

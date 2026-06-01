@@ -3824,7 +3824,7 @@ data class ConversationInfo (
     var `lastMessageTime`: kotlin.Long, 
     var `lastMessagePreview`: kotlin.String?, 
     var `isMuted`: kotlin.Boolean, 
-    var `unreadCount`: kotlin.Long
+    var `readUpToMessageId`: kotlin.Long
 ) {
     
     companion object
@@ -3855,7 +3855,7 @@ public object FfiConverterTypeConversationInfo: FfiConverterRustBuffer<Conversat
             FfiConverterLong.allocationSize(value.`lastMessageTime`) +
             FfiConverterOptionalString.allocationSize(value.`lastMessagePreview`) +
             FfiConverterBoolean.allocationSize(value.`isMuted`) +
-            FfiConverterLong.allocationSize(value.`unreadCount`)
+            FfiConverterLong.allocationSize(value.`readUpToMessageId`)
     )
 
     override fun write(value: ConversationInfo, buf: ByteBuffer) {
@@ -3866,7 +3866,7 @@ public object FfiConverterTypeConversationInfo: FfiConverterRustBuffer<Conversat
             FfiConverterLong.write(value.`lastMessageTime`, buf)
             FfiConverterOptionalString.write(value.`lastMessagePreview`, buf)
             FfiConverterBoolean.write(value.`isMuted`, buf)
-            FfiConverterLong.write(value.`unreadCount`, buf)
+            FfiConverterLong.write(value.`readUpToMessageId`, buf)
     }
 }
 
@@ -4022,6 +4022,7 @@ data class GroupInfoFfi (
     var `avatarUrl`: kotlin.String, 
     var `description`: kotlin.String, 
     var `ownerId`: kotlin.Int, 
+    var `memberCount`: kotlin.Int, 
     var `status`: kotlin.Int
 ) {
     
@@ -4040,6 +4041,7 @@ public object FfiConverterTypeGroupInfoFfi: FfiConverterRustBuffer<GroupInfoFfi>
             FfiConverterString.read(buf),
             FfiConverterInt.read(buf),
             FfiConverterInt.read(buf),
+            FfiConverterInt.read(buf),
         )
     }
 
@@ -4049,6 +4051,7 @@ public object FfiConverterTypeGroupInfoFfi: FfiConverterRustBuffer<GroupInfoFfi>
             FfiConverterString.allocationSize(value.`avatarUrl`) +
             FfiConverterString.allocationSize(value.`description`) +
             FfiConverterInt.allocationSize(value.`ownerId`) +
+            FfiConverterInt.allocationSize(value.`memberCount`) +
             FfiConverterInt.allocationSize(value.`status`)
     )
 
@@ -4058,6 +4061,7 @@ public object FfiConverterTypeGroupInfoFfi: FfiConverterRustBuffer<GroupInfoFfi>
             FfiConverterString.write(value.`avatarUrl`, buf)
             FfiConverterString.write(value.`description`, buf)
             FfiConverterInt.write(value.`ownerId`, buf)
+            FfiConverterInt.write(value.`memberCount`, buf)
             FfiConverterInt.write(value.`status`, buf)
     }
 }
@@ -4431,7 +4435,8 @@ data class UserProfileFfi (
     var `avatarUrl`: kotlin.String, 
     var `signature`: kotlin.String, 
     var `phone`: kotlin.String?, 
-    var `email`: kotlin.String?
+    var `email`: kotlin.String?, 
+    var `hasPassword`: kotlin.Boolean
 ) {
     
     companion object
@@ -4450,6 +4455,7 @@ public object FfiConverterTypeUserProfileFfi: FfiConverterRustBuffer<UserProfile
             FfiConverterString.read(buf),
             FfiConverterOptionalString.read(buf),
             FfiConverterOptionalString.read(buf),
+            FfiConverterBoolean.read(buf),
         )
     }
 
@@ -4460,7 +4466,8 @@ public object FfiConverterTypeUserProfileFfi: FfiConverterRustBuffer<UserProfile
             FfiConverterString.allocationSize(value.`avatarUrl`) +
             FfiConverterString.allocationSize(value.`signature`) +
             FfiConverterOptionalString.allocationSize(value.`phone`) +
-            FfiConverterOptionalString.allocationSize(value.`email`)
+            FfiConverterOptionalString.allocationSize(value.`email`) +
+            FfiConverterBoolean.allocationSize(value.`hasPassword`)
     )
 
     override fun write(value: UserProfileFfi, buf: ByteBuffer) {
@@ -4471,6 +4478,7 @@ public object FfiConverterTypeUserProfileFfi: FfiConverterRustBuffer<UserProfile
             FfiConverterString.write(value.`signature`, buf)
             FfiConverterOptionalString.write(value.`phone`, buf)
             FfiConverterOptionalString.write(value.`email`, buf)
+            FfiConverterBoolean.write(value.`hasPassword`, buf)
     }
 }
 
