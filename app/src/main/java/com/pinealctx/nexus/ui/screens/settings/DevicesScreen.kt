@@ -10,10 +10,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pinealctx.nexus.R
 import com.pinealctx.nexus.core.DeviceData
 import com.pinealctx.nexus.core.managers.UserManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -78,18 +80,18 @@ fun DevicesScreen(
     if (deviceToRemove != null) {
         AlertDialog(
             onDismissRequest = { deviceToRemove = null },
-            title = { Text("Remove Device") },
-            text = { Text("Remove \"${deviceToRemove?.deviceName}\" from your account? It will be logged out.") },
+            title = { Text(stringResource(R.string.devices_remove_title)) },
+            text = { Text(stringResource(R.string.devices_remove_message, deviceToRemove?.deviceName ?: "")) },
             confirmButton = {
                 TextButton(onClick = {
                     deviceToRemove?.let { viewModel.removeDevice(it.deviceId) }
                     deviceToRemove = null
                 }) {
-                    Text("Remove", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.devices_remove_action), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { deviceToRemove = null }) { Text("Cancel") }
+                TextButton(onClick = { deviceToRemove = null }) { Text(stringResource(R.string.cancel)) }
             }
         )
     }
@@ -97,10 +99,10 @@ fun DevicesScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Devices") },
+                title = { Text(stringResource(R.string.devices_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
             )
@@ -114,7 +116,7 @@ fun DevicesScreen(
             }
             uiState.devices.isEmpty() -> {
                 Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                    Text("No devices found")
+                    Text(stringResource(R.string.devices_empty))
                 }
             }
             else -> {
@@ -156,7 +158,7 @@ private fun DeviceItem(device: DeviceData, onRemove: () -> Unit) {
                         color = MaterialTheme.colorScheme.primaryContainer
                     ) {
                         Text(
-                            text = "Current",
+                            text = stringResource(R.string.devices_current),
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary
@@ -176,7 +178,7 @@ private fun DeviceItem(device: DeviceData, onRemove: () -> Unit) {
                 IconButton(onClick = onRemove) {
                     Icon(
                         Icons.Filled.Close,
-                        contentDescription = "Remove",
+                        contentDescription = stringResource(R.string.devices_remove_action),
                         tint = MaterialTheme.colorScheme.error
                     )
                 }

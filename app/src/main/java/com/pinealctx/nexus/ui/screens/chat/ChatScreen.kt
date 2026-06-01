@@ -20,15 +20,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
+import com.pinealctx.nexus.R
 import com.pinealctx.nexus.core.MessageData
 import com.pinealctx.nexus.core.MessageSearchResultData
 import com.pinealctx.nexus.ui.components.EmojiPicker
+import com.pinealctx.nexus.ui.components.ImagePreviewDialog
 import uniffi.nexus_ffi.MessageContent
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,7 +48,15 @@ fun ChatScreen(
     var showSearch by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var searchResults by remember { mutableStateOf<List<MessageSearchResultData>>(emptyList()) }
+    var previewImageId by remember { mutableStateOf<String?>(null) }
     val context = androidx.compose.ui.platform.LocalContext.current
+
+    if (previewImageId != null) {
+        ImagePreviewDialog(
+            model = previewImageId!!,
+            onDismiss = { previewImageId = null }
+        )
+    }
 
     DisposableEffect(Unit) {
         onDispose { viewModel.saveDraft(inputText) }
@@ -65,7 +76,7 @@ fun ChatScreen(
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),
-                            placeholder = { Text("Search in chat") },
+                            placeholder = { Text(stringResource(R.string.chat_search)) },
                             singleLine = true
                         )
                     },
@@ -75,21 +86,21 @@ fun ChatScreen(
                             searchQuery = ""
                             searchResults = emptyList()
                         }) {
-                            Icon(Icons.Filled.Close, contentDescription = "Close search")
+                            Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.chat_close_search))
                         }
                     }
                 )
             } else {
                 TopAppBar(
-                    title = { Text("Chat") },
+                    title = { Text(stringResource(R.string.chat_title)) },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                         }
                     },
                     actions = {
                         IconButton(onClick = { showSearch = true }) {
-                            Icon(Icons.Filled.Search, contentDescription = "Search")
+                            Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.search_title))
                         }
                     }
                 )
@@ -134,7 +145,7 @@ fun ChatScreen(
                         IconButton(onClick = { showEmojiPicker = !showEmojiPicker; showMediaPicker = false }) {
                             Icon(
                                 Icons.Filled.EmojiEmotions,
-                                contentDescription = "Emoji",
+                                contentDescription = stringResource(R.string.chat_emoji),
                                 tint = if (showEmojiPicker) MaterialTheme.colorScheme.primary
                                 else MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -143,14 +154,14 @@ fun ChatScreen(
                             value = inputText,
                             onValueChange = { inputText = it },
                             modifier = Modifier.weight(1f),
-                            placeholder = { Text("Message") },
+                            placeholder = { Text(stringResource(R.string.chat_placeholder)) },
                             maxLines = 4,
                             shape = RoundedCornerShape(24.dp)
                         )
                         IconButton(onClick = { showMediaPicker = !showMediaPicker; showEmojiPicker = false }) {
                             Icon(
                                 Icons.Filled.Image,
-                                contentDescription = "Attach",
+                                contentDescription = null,
                                 tint = if (showMediaPicker) MaterialTheme.colorScheme.primary
                                 else MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -163,7 +174,7 @@ fun ChatScreen(
                             },
                             enabled = inputText.isNotBlank() && !uiState.isSending
                         ) {
-                            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send")
+                            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(R.string.chat_send))
                         }
                     }
                 }
@@ -181,7 +192,10 @@ fun ChatScreen(
                 state = rememberLazyListState()
             ) {
                 items(uiState.messages.reversed(), key = { it.messageId }) { message ->
-                    MessageBubble(message = message)
+                    MessageBubble(
+                        message = message,
+                        onImageClick = { fileId -> previewImageId = fileId }
+                    )
                 }
             }
 
@@ -224,7 +238,7 @@ fun ChatScreen(
 }
 
 @Composable
-fun MessageBubble(message: MessageData) {
+fun MessageBubble(message: MessageData, onImageClick: (String) -> Unit = {}) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -237,10 +251,10 @@ fun MessageBubble(message: MessageData) {
                 color = MaterialTheme.colorScheme.primary
             )
             Spacer(modifier = Modifier.height(4.dp))
-            MessageContentView(content = message.content, recalled = message.recalled)
+            MessageContentView(content = message.content, recalled = message.recalled, onImageClick = onImageClick)
             if (message.edited) {
                 Text(
-                    text = "(edited)",
+                    text = stringResource(R.string.message_edited),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontStyle = FontStyle.Italic
@@ -251,10 +265,10 @@ fun MessageBubble(message: MessageData) {
 }
 
 @Composable
-fun MessageContentView(content: MessageContent, recalled: Boolean) {
+fun MessageContentView(content: MessageContent, recalled: Boolean, onImageClick: (String) -> Unit = {}) {
     if (recalled) {
         Text(
-            text = "Message recalled",
+            text = stringResource(R.string.message_recalled),
             style = MaterialTheme.typography.bodyMedium,
             fontStyle = FontStyle.Italic,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -270,7 +284,7 @@ fun MessageContentView(content: MessageContent, recalled: Boolean) {
             )
         }
         is MessageContent.Image -> {
-            ImageBubble(fileId = content.fileId, width = content.width, height = content.height)
+            ImageBubble(fileId = content.fileId, width = content.width, height = content.height, onClick = { onImageClick(content.fileId) })
         }
         is MessageContent.File -> {
             FileBubble(name = content.name, size = content.size)
@@ -289,7 +303,7 @@ fun MessageContentView(content: MessageContent, recalled: Boolean) {
         }
         is MessageContent.Recalled -> {
             Text(
-                text = "Message recalled",
+                text = stringResource(R.string.message_recalled),
                 style = MaterialTheme.typography.bodyMedium,
                 fontStyle = FontStyle.Italic,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -297,7 +311,7 @@ fun MessageContentView(content: MessageContent, recalled: Boolean) {
         }
         is MessageContent.Unknown -> {
             Text(
-                text = "[Unsupported message type]",
+                text = stringResource(R.string.message_unsupported),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -306,16 +320,17 @@ fun MessageContentView(content: MessageContent, recalled: Boolean) {
 }
 
 @Composable
-fun ImageBubble(fileId: String, width: Int, height: Int) {
+fun ImageBubble(fileId: String, width: Int, height: Int, onClick: () -> Unit = {}) {
     val aspectRatio = if (height > 0) width.toFloat() / height.toFloat() else 1f
     val displayWidth = 200.dp
     AsyncImage(
         model = fileId,
-        contentDescription = "Image",
+        contentDescription = null,
         modifier = Modifier
             .widthIn(max = displayWidth)
             .aspectRatio(aspectRatio.coerceIn(0.5f, 2f))
-            .clip(RoundedCornerShape(8.dp)),
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick),
         contentScale = ContentScale.Crop
     )
 }

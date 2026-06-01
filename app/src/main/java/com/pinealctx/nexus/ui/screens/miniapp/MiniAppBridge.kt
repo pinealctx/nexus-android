@@ -21,7 +21,8 @@ class MiniAppBridge(
     private val onBackButtonSetup: (BackButtonState) -> Unit,
     private val onShare: (String?, String?, String?) -> Unit,
     private val getThemeJson: () -> String,
-    private val getUserInfoJson: () -> String
+    private val getUserInfoJson: () -> String,
+    private val onScanQr: (() -> Unit)? = null
 ) {
     private var webView: WebView? = null
 
@@ -138,8 +139,20 @@ class MiniAppBridge(
             dispatchEvent("qr_result", """{"error":"permission_not_declared"}""")
             return
         }
-        // TODO: Implement camera-based QR scanning
-        dispatchEvent("qr_result", """{"error":"not_supported_yet"}""")
+        if (onScanQr != null) {
+            onScanQr.invoke()
+        } else {
+            dispatchEvent("qr_result", """{"error":"not_supported"}""")
+        }
+    }
+
+    fun deliverQrResult(data: String?) {
+        if (data != null) {
+            val result = JSONObject().put("data", data).toString()
+            dispatchEvent("qr_result", result)
+        } else {
+            dispatchEvent("qr_result", """{"error":"cancelled"}""")
+        }
     }
 
     companion object {

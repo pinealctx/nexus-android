@@ -9,8 +9,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.pinealctx.nexus.R
 import com.pinealctx.nexus.core.ContactData
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -61,7 +63,7 @@ fun UserProfileSheet(
 
             if (!user.alias.isNullOrBlank()) {
                 Text(
-                    text = "Alias: ${user.alias}",
+                    text = stringResource(R.string.profile_alias, user.alias!!),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -78,20 +80,20 @@ fun UserProfileSheet(
                     FilledTonalButton(onClick = { onSendMessage(user.userId) }) {
                         Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Message")
+                        Text(stringResource(R.string.profile_message))
                     }
                 } else {
                     FilledTonalButton(onClick = { onAddFriend(user.userId) }) {
                         Icon(Icons.Filled.PersonAdd, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Add Friend")
+                        Text(stringResource(R.string.profile_add_friend))
                     }
                 }
 
                 OutlinedButton(onClick = { onBlock(user.userId) }) {
                     Icon(Icons.Filled.Block, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Block")
+                    Text(stringResource(R.string.profile_block))
                 }
             }
 

@@ -27,6 +27,10 @@ object Routes {
     const val SETTINGS = "settings"
     const val EDIT_PROFILE = "edit_profile"
     const val DEVICES = "devices"
+    const val NOTIFICATION_SETTINGS = "settings/notifications"
+    const val BLOCKED_USERS = "settings/blocked"
+    const val LANGUAGE_SETTINGS = "settings/language"
+    const val ABOUT = "settings/about"
 
     fun chatRoute(conversationId: String) = "chat/$conversationId"
     fun groupDetailRoute(groupId: Int) = "group_detail/$groupId"
@@ -118,7 +122,46 @@ fun NexusNavGraph(navController: NavHostController) {
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(0) { inclusive = true }
                     }
+                },
+                onNavigateToNotifications = {
+                    navController.navigate(Routes.NOTIFICATION_SETTINGS)
+                },
+                onNavigateToBlockedUsers = {
+                    navController.navigate(Routes.BLOCKED_USERS)
+                },
+                onNavigateToLanguage = {
+                    navController.navigate(Routes.LANGUAGE_SETTINGS)
+                },
+                onNavigateToAbout = {
+                    navController.navigate(Routes.ABOUT)
+                },
+                onNavigateToDevices = {
+                    navController.navigate(Routes.DEVICES)
                 }
+            )
+        }
+
+        composable(Routes.NOTIFICATION_SETTINGS) {
+            com.pinealctx.nexus.ui.screens.settings.NotificationSettingsScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.BLOCKED_USERS) {
+            com.pinealctx.nexus.ui.screens.settings.BlockedUsersScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.LANGUAGE_SETTINGS) {
+            com.pinealctx.nexus.ui.screens.settings.LanguageSettingsScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.ABOUT) {
+            com.pinealctx.nexus.ui.screens.settings.AboutScreen(
+                onBack = { navController.popBackStack() }
             )
         }
 

@@ -10,14 +10,21 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.pinealctx.nexus.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
     onLogout: () -> Unit,
+    onNavigateToNotifications: () -> Unit = {},
+    onNavigateToBlockedUsers: () -> Unit = {},
+    onNavigateToLanguage: () -> Unit = {},
+    onNavigateToAbout: () -> Unit = {},
+    onNavigateToDevices: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -26,20 +33,20 @@ fun SettingsScreen(
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
-            title = { Text("Logout") },
-            text = { Text("Are you sure you want to logout?") },
+            title = { Text(stringResource(R.string.settings_logout_title)) },
+            text = { Text(stringResource(R.string.settings_logout_message)) },
             confirmButton = {
                 TextButton(onClick = {
                     showLogoutDialog = false
                     viewModel.logout()
                     onLogout()
                 }) {
-                    Text("Logout", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.settings_logout), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showLogoutDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -48,10 +55,10 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = { Text(stringResource(R.string.settings_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
             )
@@ -114,42 +121,52 @@ fun SettingsScreen(
             HorizontalDivider()
 
             ListItem(
-                headlineContent = { Text("Account") },
-                supportingContent = { Text("Phone, email, password") },
+                headlineContent = { Text(stringResource(R.string.settings_account)) },
+                supportingContent = { Text(stringResource(R.string.settings_account_desc)) },
                 leadingContent = {
                     Icon(Icons.Filled.AccountCircle, contentDescription = null)
                 },
-                modifier = Modifier.clickable { /* TODO: navigate to account settings */ }
+                modifier = Modifier.clickable { onNavigateToDevices() }
             )
             HorizontalDivider()
 
             ListItem(
-                headlineContent = { Text("Notifications") },
-                supportingContent = { Text("Message alerts, sounds") },
+                headlineContent = { Text(stringResource(R.string.settings_notifications)) },
+                supportingContent = { Text(stringResource(R.string.settings_notifications_desc)) },
                 leadingContent = {
                     Icon(Icons.Filled.Notifications, contentDescription = null)
                 },
-                modifier = Modifier.clickable { /* TODO: navigate to notification settings */ }
+                modifier = Modifier.clickable { onNavigateToNotifications() }
             )
             HorizontalDivider()
 
             ListItem(
-                headlineContent = { Text("Privacy") },
-                supportingContent = { Text("Blocked users, visibility") },
+                headlineContent = { Text(stringResource(R.string.settings_privacy)) },
+                supportingContent = { Text(stringResource(R.string.settings_privacy_desc)) },
                 leadingContent = {
                     Icon(Icons.Filled.Lock, contentDescription = null)
                 },
-                modifier = Modifier.clickable { /* TODO: navigate to privacy settings */ }
+                modifier = Modifier.clickable { onNavigateToBlockedUsers() }
             )
             HorizontalDivider()
 
             ListItem(
-                headlineContent = { Text("About") },
-                supportingContent = { Text("Version 0.1.0") },
+                headlineContent = { Text(stringResource(R.string.settings_language)) },
+                supportingContent = { Text(stringResource(R.string.settings_language_desc)) },
+                leadingContent = {
+                    Icon(Icons.Filled.Language, contentDescription = null)
+                },
+                modifier = Modifier.clickable { onNavigateToLanguage() }
+            )
+            HorizontalDivider()
+
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.settings_about)) },
+                supportingContent = { Text(stringResource(R.string.settings_about_desc, "0.1.0")) },
                 leadingContent = {
                     Icon(Icons.Filled.Info, contentDescription = null)
                 },
-                modifier = Modifier.clickable { /* TODO: navigate to about */ }
+                modifier = Modifier.clickable { onNavigateToAbout() }
             )
             HorizontalDivider()
 
@@ -167,7 +184,7 @@ fun SettingsScreen(
             ) {
                 Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Logout")
+                Text(stringResource(R.string.settings_logout))
             }
         }
     }

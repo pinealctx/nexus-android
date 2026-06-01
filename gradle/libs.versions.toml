@@ -5,12 +5,16 @@ compose-bom = "2025.05.01"
 hilt = "2.56.2"
 navigation = "2.9.0"
 coil = "3.2.0"
+telephoto = "0.14.1"
 lifecycle = "2.9.0"
 coroutines = "1.10.2"
 firebase-bom = "33.14.0"
 activity = "1.10.1"
+appcompat = "1.7.0"
 core-ktx = "1.16.0"
 jna = "5.14.0"
+camerax = "1.4.2"
+mlkit-barcode = "17.3.0"
 
 [libraries]
 # Compose
@@ -24,6 +28,7 @@ compose-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-pr
 
 # Activity & Core
 activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activity" }
+appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core-ktx" }
 
 # Navigation
@@ -42,6 +47,9 @@ lifecycle-runtime = { group = "androidx.lifecycle", name = "lifecycle-runtime-co
 coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil" }
 coil-network = { group = "io.coil-kt.coil3", name = "coil-network-okhttp", version.ref = "coil" }
 
+# Zoomable image
+telephoto-zoomable = { group = "me.saket.telephoto", name = "zoomable-image-coil3", version.ref = "telephoto" }
+
 # Coroutines
 coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 
@@ -52,6 +60,15 @@ firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging
 # Security
 security-crypto = { group = "androidx.security", name = "security-crypto", version = "1.1.0-alpha06" }
 jna = { group = "net.java.dev.jna", name = "jna", version.ref = "jna" }
+
+# CameraX
+camerax-core = { group = "androidx.camera", name = "camera-core", version.ref = "camerax" }
+camerax-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camerax" }
+camerax-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }
+camerax-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
+
+# ML Kit
+mlkit-barcode = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkit-barcode" }
 
 # Testing
 junit = { group = "junit", name = "junit", version = "4.13.2" }

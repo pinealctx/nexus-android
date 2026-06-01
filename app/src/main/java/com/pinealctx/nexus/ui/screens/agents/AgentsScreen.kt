@@ -15,11 +15,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pinealctx.nexus.R
 import com.pinealctx.nexus.core.AgentInfoData
 import com.pinealctx.nexus.core.managers.AgentManager
 import com.pinealctx.nexus.core.managers.ContactManager
@@ -103,7 +105,7 @@ fun AgentsScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     Column(modifier = Modifier.fillMaxSize()) {
-        TopAppBar(title = { Text("Agents") })
+        TopAppBar(title = { Text(stringResource(R.string.agents_title)) })
 
         // Search bar
         OutlinedTextField(
@@ -112,7 +114,7 @@ fun AgentsScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
-            placeholder = { Text("Search agents") },
+            placeholder = { Text(stringResource(R.string.agents_search)) },
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
             singleLine = true,
             shape = RoundedCornerShape(24.dp)
@@ -136,7 +138,7 @@ fun AgentsScreen(
                     if (uiState.myAgents.isNotEmpty()) {
                         item {
                             Text(
-                                text = "My Agents",
+                                text = stringResource(R.string.agents_my),
                                 style = MaterialTheme.typography.titleSmall,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                                 color = MaterialTheme.colorScheme.primary
@@ -150,7 +152,7 @@ fun AgentsScreen(
 
                     item {
                         Text(
-                            text = "Featured",
+                            text = stringResource(R.string.agents_featured),
                             style = MaterialTheme.typography.titleSmall,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                             color = MaterialTheme.colorScheme.primary
@@ -188,7 +190,7 @@ private fun AgentListItem(
                         color = MaterialTheme.colorScheme.tertiaryContainer
                     ) {
                         Text(
-                            text = "System",
+                            text = stringResource(R.string.agents_system),
                             modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
                             style = MaterialTheme.typography.labelSmall
                         )
@@ -218,12 +220,12 @@ private fun AgentListItem(
             Row {
                 if (agent.miniAppEnabled) {
                     IconButton(onClick = { onOpenMiniApp(agent.userId) }) {
-                        Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = "Open App", tint = MaterialTheme.colorScheme.primary)
+                        Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = stringResource(R.string.agents_open_app), tint = MaterialTheme.colorScheme.primary)
                     }
                 }
                 if (!isMine && onAdd != null) {
                     IconButton(onClick = { onAdd(agent.userId) }) {
-                        Icon(Icons.Filled.PersonAdd, contentDescription = "Add")
+                        Icon(Icons.Filled.PersonAdd, contentDescription = stringResource(R.string.agents_add))
                     }
                 }
             }

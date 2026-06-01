@@ -19,6 +19,8 @@
     <string name="chat_placeholder">Message</string>
     <string name="chat_send">Send</string>
     <string name="chat_emoji">Emoji</string>
+    <string name="chat_search">Search in chat</string>
+    <string name="chat_close_search">Close search</string>
     <string name="message_recalled">Message recalled</string>
     <string name="message_edited">(edited)</string>
     <string name="message_unsupported">[Unsupported message type]</string>
@@ -41,12 +43,17 @@
     <string name="friend_requests_retry">Retry</string>
 
     <!-- Search -->
-    <string name="search_title">Search Users</string>
-    <string name="search_placeholder">Search by username or nickname</string>
+    <string name="search_title">Search</string>
+    <string name="search_placeholder">Search messages or users</string>
     <string name="search_clear">Clear</string>
     <string name="search_no_results">No users found</string>
+    <string name="search_no_messages">No messages found</string>
     <string name="search_hint">Enter a username or nickname to search</string>
+    <string name="search_hint_messages">Enter text to search messages</string>
     <string name="search_add_friend">Add friend</string>
+    <string name="search_tab_messages">Messages</string>
+    <string name="search_tab_users">Users</string>
+    <string name="search_failed">Search failed</string>
 
     <!-- Group -->
     <string name="group_title">Group</string>
@@ -68,9 +75,41 @@
     <string name="settings_privacy_desc">Blocked users, visibility</string>
     <string name="settings_about">About</string>
     <string name="settings_about_desc">Version %s</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_language_desc">App display language</string>
     <string name="settings_logout">Logout</string>
     <string name="settings_logout_title">Logout</string>
     <string name="settings_logout_message">Are you sure you want to logout?</string>
+
+    <!-- Devices -->
+    <string name="devices_title">Devices</string>
+    <string name="devices_empty">No devices found</string>
+    <string name="devices_remove_title">Remove Device</string>
+    <string name="devices_remove_message">Remove \"%s\" from your account? It will be logged out.</string>
+    <string name="devices_remove_action">Remove</string>
+    <string name="devices_current">Current</string>
+
+    <!-- Agents -->
+    <string name="agents_title">Agents</string>
+    <string name="agents_search">Search agents</string>
+    <string name="agents_my">My Agents</string>
+    <string name="agents_featured">Featured</string>
+    <string name="agents_system">System</string>
+    <string name="agents_open_app">Open App</string>
+    <string name="agents_add">Add</string>
+
+    <!-- Invite Members -->
+    <string name="invite_title">Invite Members</string>
+    <string name="invite_all_added">All your contacts are already in this group.</string>
+    <string name="invite_selected">%d selected</string>
+    <string name="invite_action">Invite</string>
+
+    <!-- User Profile -->
+    <string name="profile_alias">Alias: %s</string>
+
+    <!-- Mini App -->
+    <string name="miniapp_close">Close</string>
+    <string name="miniapp_loading_slow">Mini App is taking longer than expected…</string>
 
     <!-- Common -->
     <string name="back">Back</string>
@@ -103,4 +142,30 @@
     <!-- Foreground Service -->
     <string name="service_sync_channel">Message Sync</string>
     <string name="service_sync_description">Keeps message sync active</string>
+
+    <!-- Card -->
+    <string name="card_invalid">Invalid card</string>
+
+    <!-- Notification Settings -->
+    <string name="notification_settings_title">Notifications</string>
+    <string name="notification_settings_alerts">Message Alerts</string>
+    <string name="notification_settings_alerts_desc">Show notifications for new messages</string>
+    <string name="notification_settings_sound">Sound</string>
+    <string name="notification_settings_sound_desc">Play sound for new messages</string>
+
+    <!-- Blocked Users -->
+    <string name="blocked_users_title">Blocked Users</string>
+    <string name="blocked_users_empty">No blocked users</string>
+    <string name="blocked_users_unblock">Unblock</string>
+
+    <!-- Language Settings -->
+    <string name="language_settings_title">Language</string>
+    <string name="language_system">Follow System</string>
+    <string name="language_en">English</string>
+    <string name="language_zh">简体中文</string>
+
+    <!-- About -->
+    <string name="about_title">About</string>
+    <string name="about_version">Version %s</string>
+    <string name="about_copyright">Copyright 2024-2025 PinealCtx. All rights reserved.</string>
 </resources>

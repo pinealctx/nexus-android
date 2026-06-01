@@ -13,7 +13,9 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -24,8 +26,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.pinealctx.nexus.R
 import com.pinealctx.nexus.core.managers.AgentManager
 import com.pinealctx.nexus.core.managers.UserManager
 import com.pinealctx.nexus.ui.theme.NexusTheme
@@ -41,6 +45,18 @@ class MiniAppActivity : ComponentActivity() {
 
     @Inject lateinit var agentManager: AgentManager
     @Inject lateinit var userManager: UserManager
+
+    private var qrResultCallback: ((String?) -> Unit)? = null
+
+    private val qrScanLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val data = if (result.resultCode == RESULT_OK) {
+            result.data?.getStringExtra(QrScannerActivity.RESULT_QR_DATA)
+        } else null
+        qrResultCallback?.invoke(data)
+        qrResultCallback = null
+    }
 
     companion object {
         const val EXTRA_AGENT_USER_ID = "agent_user_id"
@@ -75,7 +91,11 @@ class MiniAppActivity : ComponentActivity() {
                     permissions = permissions,
                     agentManager = agentManager,
                     userManager = userManager,
-                    onClose = { finish() }
+                    onClose = { finish() },
+                    onScanQr = { callback ->
+                        qrResultCallback = callback
+                        qrScanLauncher.launch(Intent(this, QrScannerActivity::class.java))
+                    }
                 )
             }
         }
@@ -93,10 +113,12 @@ private fun MiniAppScreen(
     permissions: Int,
     agentManager: AgentManager,
     userManager: UserManager,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    onScanQr: ((callback: (String?) -> Unit) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val colorScheme = MaterialTheme.colorScheme
+    val isDarkTheme = isSystemInDarkTheme()
     val scope = rememberCoroutineScope()
 
     var isLoading by remember { mutableStateOf(true) }
@@ -144,8 +166,19 @@ private fun MiniAppScreen(
                 } catch (_: Exception) {
                     """{"user_id":0,"username":"","nickname":"","avatar_url":""}"""
                 }
-            }
+            },
+            onScanQr = if (onScanQr != null) {
+                { onScanQr { result -> bridge.deliverQrResult(result) } }
+            } else null
         )
+    }
+
+    // Theme sync: push updated theme when system theme changes
+    LaunchedEffect(isDarkTheme) {
+        if (isReady) {
+            val themeJson = MiniAppTheme.getThemeParams(colorScheme)
+            bridge.dispatchEvent("theme_changed", themeJson)
+        }
     }
 
     // Fetch launch data
@@ -194,7 +227,7 @@ private fun MiniAppScreen(
                 },
                 actions = {
                     IconButton(onClick = onClose) {
-                        Icon(Icons.Filled.Close, contentDescription = "Close")
+                        Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.miniapp_close))
                     }
                 }
             )
@@ -250,6 +283,13 @@ private fun MiniAppScreen(
                                         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(reqUrl)))
                                         return true
                                     }
+                                    // Origin validation: only allow same-origin navigation
+                                    val allowedHost = miniAppUrl?.let { Uri.parse(it.substringBefore("#")) }?.host
+                                    val requestHost = Uri.parse(reqUrl).host
+                                    if (allowedHost != null && requestHost != null && requestHost != allowedHost) {
+                                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(reqUrl)))
+                                        return true
+                                    }
                                     return false
                                 }
                             }
@@ -280,7 +320,7 @@ private fun MiniAppScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(msg, color = MaterialTheme.colorScheme.error)
                         Spacer(modifier = Modifier.height(16.dp))
-                        TextButton(onClick = onClose) { Text("Close") }
+                        TextButton(onClick = onClose) { Text(stringResource(R.string.miniapp_close)) }
                     }
                 }
             }

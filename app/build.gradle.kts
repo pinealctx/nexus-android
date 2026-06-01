@@ -41,6 +41,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -58,6 +59,7 @@ dependencies {
 
     // Activity & Core
     implementation(libs.activity.compose)
+    implementation(libs.appcompat)
     implementation(libs.core.ktx)
 
     // Navigation
@@ -75,12 +77,20 @@ dependencies {
     // Image loading
     implementation(libs.coil.compose)
     implementation(libs.coil.network)
+    implementation(libs.telephoto.zoomable)
 
     // Coroutines
     implementation(libs.coroutines.android)
 
     // Security
     implementation(libs.security.crypto)
+
+    // CameraX + ML Kit (QR scanning)
+    implementation(libs.camerax.core)
+    implementation(libs.camerax.camera2)
+    implementation(libs.camerax.lifecycle)
+    implementation(libs.camerax.view)
+    implementation(libs.mlkit.barcode)
 
     // Testing
     testImplementation(libs.junit)

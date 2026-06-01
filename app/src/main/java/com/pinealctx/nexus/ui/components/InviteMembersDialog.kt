@@ -8,7 +8,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.pinealctx.nexus.R
 import com.pinealctx.nexus.core.ContactData
 
 @Composable
@@ -23,14 +25,14 @@ fun InviteMembersDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Invite Members") },
+        title = { Text(stringResource(R.string.invite_title)) },
         text = {
             if (availableContacts.isEmpty()) {
-                Text("All your contacts are already in this group.")
+                Text(stringResource(R.string.invite_all_added))
             } else {
                 Column {
                     Text(
-                        text = "${selectedIds.size} selected",
+                        text = stringResource(R.string.invite_selected, selectedIds.size),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -78,11 +80,11 @@ fun InviteMembersDialog(
                 onClick = { onInvite(selectedIds.toList()) },
                 enabled = selectedIds.isNotEmpty()
             ) {
-                Text("Invite")
+                Text(stringResource(R.string.invite_action))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         }
     )
 }

@@ -14,12 +14,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.pinealctx.nexus.R
 import com.pinealctx.nexus.core.ContactData
 import com.pinealctx.nexus.core.MessageSearchResultData
 import java.text.SimpleDateFormat
@@ -38,10 +40,10 @@ fun SearchScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Search") },
+                title = { Text(stringResource(R.string.search_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
             )
@@ -59,12 +61,12 @@ fun SearchScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
-                placeholder = { Text("Search messages or users") },
+                placeholder = { Text(stringResource(R.string.search_placeholder)) },
                 leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
                 trailingIcon = {
                     if (uiState.query.isNotEmpty()) {
                         IconButton(onClick = { viewModel.updateQuery("") }) {
-                            Icon(Icons.Filled.Clear, contentDescription = "Clear")
+                            Icon(Icons.Filled.Clear, contentDescription = stringResource(R.string.search_clear))
                         }
                     }
                 },
@@ -78,12 +80,12 @@ fun SearchScreen(
                 Tab(
                     selected = uiState.activeTab == SearchTab.MESSAGES,
                     onClick = { viewModel.switchTab(SearchTab.MESSAGES) },
-                    text = { Text("Messages") }
+                    text = { Text(stringResource(R.string.search_tab_messages)) }
                 )
                 Tab(
                     selected = uiState.activeTab == SearchTab.USERS,
                     onClick = { viewModel.switchTab(SearchTab.USERS) },
-                    text = { Text("Users") }
+                    text = { Text(stringResource(R.string.search_tab_users)) }
                 )
             }
 
@@ -103,7 +105,7 @@ fun SearchScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = uiState.error ?: "Search failed",
+                            text = uiState.error ?: stringResource(R.string.search_failed),
                             color = MaterialTheme.colorScheme.error
                         )
                     }
@@ -143,7 +145,7 @@ private fun MessageSearchResults(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "No messages found",
+                text = stringResource(R.string.search_no_messages),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -157,7 +159,7 @@ private fun MessageSearchResults(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "Enter text to search messages",
+                text = stringResource(R.string.search_hint_messages),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -227,7 +229,7 @@ private fun UserSearchResults(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "No users found",
+                text = stringResource(R.string.search_no_results),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -241,7 +243,7 @@ private fun UserSearchResults(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "Enter a username or nickname to search",
+                text = stringResource(R.string.search_hint),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -288,7 +290,7 @@ private fun SearchResultItem(
             IconButton(onClick = onAddFriend) {
                 Icon(
                     Icons.Filled.PersonAdd,
-                    contentDescription = "Add friend",
+                    contentDescription = stringResource(R.string.search_add_friend),
                     tint = MaterialTheme.colorScheme.primary
                 )
             }

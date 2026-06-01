@@ -19,6 +19,8 @@
     <string name="chat_placeholder">输入消息</string>
     <string name="chat_send">发送</string>
     <string name="chat_emoji">表情</string>
+    <string name="chat_search">搜索聊天记录</string>
+    <string name="chat_close_search">关闭搜索</string>
     <string name="message_recalled">消息已撤回</string>
     <string name="message_edited">(已编辑)</string>
     <string name="message_unsupported">[不支持的消息类型]</string>
@@ -41,12 +43,17 @@
     <string name="friend_requests_retry">重试</string>
 
     <!-- Search -->
-    <string name="search_title">搜索用户</string>
-    <string name="search_placeholder">输入用户名或昵称搜索</string>
+    <string name="search_title">搜索</string>
+    <string name="search_placeholder">搜索消息或用户</string>
     <string name="search_clear">清除</string>
     <string name="search_no_results">未找到用户</string>
+    <string name="search_no_messages">未找到消息</string>
     <string name="search_hint">输入用户名或昵称进行搜索</string>
+    <string name="search_hint_messages">输入文字搜索消息</string>
     <string name="search_add_friend">添加好友</string>
+    <string name="search_tab_messages">消息</string>
+    <string name="search_tab_users">用户</string>
+    <string name="search_failed">搜索失败</string>
 
     <!-- Group -->
     <string name="group_title">群组</string>
@@ -68,9 +75,41 @@
     <string name="settings_privacy_desc">黑名单、可见性</string>
     <string name="settings_about">关于</string>
     <string name="settings_about_desc">版本 %s</string>
+    <string name="settings_language">语言</string>
+    <string name="settings_language_desc">应用显示语言</string>
     <string name="settings_logout">退出登录</string>
     <string name="settings_logout_title">退出登录</string>
     <string name="settings_logout_message">确定要退出登录吗？</string>
+
+    <!-- Devices -->
+    <string name="devices_title">设备管理</string>
+    <string name="devices_empty">暂无设备</string>
+    <string name="devices_remove_title">移除设备</string>
+    <string name="devices_remove_message">确定要移除「%s」吗？该设备将被登出。</string>
+    <string name="devices_remove_action">移除</string>
+    <string name="devices_current">当前</string>
+
+    <!-- Agents -->
+    <string name="agents_title">智能体</string>
+    <string name="agents_search">搜索智能体</string>
+    <string name="agents_my">我的智能体</string>
+    <string name="agents_featured">推荐</string>
+    <string name="agents_system">系统</string>
+    <string name="agents_open_app">打开应用</string>
+    <string name="agents_add">添加</string>
+
+    <!-- Invite Members -->
+    <string name="invite_title">邀请成员</string>
+    <string name="invite_all_added">所有联系人都已在群组中。</string>
+    <string name="invite_selected">已选择 %d 人</string>
+    <string name="invite_action">邀请</string>
+
+    <!-- User Profile -->
+    <string name="profile_alias">备注: %s</string>
+
+    <!-- Mini App -->
+    <string name="miniapp_close">关闭</string>
+    <string name="miniapp_loading_slow">小程序加载时间较长…</string>
 
     <!-- Common -->
     <string name="back">返回</string>
@@ -103,4 +142,30 @@
     <!-- Foreground Service -->
     <string name="service_sync_channel">消息同步</string>
     <string name="service_sync_description">保持消息同步连接</string>
+
+    <!-- Card -->
+    <string name="card_invalid">无效卡片</string>
+
+    <!-- Notification Settings -->
+    <string name="notification_settings_title">通知</string>
+    <string name="notification_settings_alerts">消息提醒</string>
+    <string name="notification_settings_alerts_desc">收到新消息时显示通知</string>
+    <string name="notification_settings_sound">声音</string>
+    <string name="notification_settings_sound_desc">收到新消息时播放提示音</string>
+
+    <!-- Blocked Users -->
+    <string name="blocked_users_title">黑名单</string>
+    <string name="blocked_users_empty">暂无拉黑用户</string>
+    <string name="blocked_users_unblock">解除拉黑</string>
+
+    <!-- Language Settings -->
+    <string name="language_settings_title">语言</string>
+    <string name="language_system">跟随系统</string>
+    <string name="language_en">English</string>
+    <string name="language_zh">简体中文</string>
+
+    <!-- About -->
+    <string name="about_title">关于</string>
+    <string name="about_version">版本 %s</string>
+    <string name="about_copyright">Copyright 2024-2025 PinealCtx. All rights reserved.</string>
 </resources>

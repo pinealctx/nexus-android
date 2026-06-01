@@ -7,15 +7,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.json.JSONArray
 import org.json.JSONObject
+import com.pinealctx.nexus.R
 
 @Composable
 fun AdaptiveCardView(
     json: String,
     onAction: (String, String) -> Unit = { _, _ -> },
+    onOpenMiniApp: ((Int, String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val card = remember(json) {
@@ -27,7 +30,7 @@ fun AdaptiveCardView(
     }
 
     if (card == null) {
-        Text("Invalid card", style = MaterialTheme.typography.bodySmall)
+        Text(stringResource(R.string.card_invalid), style = MaterialTheme.typography.bodySmall)
         return
     }
 
@@ -39,23 +42,23 @@ fun AdaptiveCardView(
         Column(modifier = Modifier.padding(16.dp)) {
             val body = card.optJSONArray("body")
             if (body != null) {
-                RenderElements(body, onAction)
+                RenderElements(body, onAction, onOpenMiniApp)
             }
 
             val actions = card.optJSONArray("actions")
             if (actions != null && actions.length() > 0) {
                 Spacer(modifier = Modifier.height(12.dp))
-                RenderActions(actions, onAction)
+                RenderActions(actions, onAction, onOpenMiniApp)
             }
         }
     }
 }
 
 @Composable
-private fun RenderElements(elements: JSONArray, onAction: (String, String) -> Unit) {
+private fun RenderElements(elements: JSONArray, onAction: (String, String) -> Unit, onOpenMiniApp: ((Int, String) -> Unit)? = null) {
     for (i in 0 until elements.length()) {
         val element = elements.optJSONObject(i) ?: continue
-        RenderElement(element, onAction)
+        RenderElement(element, onAction, onOpenMiniApp)
         if (i < elements.length() - 1) {
             Spacer(modifier = Modifier.height(8.dp))
         }
@@ -63,16 +66,16 @@ private fun RenderElements(elements: JSONArray, onAction: (String, String) -> Un
 }
 
 @Composable
-private fun RenderElement(element: JSONObject, onAction: (String, String) -> Unit) {
+private fun RenderElement(element: JSONObject, onAction: (String, String) -> Unit, onOpenMiniApp: ((Int, String) -> Unit)? = null) {
     when (element.optString("type")) {
         "TextBlock" -> RenderTextBlock(element)
         "Image" -> RenderImage(element)
-        "ColumnSet" -> RenderColumnSet(element, onAction)
-        "Column" -> RenderColumn(element, onAction)
-        "Container" -> RenderContainer(element, onAction)
+        "ColumnSet" -> RenderColumnSet(element, onAction, onOpenMiniApp)
+        "Column" -> RenderColumn(element, onAction, onOpenMiniApp)
+        "Container" -> RenderContainer(element, onAction, onOpenMiniApp)
         "ActionSet" -> {
             val actions = element.optJSONArray("actions")
-            if (actions != null) RenderActions(actions, onAction)
+            if (actions != null) RenderActions(actions, onAction, onOpenMiniApp)
         }
         "FactSet" -> RenderFactSet(element)
         else -> {}
@@ -132,7 +135,7 @@ private fun RenderImage(element: JSONObject) {
 }
 
 @Composable
-private fun RenderColumnSet(element: JSONObject, onAction: (String, String) -> Unit) {
+private fun RenderColumnSet(element: JSONObject, onAction: (String, String) -> Unit, onOpenMiniApp: ((Int, String) -> Unit)? = null) {
     val columns = element.optJSONArray("columns") ?: return
 
     Row(
@@ -152,25 +155,25 @@ private fun RenderColumnSet(element: JSONObject, onAction: (String, String) -> U
             }
             Column(modifier = columnModifier) {
                 val items = column.optJSONArray("items")
-                if (items != null) RenderElements(items, onAction)
+                if (items != null) RenderElements(items, onAction, onOpenMiniApp)
             }
         }
     }
 }
 
 @Composable
-private fun RenderColumn(element: JSONObject, onAction: (String, String) -> Unit) {
+private fun RenderColumn(element: JSONObject, onAction: (String, String) -> Unit, onOpenMiniApp: ((Int, String) -> Unit)? = null) {
     val items = element.optJSONArray("items") ?: return
     Column {
-        RenderElements(items, onAction)
+        RenderElements(items, onAction, onOpenMiniApp)
     }
 }
 
 @Composable
-private fun RenderContainer(element: JSONObject, onAction: (String, String) -> Unit) {
+private fun RenderContainer(element: JSONObject, onAction: (String, String) -> Unit, onOpenMiniApp: ((Int, String) -> Unit)? = null) {
     val items = element.optJSONArray("items") ?: return
     Column(modifier = Modifier.fillMaxWidth()) {
-        RenderElements(items, onAction)
+        RenderElements(items, onAction, onOpenMiniApp)
     }
 }
 
@@ -198,7 +201,7 @@ private fun RenderFactSet(element: JSONObject) {
 }
 
 @Composable
-private fun RenderActions(actions: JSONArray, onAction: (String, String) -> Unit) {
+private fun RenderActions(actions: JSONArray, onAction: (String, String) -> Unit, onOpenMiniApp: ((Int, String) -> Unit)? = null) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -211,8 +214,18 @@ private fun RenderActions(actions: JSONArray, onAction: (String, String) -> Unit
 
             when (type) {
                 "Action.Submit" -> {
-                    FilledTonalButton(onClick = { onAction(type, actionData) }) {
-                        Text(title)
+                    val dataObj = try { JSONObject(actionData) } catch (_: Exception) { null }
+                    val verb = dataObj?.optString("verb", "") ?: ""
+                    if (verb == "open_mini_app" && onOpenMiniApp != null) {
+                        val agentUserId = dataObj?.optInt("agent_user_id", 0) ?: 0
+                        val startParam = dataObj?.optString("start_param", "") ?: ""
+                        FilledTonalButton(onClick = { onOpenMiniApp(agentUserId, startParam) }) {
+                            Text(title)
+                        }
+                    } else {
+                        FilledTonalButton(onClick = { onAction(type, actionData) }) {
+                            Text(title)
+                        }
                     }
                 }
                 "Action.OpenUrl" -> {
