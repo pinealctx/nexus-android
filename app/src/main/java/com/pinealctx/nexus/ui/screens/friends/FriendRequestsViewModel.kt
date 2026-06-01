@@ -3,8 +3,8 @@ package com.pinealctx.nexus.ui.screens.friends
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pinealctx.nexus.core.EventBridge
-import com.pinealctx.nexus.core.NexusCoreWrapper
 import com.pinealctx.nexus.core.PendingRequestData
+import com.pinealctx.nexus.core.managers.ContactManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,7 +23,7 @@ data class FriendRequestsUiState(
 
 @HiltViewModel
 class FriendRequestsViewModel @Inject constructor(
-    private val core: NexusCoreWrapper,
+    private val contactManager: ContactManager,
     private val eventBridge: EventBridge
 ) : ViewModel() {
 
@@ -45,7 +45,7 @@ class FriendRequestsViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = _uiState.value.copy(isLoading = true)
             try {
-                val requests = core.getPendingRequests()
+                val requests = contactManager.getPendingRequests()
                 _uiState.value = FriendRequestsUiState(requests = requests)
             } catch (e: Exception) {
                 _uiState.value = FriendRequestsUiState(error = e.message)
@@ -56,7 +56,7 @@ class FriendRequestsViewModel @Inject constructor(
     fun acceptRequest(requestId: Long) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                core.acceptFriendRequest(requestId)
+                contactManager.acceptFriendRequest(requestId)
                 loadRequests()
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = e.message)
@@ -67,7 +67,7 @@ class FriendRequestsViewModel @Inject constructor(
     fun rejectRequest(requestId: Long) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                core.rejectFriendRequest(requestId)
+                contactManager.rejectFriendRequest(requestId)
                 loadRequests()
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = e.message)

@@ -1,7 +1,7 @@
 package com.pinealctx.nexus.di
 
 import android.content.Context
-import com.pinealctx.nexus.core.NexusCoreWrapper
+import com.pinealctx.nexus.core.NexusClientProvider
 import com.pinealctx.nexus.core.SecureStorage
 import dagger.Module
 import dagger.Provides
@@ -24,16 +24,16 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideNexusCoreWrapper(
+    fun provideNexusClientProvider(
         @ApplicationContext context: Context,
         secureStorage: SecureStorage
-    ): NexusCoreWrapper {
-        val wrapper = NexusCoreWrapper(context, secureStorage)
+    ): NexusClientProvider {
+        val provider = NexusClientProvider(context, secureStorage)
         try {
-            wrapper.initialize()
+            provider.initialize()
         } catch (e: Exception) {
             android.util.Log.e("NexusApp", "Failed to initialize core", e)
         }
-        return wrapper
+        return provider
     }
 }

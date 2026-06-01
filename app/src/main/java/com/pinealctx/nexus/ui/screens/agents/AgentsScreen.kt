@@ -21,7 +21,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pinealctx.nexus.core.AgentInfoData
-import com.pinealctx.nexus.core.NexusCoreWrapper
+import com.pinealctx.nexus.core.managers.AgentManager
+import com.pinealctx.nexus.core.managers.ContactManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,7 +42,8 @@ data class AgentsUiState(
 
 @HiltViewModel
 class AgentsViewModel @Inject constructor(
-    private val core: NexusCoreWrapper
+    private val agentManager: AgentManager,
+    private val contactManager: ContactManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AgentsUiState())
@@ -55,8 +57,8 @@ class AgentsViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = _uiState.value.copy(isLoading = true)
             try {
-                val featured = core.listFeaturedAgents()
-                val mine = core.listMyAgents()
+                val featured = agentManager.listFeaturedAgents()
+                val mine = agentManager.listMyAgents()
                 _uiState.value = AgentsUiState(featuredAgents = featured, myAgents = mine)
             } catch (e: Exception) {
                 _uiState.value = AgentsUiState(error = e.message)
@@ -72,9 +74,9 @@ class AgentsViewModel @Inject constructor(
         }
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val results = core.searchUsers(query)
+                val results = contactManager.searchUsers(query)
                 val agentResults = results.map { contact ->
-                    val info = core.getAgentInfo(contact.userId)
+                    val info = agentManager.getAgentInfo(contact.userId)
                     info
                 }.filterNotNull()
                 _uiState.value = _uiState.value.copy(searchResults = agentResults)
@@ -85,7 +87,7 @@ class AgentsViewModel @Inject constructor(
     fun addAgent(agentUserId: Int) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                core.addContact(agentUserId)
+                contactManager.addContact(agentUserId)
             } catch (_: Exception) {}
         }
     }

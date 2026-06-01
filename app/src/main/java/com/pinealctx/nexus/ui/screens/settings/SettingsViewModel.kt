@@ -2,9 +2,10 @@ package com.pinealctx.nexus.ui.screens.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pinealctx.nexus.core.NexusCoreWrapper
 import com.pinealctx.nexus.core.ProfileData
 import com.pinealctx.nexus.core.SyncManager
+import com.pinealctx.nexus.core.managers.AuthManager
+import com.pinealctx.nexus.core.managers.UserManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,7 +22,8 @@ data class SettingsUiState(
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val core: NexusCoreWrapper,
+    private val userManager: UserManager,
+    private val authManager: AuthManager,
     private val syncManager: SyncManager
 ) : ViewModel() {
 
@@ -36,7 +38,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = _uiState.value.copy(isLoading = true)
             try {
-                val profile = core.getMyProfile()
+                val profile = userManager.getMyProfile()
                 _uiState.value = SettingsUiState(profile = profile)
             } catch (e: Exception) {
                 _uiState.value = SettingsUiState(error = e.message)
@@ -47,7 +49,7 @@ class SettingsViewModel @Inject constructor(
     fun logout() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                core.logout()
+                authManager.logout()
             } catch (_: Exception) {}
             syncManager.stopSession()
         }

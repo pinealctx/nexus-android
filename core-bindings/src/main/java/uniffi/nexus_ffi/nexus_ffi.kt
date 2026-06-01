@@ -951,6 +951,10 @@ internal open class UniffiVTableCallbackInterfaceEventListener(
 
 
 
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -1068,6 +1072,8 @@ fun uniffi_nexus_ffi_checksum_method_nexusclient_mark_as_read(
 ): Short
 fun uniffi_nexus_ffi_checksum_method_nexusclient_mute_conversation(
 ): Short
+fun uniffi_nexus_ffi_checksum_method_nexusclient_rebuild_search_index(
+): Short
 fun uniffi_nexus_ffi_checksum_method_nexusclient_recall_message(
 ): Short
 fun uniffi_nexus_ffi_checksum_method_nexusclient_register_push_token(
@@ -1083,6 +1089,8 @@ fun uniffi_nexus_ffi_checksum_method_nexusclient_request_verify_code(
 fun uniffi_nexus_ffi_checksum_method_nexusclient_resolve_username(
 ): Short
 fun uniffi_nexus_ffi_checksum_method_nexusclient_restore_session(
+): Short
+fun uniffi_nexus_ffi_checksum_method_nexusclient_search_messages(
 ): Short
 fun uniffi_nexus_ffi_checksum_method_nexusclient_search_users(
 ): Short
@@ -1310,6 +1318,8 @@ fun uniffi_nexus_ffi_fn_method_nexusclient_mark_as_read(`ptr`: Pointer,`conversa
 ): Unit
 fun uniffi_nexus_ffi_fn_method_nexusclient_mute_conversation(`ptr`: Pointer,`conversationId`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
+fun uniffi_nexus_ffi_fn_method_nexusclient_rebuild_search_index(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): Long
 fun uniffi_nexus_ffi_fn_method_nexusclient_recall_message(`ptr`: Pointer,`conversationId`: Long,`messageId`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 fun uniffi_nexus_ffi_fn_method_nexusclient_register_push_token(`ptr`: Pointer,`token`: RustBuffer.ByValue,`platform`: Int,uniffi_out_err: UniffiRustCallStatus, 
@@ -1326,6 +1336,8 @@ fun uniffi_nexus_ffi_fn_method_nexusclient_resolve_username(`ptr`: Pointer,`user
 ): RustBuffer.ByValue
 fun uniffi_nexus_ffi_fn_method_nexusclient_restore_session(`ptr`: Pointer,`accessToken`: RustBuffer.ByValue,`refreshToken`: RustBuffer.ByValue,`expiresIn`: Int,`userId`: Int,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
+fun uniffi_nexus_ffi_fn_method_nexusclient_search_messages(`ptr`: Pointer,`query`: RustBuffer.ByValue,`conversationId`: RustBuffer.ByValue,`limit`: Int,`offset`: Int,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_nexus_ffi_fn_method_nexusclient_search_users(`ptr`: Pointer,`query`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_nexus_ffi_fn_method_nexusclient_search_users_local(`ptr`: Pointer,`query`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1663,6 +1675,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_nexus_ffi_checksum_method_nexusclient_mute_conversation() != 57039.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_nexus_ffi_checksum_method_nexusclient_rebuild_search_index() != 31175.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_nexus_ffi_checksum_method_nexusclient_recall_message() != 45652.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1685,6 +1700,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_nexus_ffi_checksum_method_nexusclient_restore_session() != 20819.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_nexus_ffi_checksum_method_nexusclient_search_messages() != 45351.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_nexus_ffi_checksum_method_nexusclient_search_users() != 25248.toShort()) {
@@ -1986,6 +2004,29 @@ public object FfiConverterInt: FfiConverter<Int, Int> {
 
     override fun write(value: Int, buf: ByteBuffer) {
         buf.putInt(value)
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterULong: FfiConverter<ULong, Long> {
+    override fun lift(value: Long): ULong {
+        return value.toULong()
+    }
+
+    override fun read(buf: ByteBuffer): ULong {
+        return lift(buf.getLong())
+    }
+
+    override fun lower(value: ULong): Long {
+        return value.toLong()
+    }
+
+    override fun allocationSize(value: ULong) = 8UL
+
+    override fun write(value: ULong, buf: ByteBuffer) {
+        buf.putLong(value.toLong())
     }
 }
 
@@ -2312,6 +2353,8 @@ public interface NexusClientInterface {
     
     fun `muteConversation`(`conversationId`: kotlin.Long)
     
+    fun `rebuildSearchIndex`(): kotlin.ULong
+    
     fun `recallMessage`(`conversationId`: kotlin.Long, `messageId`: kotlin.Long)
     
     fun `registerPushToken`(`token`: kotlin.String, `platform`: kotlin.Int)
@@ -2327,6 +2370,8 @@ public interface NexusClientInterface {
     fun `resolveUsername`(`username`: kotlin.String): ContactInfo
     
     fun `restoreSession`(`accessToken`: kotlin.String, `refreshToken`: kotlin.String, `expiresIn`: kotlin.Int, `userId`: kotlin.Int)
+    
+    fun `searchMessages`(`query`: kotlin.String, `conversationId`: kotlin.String?, `limit`: kotlin.Int, `offset`: kotlin.Int): List<MessageSearchResultFfi>
     
     fun `searchUsers`(`query`: kotlin.String): List<ContactInfo>
     
@@ -3100,6 +3145,19 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     
 
     
+    @Throws(NexusException::class)override fun `rebuildSearchIndex`(): kotlin.ULong {
+            return FfiConverterULong.lift(
+    callWithPointer {
+    uniffiRustCallWithError(NexusException) { _status ->
+    UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_rebuild_search_index(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
     @Throws(NexusException::class)override fun `recallMessage`(`conversationId`: kotlin.Long, `messageId`: kotlin.Long)
         = 
     callWithPointer {
@@ -3194,6 +3252,19 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
 }
     }
     
+    
+
+    
+    @Throws(NexusException::class)override fun `searchMessages`(`query`: kotlin.String, `conversationId`: kotlin.String?, `limit`: kotlin.Int, `offset`: kotlin.Int): List<MessageSearchResultFfi> {
+            return FfiConverterSequenceTypeMessageSearchResultFfi.lift(
+    callWithPointer {
+    uniffiRustCallWithError(NexusException) { _status ->
+    UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_search_messages(
+        it, FfiConverterString.lower(`query`),FfiConverterOptionalString.lower(`conversationId`),FfiConverterInt.lower(`limit`),FfiConverterInt.lower(`offset`),_status)
+}
+    }
+    )
+    }
     
 
     
@@ -4187,6 +4258,50 @@ public object FfiConverterTypeMessageInfo: FfiConverterRustBuffer<MessageInfo> {
             FfiConverterOptionalLong.write(value.`replyToMessageId`, buf)
             FfiConverterBoolean.write(value.`edited`, buf)
             FfiConverterBoolean.write(value.`recalled`, buf)
+            FfiConverterLong.write(value.`createdAt`, buf)
+    }
+}
+
+
+
+data class MessageSearchResultFfi (
+    var `conversationId`: kotlin.String, 
+    var `messageId`: kotlin.Long, 
+    var `senderId`: kotlin.Int, 
+    var `textSnippet`: kotlin.String, 
+    var `createdAt`: kotlin.Long
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeMessageSearchResultFfi: FfiConverterRustBuffer<MessageSearchResultFfi> {
+    override fun read(buf: ByteBuffer): MessageSearchResultFfi {
+        return MessageSearchResultFfi(
+            FfiConverterString.read(buf),
+            FfiConverterLong.read(buf),
+            FfiConverterInt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterLong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: MessageSearchResultFfi) = (
+            FfiConverterString.allocationSize(value.`conversationId`) +
+            FfiConverterLong.allocationSize(value.`messageId`) +
+            FfiConverterInt.allocationSize(value.`senderId`) +
+            FfiConverterString.allocationSize(value.`textSnippet`) +
+            FfiConverterLong.allocationSize(value.`createdAt`)
+    )
+
+    override fun write(value: MessageSearchResultFfi, buf: ByteBuffer) {
+            FfiConverterString.write(value.`conversationId`, buf)
+            FfiConverterLong.write(value.`messageId`, buf)
+            FfiConverterInt.write(value.`senderId`, buf)
+            FfiConverterString.write(value.`textSnippet`, buf)
             FfiConverterLong.write(value.`createdAt`, buf)
     }
 }
@@ -5298,6 +5413,34 @@ public object FfiConverterSequenceTypeMessageInfo: FfiConverterRustBuffer<List<M
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeMessageInfo.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeMessageSearchResultFfi: FfiConverterRustBuffer<List<MessageSearchResultFfi>> {
+    override fun read(buf: ByteBuffer): List<MessageSearchResultFfi> {
+        val len = buf.getInt()
+        return List<MessageSearchResultFfi>(len) {
+            FfiConverterTypeMessageSearchResultFfi.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<MessageSearchResultFfi>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeMessageSearchResultFfi.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<MessageSearchResultFfi>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeMessageSearchResultFfi.write(it, buf)
         }
     }
 }

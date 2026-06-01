@@ -15,7 +15,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pinealctx.nexus.core.DeviceData
-import com.pinealctx.nexus.core.NexusCoreWrapper
+import com.pinealctx.nexus.core.managers.UserManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,7 +32,7 @@ data class DevicesUiState(
 
 @HiltViewModel
 class DevicesViewModel @Inject constructor(
-    private val core: NexusCoreWrapper
+    private val userManager: UserManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DevicesUiState())
@@ -46,7 +46,7 @@ class DevicesViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = _uiState.value.copy(isLoading = true)
             try {
-                val devices = core.listDevices()
+                val devices = userManager.listDevices()
                 _uiState.value = DevicesUiState(devices = devices)
             } catch (e: Exception) {
                 _uiState.value = DevicesUiState(error = e.message)
@@ -57,7 +57,7 @@ class DevicesViewModel @Inject constructor(
     fun removeDevice(deviceId: String) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                core.removeDevice(deviceId)
+                userManager.removeDevice(deviceId)
                 loadDevices()
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = e.message)

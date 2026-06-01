@@ -16,7 +16,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pinealctx.nexus.core.ContactData
-import com.pinealctx.nexus.core.NexusCoreWrapper
+import com.pinealctx.nexus.core.managers.ContactManager
+import com.pinealctx.nexus.core.managers.GroupManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,7 +37,8 @@ data class CreateGroupUiState(
 
 @HiltViewModel
 class CreateGroupViewModel @Inject constructor(
-    private val core: NexusCoreWrapper
+    private val contactManager: ContactManager,
+    private val groupManager: GroupManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CreateGroupUiState())
@@ -49,7 +51,7 @@ class CreateGroupViewModel @Inject constructor(
     private fun loadContacts() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val contacts = core.getContacts()
+                val contacts = contactManager.getContacts()
                 _uiState.value = _uiState.value.copy(contacts = contacts)
             } catch (_: Exception) {}
         }
@@ -73,7 +75,7 @@ class CreateGroupViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = _uiState.value.copy(isCreating = true, error = null)
             try {
-                val groupId = core.createGroup(state.groupName, state.selectedIds.toList())
+                val groupId = groupManager.createGroup(state.groupName, state.selectedIds.toList())
                 _uiState.value = _uiState.value.copy(isCreating = false, createdGroupId = groupId)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isCreating = false, error = e.message)

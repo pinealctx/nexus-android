@@ -1,5 +1,6 @@
 package com.pinealctx.nexus.ui.screens.chat
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,8 +10,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.EmojiEmotions
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import com.pinealctx.nexus.core.MessageData
+import com.pinealctx.nexus.core.MessageSearchResultData
 import com.pinealctx.nexus.ui.components.EmojiPicker
 import uniffi.nexus_ffi.MessageContent
 
@@ -38,6 +42,9 @@ fun ChatScreen(
     var inputText by remember { mutableStateOf(viewModel.initialDraft) }
     var showEmojiPicker by remember { mutableStateOf(false) }
     var showMediaPicker by remember { mutableStateOf(false) }
+    var showSearch by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    var searchResults by remember { mutableStateOf<List<MessageSearchResultData>>(emptyList()) }
     val context = androidx.compose.ui.platform.LocalContext.current
 
     DisposableEffect(Unit) {
@@ -46,14 +53,47 @@ fun ChatScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Chat") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            if (showSearch) {
+                TopAppBar(
+                    title = {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { query ->
+                                searchQuery = query
+                                viewModel.searchInConversation(query) { results ->
+                                    searchResults = results
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text("Search in chat") },
+                            singleLine = true
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = {
+                            showSearch = false
+                            searchQuery = ""
+                            searchResults = emptyList()
+                        }) {
+                            Icon(Icons.Filled.Close, contentDescription = "Close search")
+                        }
                     }
-                }
-            )
+                )
+            } else {
+                TopAppBar(
+                    title = { Text("Chat") },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { showSearch = true }) {
+                            Icon(Icons.Filled.Search, contentDescription = "Search")
+                        }
+                    }
+                )
+            }
         },
         bottomBar = {
             Column {
@@ -130,15 +170,54 @@ fun ChatScreen(
             }
         }
     ) { padding ->
-        LazyColumn(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding),
-            reverseLayout = true,
-            state = rememberLazyListState()
+                .padding(padding)
         ) {
-            items(uiState.messages.reversed(), key = { it.messageId }) { message ->
-                MessageBubble(message = message)
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                reverseLayout = true,
+                state = rememberLazyListState()
+            ) {
+                items(uiState.messages.reversed(), key = { it.messageId }) { message ->
+                    MessageBubble(message = message)
+                }
+            }
+
+            // Search results overlay
+            if (showSearch && searchResults.isNotEmpty()) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                ) {
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        items(searchResults) { result ->
+                            ListItem(
+                                headlineContent = {
+                                    Text(
+                                        text = result.textSnippet.replace("«", "").replace("»", ""),
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                },
+                                supportingContent = {
+                                    Text(
+                                        text = formatSearchTime(result.createdAt),
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                },
+                                modifier = Modifier.clickable {
+                                    showSearch = false
+                                    searchQuery = ""
+                                    searchResults = emptyList()
+                                    // TODO: scroll to message by ID
+                                }
+                            )
+                            HorizontalDivider()
+                        }
+                    }
+                }
             }
         }
     }
@@ -333,4 +412,9 @@ private fun formatFileSize(bytes: Long): String {
         bytes < 1024 * 1024 * 1024 -> "${bytes / (1024 * 1024)} MB"
         else -> "${bytes / (1024 * 1024 * 1024)} GB"
     }
+}
+
+private fun formatSearchTime(millis: Long): String {
+    val sdf = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault())
+    return sdf.format(java.util.Date(millis))
 }

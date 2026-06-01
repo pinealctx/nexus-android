@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pinealctx.nexus.core.ContactData
 import com.pinealctx.nexus.core.EventBridge
-import com.pinealctx.nexus.core.NexusCoreWrapper
+import com.pinealctx.nexus.core.managers.ContactManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,7 +23,7 @@ data class ContactsUiState(
 
 @HiltViewModel
 class ContactsViewModel @Inject constructor(
-    private val core: NexusCoreWrapper,
+    private val contactManager: ContactManager,
     private val eventBridge: EventBridge
 ) : ViewModel() {
 
@@ -45,7 +45,7 @@ class ContactsViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = _uiState.value.copy(isLoading = true)
             try {
-                val contacts = core.getContacts()
+                val contacts = contactManager.getContacts()
                 _uiState.value = ContactsUiState(contacts = contacts)
             } catch (e: Exception) {
                 _uiState.value = ContactsUiState(error = e.message)

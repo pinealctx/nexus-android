@@ -3,7 +3,9 @@ package com.pinealctx.nexus.ui.screens.search
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pinealctx.nexus.core.ContactData
-import com.pinealctx.nexus.core.NexusCoreWrapper
+import com.pinealctx.nexus.core.MessageSearchResultData
+import com.pinealctx.nexus.core.managers.ContactManager
+import com.pinealctx.nexus.core.managers.SearchManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -14,17 +16,23 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+enum class SearchTab { MESSAGES, USERS }
+
 data class SearchUiState(
     val query: String = "",
-    val results: List<ContactData> = emptyList(),
+    val activeTab: SearchTab = SearchTab.MESSAGES,
+    val userResults: List<ContactData> = emptyList(),
+    val messageResults: List<MessageSearchResultData> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
-    val friendRequestSent: Boolean = false
+    val friendRequestSent: Boolean = false,
+    val hasMoreMessages: Boolean = true
 )
 
 @HiltViewModel
 class SearchViewModel @Inject constructor(
-    private val core: NexusCoreWrapper
+    private val searchManager: SearchManager,
+    private val contactManager: ContactManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SearchUiState())
@@ -37,22 +45,70 @@ class SearchViewModel @Inject constructor(
         searchJob?.cancel()
 
         if (query.isBlank()) {
-            _uiState.value = _uiState.value.copy(results = emptyList(), error = null)
+            _uiState.value = _uiState.value.copy(
+                userResults = emptyList(),
+                messageResults = emptyList(),
+                error = null,
+                hasMoreMessages = true
+            )
             return
         }
 
-        // Debounce search by 300ms
         searchJob = viewModelScope.launch(Dispatchers.IO) {
             delay(300)
             performSearch(query)
         }
     }
 
+    fun switchTab(tab: SearchTab) {
+        _uiState.value = _uiState.value.copy(activeTab = tab)
+        val query = _uiState.value.query
+        if (query.isNotBlank()) {
+            searchJob?.cancel()
+            searchJob = viewModelScope.launch(Dispatchers.IO) {
+                performSearch(query)
+            }
+        }
+    }
+
+    fun loadMoreMessages() {
+        val state = _uiState.value
+        if (!state.hasMoreMessages || state.isLoading || state.query.isBlank()) return
+
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val more = searchManager.searchMessages(
+                    query = state.query,
+                    offset = state.messageResults.size
+                )
+                _uiState.value = state.copy(
+                    messageResults = state.messageResults + more,
+                    hasMoreMessages = more.size == 30
+                )
+            } catch (_: Exception) {}
+        }
+    }
+
     private suspend fun performSearch(query: String) {
         _uiState.value = _uiState.value.copy(isLoading = true, error = null)
         try {
-            val results = core.searchUsers(query)
-            _uiState.value = _uiState.value.copy(results = results, isLoading = false)
+            when (_uiState.value.activeTab) {
+                SearchTab.MESSAGES -> {
+                    val results = searchManager.searchMessages(query = query)
+                    _uiState.value = _uiState.value.copy(
+                        messageResults = results,
+                        isLoading = false,
+                        hasMoreMessages = results.size == 30
+                    )
+                }
+                SearchTab.USERS -> {
+                    val results = contactManager.searchUsers(query)
+                    _uiState.value = _uiState.value.copy(
+                        userResults = results,
+                        isLoading = false
+                    )
+                }
+            }
         } catch (e: Exception) {
             _uiState.value = _uiState.value.copy(
                 error = e.message ?: "Search failed",
@@ -64,7 +120,7 @@ class SearchViewModel @Inject constructor(
     fun sendFriendRequest(userId: Int) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                core.sendFriendRequest(userId, "")
+                contactManager.sendFriendRequest(userId, "")
                 _uiState.value = _uiState.value.copy(friendRequestSent = true)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = e.message)

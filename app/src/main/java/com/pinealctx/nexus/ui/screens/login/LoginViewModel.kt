@@ -2,9 +2,9 @@ package com.pinealctx.nexus.ui.screens.login
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pinealctx.nexus.core.NexusCoreWrapper
 import com.pinealctx.nexus.core.SecureStorage
 import com.pinealctx.nexus.core.SyncManager
+import com.pinealctx.nexus.core.managers.AuthManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -29,7 +29,7 @@ data class LoginUiState(
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
-    private val core: NexusCoreWrapper,
+    private val authManager: AuthManager,
     private val secureStorage: SecureStorage,
     private val syncManager: SyncManager
 ) : ViewModel() {
@@ -45,7 +45,7 @@ class LoginViewModel @Inject constructor(
     }
 
     private fun checkExistingSession() {
-        if (core.isAuthenticated()) {
+        if (authManager.isAuthenticated()) {
             _uiState.value = _uiState.value.copy(isLoggedIn = true)
         }
     }
@@ -53,7 +53,7 @@ class LoginViewModel @Inject constructor(
     private fun loadClientConfig() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val config = core.getClientConfig()
+                val config = authManager.getClientConfig()
                 _uiState.value = _uiState.value.copy(
                     phoneEnabled = config.phoneEnabled,
                     emailEnabled = config.emailEnabled
@@ -74,7 +74,7 @@ class LoginViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
-                val result = core.requestVerifyCode(identityType, identityValue)
+                val result = authManager.requestVerifyCode(identityType, identityValue)
                 verifyToken = result.verifyToken
                 _uiState.value = _uiState.value.copy(
                     step = LoginStep.INPUT_CODE,
@@ -95,7 +95,7 @@ class LoginViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
-                val result = core.verifyCode(verifyToken, code)
+                val result = authManager.verifyCode(verifyToken, code)
                 secureStorage.saveTokens(result.accessToken, result.refreshToken, result.expiresIn, result.userId)
                 syncManager.startSession()
                 _uiState.value = _uiState.value.copy(isLoading = false, isLoggedIn = true)

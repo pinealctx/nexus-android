@@ -5,10 +5,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pinealctx.nexus.core.EventBridge
 import com.pinealctx.nexus.core.MessageData
-import com.pinealctx.nexus.core.NexusCoreWrapper
+import com.pinealctx.nexus.core.MessageSearchResultData
 import com.pinealctx.nexus.core.SyncManager
+import com.pinealctx.nexus.core.managers.MediaManager
+import com.pinealctx.nexus.core.managers.MessageManager
+import com.pinealctx.nexus.core.managers.SearchManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,7 +32,9 @@ data class ChatUiState(
 
 @HiltViewModel
 class ChatViewModel @Inject constructor(
-    private val core: NexusCoreWrapper,
+    private val messageManager: MessageManager,
+    private val mediaManager: MediaManager,
+    private val searchManager: SearchManager,
     private val eventBridge: EventBridge,
     private val syncManager: SyncManager,
     savedStateHandle: SavedStateHandle
@@ -67,7 +74,7 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = _uiState.value.copy(isLoading = true)
             try {
-                val messages = core.getMessages(conversationId)
+                val messages = messageManager.getMessages(conversationId)
                 _uiState.value = ChatUiState(messages = messages)
             } catch (e: Exception) {
                 _uiState.value = ChatUiState(error = e.message)
@@ -81,7 +88,7 @@ class ChatViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isSending = true)
             try {
                 val convId = conversationId.toLongOrNull() ?: return@launch
-                core.sendMessage(convId, text)
+                messageManager.sendMessage(convId, text)
                 _uiState.value = _uiState.value.copy(isSending = false)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isSending = false, error = e.message)
@@ -93,7 +100,7 @@ class ChatViewModel @Inject constructor(
         val oldest = _uiState.value.messages.firstOrNull() ?: return
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val older = core.getMessages(conversationId, beforeId = oldest.messageId)
+                val older = messageManager.getMessages(conversationId, beforeId = oldest.messageId)
                 _uiState.value = _uiState.value.copy(
                     messages = older + _uiState.value.messages
                 )
@@ -106,8 +113,8 @@ class ChatViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isSending = true)
             try {
                 val convId = conversationId.toLongOrNull() ?: return@launch
-                val file = core.uploadFile(data, fileName, "image/jpeg", 3)
-                core.sendImageMessage(convId, file.fileId, width, height)
+                val file = mediaManager.uploadFile(data, fileName, "image/jpeg", 3)
+                messageManager.sendImageMessage(convId, file.fileId, width, height)
                 _uiState.value = _uiState.value.copy(isSending = false)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isSending = false, error = e.message)
@@ -121,23 +128,45 @@ class ChatViewModel @Inject constructor(
             try {
                 val convId = conversationId.toLongOrNull() ?: return@launch
                 val file = if (data.size <= 5 * 1024 * 1024) {
-                    core.uploadFile(data, fileName, contentType, 3)
+                    mediaManager.uploadFile(data, fileName, contentType, 3)
                 } else {
-                    val session = core.initUpload(fileName, contentType, data.size.toLong())
+                    val session = mediaManager.initUpload(fileName, contentType, data.size.toLong())
                     val chunkSize = 5 * 1024 * 1024
                     var offset = session.uploaded.toInt()
                     while (offset < data.size) {
                         val end = minOf(offset + chunkSize, data.size)
                         val chunk = data.copyOfRange(offset, end)
-                        core.uploadChunk(session.sessionId, chunk, offset.toLong())
+                        mediaManager.uploadChunk(session.sessionId, chunk, offset.toLong())
                         offset = end
                     }
-                    core.completeUpload(session.sessionId)
+                    mediaManager.completeUpload(session.sessionId)
                 }
-                core.sendFileMessage(convId, file.fileId, fileName, file.size)
+                messageManager.sendFileMessage(convId, file.fileId, fileName, file.size)
                 _uiState.value = _uiState.value.copy(isSending = false)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isSending = false, error = e.message)
+            }
+        }
+    }
+
+    private var searchJob: Job? = null
+
+    fun searchInConversation(query: String, onResults: (List<MessageSearchResultData>) -> Unit) {
+        searchJob?.cancel()
+        if (query.isBlank()) {
+            onResults(emptyList())
+            return
+        }
+        searchJob = viewModelScope.launch(Dispatchers.IO) {
+            delay(300)
+            try {
+                val results = searchManager.searchMessages(
+                    query = query,
+                    conversationId = conversationId
+                )
+                onResults(results)
+            } catch (_: Exception) {
+                onResults(emptyList())
             }
         }
     }

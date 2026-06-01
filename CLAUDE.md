@@ -32,13 +32,33 @@ task lint
 ├─────────────────────────────────────────────────┤
 │  ViewModels (Hilt-injected, expose StateFlow)   │
 ├─────────────────────────────────────────────────┤
-│  core/ (NexusCoreWrapper, EventBridge)          │
+│  core/managers/ (Domain Managers)               │
+│  core/ (NexusClientProvider, EventBridge,       │
+│         SyncManager, SecureStorage)             │
 ├─────────────────────────────────────────────────┤
 │  core-bindings/ (UniFFI-generated Kotlin)       │
 ├─────────────────────────────────────────────────┤
 │  libnexus_ffi.so (Rust shared core)             │
 └─────────────────────────────────────────────────┘
 ```
+
+### Domain Managers
+
+ViewModels inject domain-specific managers instead of a monolithic wrapper:
+
+| Manager | Responsibility |
+|---------|---------------|
+| `AuthManager` | Login, logout, verify, password, session restore |
+| `ConversationManager` | List, fetch, mark-read, mute, delete conversations |
+| `MessageManager` | Send/edit/recall/delete messages |
+| `ContactManager` | Contacts, friend requests, block |
+| `GroupManager` | Group CRUD, members, invites |
+| `MediaManager` | Upload, chunked upload, URL resolution |
+| `AgentManager` | Featured agents, mini apps |
+| `SearchManager` | Message and user search |
+| `UserManager` | Profile, devices, username |
+| `PushManager` | FCM token registration |
+| `SyncBridge` | Start/stop sync, cold start, local data |
 
 ## Tech Stack
 
@@ -60,13 +80,14 @@ task lint
 ## Key Directories
 
 - `app/src/main/java/com/pinealctx/nexus/ui/` — Compose UI (screens, theme, navigation, components)
-- `app/src/main/java/com/pinealctx/nexus/core/` — Rust bridge layer
-- `app/src/main/java/com/pinealctx/nexus/di/` — Hilt modules
+- `app/src/main/java/com/pinealctx/nexus/core/` — Rust bridge layer (NexusClientProvider, EventBridge, SyncManager, Models)
+- `app/src/main/java/com/pinealctx/nexus/core/managers/` — Domain managers (Auth, Message, Contact, etc.)
+- `app/src/main/java/com/pinealctx/nexus/di/` — Hilt modules (AppModule, ManagerModule)
 - `app/src/main/java/com/pinealctx/nexus/service/` — Android services (foreground, FCM)
 
 ## Rust Integration
 
-The app loads `libnexus_ffi.so` at startup via `System.loadLibrary("nexus_ffi")`. UniFFI generates Kotlin bindings in the `core-bindings` module. The `NexusCoreWrapper` class manages initialization and provides access to core managers. `EventBridge` implements the callback interface for Rust-to-Kotlin events.
+The app loads `libnexus_ffi.so` at startup via `System.loadLibrary("nexus_ffi")`. UniFFI generates Kotlin bindings in the `core-bindings` module. `NexusClientProvider` manages the `NexusClient` lifecycle (initialization and shutdown). Domain managers receive `NexusClientProvider` via Hilt and delegate to the underlying `NexusClient`. `EventBridge` implements the callback interface for Rust-to-Kotlin events.
 
 ## Code Standards
 

@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pinealctx.nexus.core.ConversationData
 import com.pinealctx.nexus.core.EventBridge
-import com.pinealctx.nexus.core.NexusCoreWrapper
+import com.pinealctx.nexus.core.managers.ConversationManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,7 +23,7 @@ data class ConversationListUiState(
 
 @HiltViewModel
 class ConversationListViewModel @Inject constructor(
-    private val core: NexusCoreWrapper,
+    private val conversationManager: ConversationManager,
     private val eventBridge: EventBridge
 ) : ViewModel() {
 
@@ -45,7 +45,7 @@ class ConversationListViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = _uiState.value.copy(isLoading = true)
             try {
-                val conversations = core.getConversations()
+                val conversations = conversationManager.getConversations()
                 _uiState.value = ConversationListUiState(conversations = conversations)
             } catch (e: Exception) {
                 _uiState.value = ConversationListUiState(error = e.message)

@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pinealctx.nexus.core.GroupData
 import com.pinealctx.nexus.core.GroupMemberData
-import com.pinealctx.nexus.core.NexusCoreWrapper
+import com.pinealctx.nexus.core.managers.GroupManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,7 +24,7 @@ data class GroupDetailUiState(
 
 @HiltViewModel
 class GroupDetailViewModel @Inject constructor(
-    private val core: NexusCoreWrapper,
+    private val groupManager: GroupManager,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -41,8 +41,8 @@ class GroupDetailViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = _uiState.value.copy(isLoading = true)
             try {
-                core.getGroupInfo(groupId)
-                val members = core.getGroupMembers(groupId)
+                groupManager.getGroupInfo(groupId)
+                val members = groupManager.getGroupMembers(groupId)
                 _uiState.value = GroupDetailUiState(group = null, members = members)
             } catch (e: Exception) {
                 _uiState.value = GroupDetailUiState(error = e.message)
@@ -53,7 +53,7 @@ class GroupDetailViewModel @Inject constructor(
     fun leaveGroup() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                core.leaveGroup(groupId)
+                groupManager.leaveGroup(groupId)
                 _uiState.value = _uiState.value.copy(leftGroup = true)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = e.message)

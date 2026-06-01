@@ -12,7 +12,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pinealctx.nexus.core.NexusCoreWrapper
+import com.pinealctx.nexus.core.managers.UserManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,7 +33,7 @@ data class EditProfileUiState(
 
 @HiltViewModel
 class EditProfileViewModel @Inject constructor(
-    private val core: NexusCoreWrapper
+    private val userManager: UserManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(EditProfileUiState())
@@ -45,7 +45,7 @@ class EditProfileViewModel @Inject constructor(
 
     private fun loadProfile() {
         viewModelScope.launch(Dispatchers.IO) {
-            val profile = core.getMyProfile() ?: return@launch
+            val profile = userManager.getMyProfile() ?: return@launch
             _uiState.value = _uiState.value.copy(
                 nickname = profile.nickname,
                 signature = profile.signature,
@@ -62,7 +62,7 @@ class EditProfileViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = _uiState.value.copy(isSaving = true, error = null)
             try {
-                core.updateProfile(
+                userManager.updateProfile(
                     nickname = _uiState.value.nickname,
                     signature = _uiState.value.signature
                 )

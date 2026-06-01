@@ -71,6 +71,8 @@ fun NexusNavGraph(navController: NavHostController) {
                 onAgentMiniApp = { agentUserId ->
                     val intent = Intent(context, com.pinealctx.nexus.ui.screens.miniapp.MiniAppActivity::class.java).apply {
                         putExtra(com.pinealctx.nexus.ui.screens.miniapp.MiniAppActivity.EXTRA_AGENT_USER_ID, agentUserId)
+                        putExtra(com.pinealctx.nexus.ui.screens.miniapp.MiniAppActivity.EXTRA_CONVERSATION_ID, 0L)
+                        putExtra(com.pinealctx.nexus.ui.screens.miniapp.MiniAppActivity.EXTRA_START_PARAM, "")
                     }
                     context.startActivity(intent)
                 }
@@ -102,7 +104,10 @@ fun NexusNavGraph(navController: NavHostController) {
 
         composable(Routes.SEARCH) {
             SearchScreen(
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onNavigateToChat = { conversationId, _ ->
+                    navController.navigate("chat/$conversationId")
+                }
             )
         }
 
