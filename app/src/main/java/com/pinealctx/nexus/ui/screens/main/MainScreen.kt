@@ -10,18 +10,20 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.pinealctx.nexus.R
 import com.pinealctx.nexus.ui.screens.contacts.ContactsScreen
 import com.pinealctx.nexus.ui.screens.conversations.ConversationListScreen
 import com.pinealctx.nexus.ui.screens.profile.ProfileScreen
 import uniffi.nexus_ffi.ConnectionStatus
 
-enum class MainTab(val label: String) {
-    CHATS("Chats"),
-    CONTACTS("Contacts"),
-    DISCOVER("Discover"),
-    ME("Me")
+enum class MainTab {
+    CHATS,
+    CONTACTS,
+    DISCOVER,
+    ME
 }
 
 @Composable
@@ -49,7 +51,7 @@ fun MainScreen(
                             contentDescription = null
                         )
                     },
-                    label = { Text("Chats") }
+                    label = { Text(stringResource(R.string.tab_chats)) }
                 )
                 NavigationBarItem(
                     selected = selectedTab == MainTab.CONTACTS,
@@ -60,7 +62,7 @@ fun MainScreen(
                             contentDescription = null
                         )
                     },
-                    label = { Text("Contacts") }
+                    label = { Text(stringResource(R.string.tab_contacts)) }
                 )
                 NavigationBarItem(
                     selected = selectedTab == MainTab.DISCOVER,
@@ -71,7 +73,7 @@ fun MainScreen(
                             contentDescription = null
                         )
                     },
-                    label = { Text("Discover") }
+                    label = { Text(stringResource(R.string.tab_discover)) }
                 )
                 NavigationBarItem(
                     selected = selectedTab == MainTab.ME,
@@ -82,7 +84,7 @@ fun MainScreen(
                             contentDescription = null
                         )
                     },
-                    label = { Text("Me") }
+                    label = { Text(stringResource(R.string.tab_me)) }
                 )
             }
         }
@@ -91,7 +93,10 @@ fun MainScreen(
             ConnectionStatusBar(status = connectionStatus)
             Box(modifier = Modifier.weight(1f)) {
                 when (selectedTab) {
-                    MainTab.CHATS -> ConversationListScreen(onConversationClick = onConversationClick)
+                    MainTab.CHATS -> ConversationListScreen(
+                        onConversationClick = onConversationClick,
+                        onSearchClick = onSearchClick
+                    )
                     MainTab.CONTACTS -> ContactsScreen(
                         onFriendRequestsClick = onFriendRequestsClick,
                         onSearchClick = onSearchClick
@@ -125,7 +130,11 @@ fun ConnectionStatusBar(status: ConnectionStatus) {
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = if (status == ConnectionStatus.CONNECTING) "Connecting..." else "Reconnecting...",
+                        text = if (status == ConnectionStatus.CONNECTING) {
+                            stringResource(R.string.status_connecting)
+                        } else {
+                            stringResource(R.string.status_reconnecting)
+                        },
                         style = MaterialTheme.typography.labelSmall
                     )
                 }
@@ -137,7 +146,7 @@ fun ConnectionStatusBar(status: ConnectionStatus) {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = "Disconnected",
+                    text = stringResource(R.string.status_disconnected),
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onErrorContainer

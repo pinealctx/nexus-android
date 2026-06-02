@@ -73,14 +73,14 @@ fun LoginScreen(
                     CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 2.dp)
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "Loading login config",
+                        text = stringResource(R.string.login_loading_config),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 uiState.configLoaded && !uiState.phoneEnabled && !uiState.emailEnabled -> {
                     Text(
-                        text = "No login method is available",
+                        text = stringResource(R.string.login_no_method),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -132,7 +132,7 @@ private fun IdentityInputStep(
     var identity by remember { mutableStateOf("") }
 
     val useEmail = uiState.emailEnabled && (uiState.useEmail || !uiState.phoneEnabled)
-    val label = if (useEmail) "Email" else "Phone number"
+    val label = if (useEmail) stringResource(R.string.login_email) else stringResource(R.string.login_phone)
     val keyboardType = if (useEmail) KeyboardType.Email else KeyboardType.Phone
 
     OutlinedTextField(
@@ -155,7 +155,7 @@ private fun IdentityInputStep(
         if (uiState.isLoading) {
             CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
         } else {
-            Text("Get Verification Code")
+            Text(stringResource(R.string.login_send_code))
         }
     }
 
@@ -163,7 +163,13 @@ private fun IdentityInputStep(
     if (uiState.phoneEnabled && uiState.emailEnabled) {
         Spacer(modifier = Modifier.height(16.dp))
         TextButton(onClick = onToggleMethod) {
-            Text(if (uiState.useEmail) "Use phone number" else "Use email")
+            Text(
+                if (uiState.useEmail) {
+                    stringResource(R.string.login_use_phone)
+                } else {
+                    stringResource(R.string.login_use_email)
+                }
+            )
         }
     }
 }
@@ -178,7 +184,7 @@ private fun CodeInputStep(
     var code by remember { mutableStateOf("") }
 
     Text(
-        text = "Enter verification code",
+        text = stringResource(R.string.login_code_title),
         style = MaterialTheme.typography.titleMedium
     )
 
@@ -187,7 +193,7 @@ private fun CodeInputStep(
     OutlinedTextField(
         value = code,
         onValueChange = { if (it.length <= 6) code = it },
-        label = { Text("6-digit code") },
+        label = { Text(stringResource(R.string.login_code_label)) },
         modifier = Modifier.fillMaxWidth(),
         enabled = !uiState.isLoading,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -204,7 +210,7 @@ private fun CodeInputStep(
         if (uiState.isLoading) {
             CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
         } else {
-            Text("Verify")
+            Text(stringResource(R.string.login_verify))
         }
     }
 
@@ -215,11 +221,11 @@ private fun CodeInputStep(
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         TextButton(onClick = onBack) {
-            Text("Back")
+            Text(stringResource(R.string.back))
         }
         if (uiState.countdown > 0) {
             Text(
-                text = "Resend in ${uiState.countdown}s",
+                text = stringResource(R.string.login_resend_seconds, uiState.countdown),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

@@ -3,7 +3,7 @@ package com.pinealctx.nexus.ui.screens.chat
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pinealctx.nexus.core.EventBridge
+import com.pinealctx.nexus.core.AppEventBus
 import com.pinealctx.nexus.core.MessageData
 import com.pinealctx.nexus.core.MessageSearchResultData
 import com.pinealctx.nexus.core.SyncManager
@@ -35,7 +35,7 @@ class ChatViewModel @Inject constructor(
     private val messageManager: MessageManager,
     private val mediaManager: MediaManager,
     private val searchManager: SearchManager,
-    private val eventBridge: EventBridge,
+    private val appEventBus: AppEventBus,
     private val syncManager: SyncManager,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
@@ -64,8 +64,8 @@ class ChatViewModel @Inject constructor(
     }
 
     private fun observeUpdates() {
-        eventBridge.messagesUpdated
-            .filter { it == conversationId }
+        appEventBus.messagesUpdated()
+            .filter { it.conversationId == conversationId }
             .onEach { loadMessages() }
             .launchIn(viewModelScope)
     }

@@ -2,7 +2,7 @@ package com.pinealctx.nexus.ui.screens.friends
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pinealctx.nexus.core.EventBridge
+import com.pinealctx.nexus.core.AppEventBus
 import com.pinealctx.nexus.core.PendingRequestData
 import com.pinealctx.nexus.core.managers.ContactManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -24,7 +24,7 @@ data class FriendRequestsUiState(
 @HiltViewModel
 class FriendRequestsViewModel @Inject constructor(
     private val contactManager: ContactManager,
-    private val eventBridge: EventBridge
+    private val appEventBus: AppEventBus
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(FriendRequestsUiState())
@@ -36,7 +36,7 @@ class FriendRequestsViewModel @Inject constructor(
     }
 
     private fun observeUpdates() {
-        eventBridge.contactsUpdated
+        appEventBus.contactsUpdated()
             .onEach { loadRequests() }
             .launchIn(viewModelScope)
     }

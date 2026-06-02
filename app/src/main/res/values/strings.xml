@@ -27,11 +27,16 @@
 
     <!-- Conversations -->
     <string name="conversations_empty">No conversations yet</string>
+    <string name="conversations_empty_desc">Search for people or agents to start a conversation.</string>
+    <string name="conversations_load_failed">Failed to load conversations</string>
+    <string name="conversations_no_preview">No messages yet</string>
     <string name="conversations_title">Nexus</string>
 
     <!-- Contacts -->
     <string name="contacts_title">Contacts</string>
     <string name="contacts_empty">No contacts</string>
+    <string name="contacts_empty_desc">Search for users to add your first contact.</string>
+    <string name="contacts_load_failed">Failed to load contacts</string>
     <string name="contacts_search">Search users</string>
     <string name="contacts_friend_requests">Friend requests</string>
 
@@ -122,10 +127,17 @@
     <string name="login_title">Login</string>
     <string name="login_phone">Phone</string>
     <string name="login_email">Email</string>
+    <string name="login_loading_config">Loading login config</string>
+    <string name="login_no_method">No login method is available</string>
     <string name="login_send_code">Send Code</string>
     <string name="login_verify">Verify</string>
+    <string name="login_use_phone">Use phone number</string>
+    <string name="login_use_email">Use email</string>
+    <string name="login_code_title">Enter verification code</string>
+    <string name="login_code_label">6-digit code</string>
     <string name="login_code_placeholder">Enter verification code</string>
     <string name="login_resend">Resend (%d)</string>
+    <string name="login_resend_seconds">Resend in %d s</string>
     <string name="login_server_address">Server Address</string>
     <string name="login_server_address_hint">https://api.example.com</string>
     <string name="login_server_default">Default: %s</string>
@@ -143,6 +155,9 @@
     <string name="profile_message">Message</string>
     <string name="profile_add_friend">Add Friend</string>
     <string name="profile_block">Block</string>
+    <string name="profile_load_failed">Failed to load profile</string>
+    <string name="profile_unknown_user">Nexus User</string>
+    <string name="profile_username_missing">Username not set</string>
 
     <!-- Foreground Service -->
     <string name="service_sync_channel">Message Sync</string>

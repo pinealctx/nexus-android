@@ -27,11 +27,16 @@
 
     <!-- Conversations -->
     <string name="conversations_empty">暂无会话</string>
+    <string name="conversations_empty_desc">搜索用户或智能体，开始第一段对话。</string>
+    <string name="conversations_load_failed">会话加载失败</string>
+    <string name="conversations_no_preview">暂无消息</string>
     <string name="conversations_title">Nexus</string>
 
     <!-- Contacts -->
     <string name="contacts_title">通讯录</string>
     <string name="contacts_empty">暂无联系人</string>
+    <string name="contacts_empty_desc">搜索用户，添加你的第一个联系人。</string>
+    <string name="contacts_load_failed">联系人加载失败</string>
     <string name="contacts_search">搜索用户</string>
     <string name="contacts_friend_requests">好友请求</string>
 
@@ -122,10 +127,17 @@
     <string name="login_title">登录</string>
     <string name="login_phone">手机号</string>
     <string name="login_email">邮箱</string>
+    <string name="login_loading_config">正在加载登录配置</string>
+    <string name="login_no_method">当前没有可用的登录方式</string>
     <string name="login_send_code">发送验证码</string>
     <string name="login_verify">验证</string>
+    <string name="login_use_phone">使用手机号</string>
+    <string name="login_use_email">使用邮箱</string>
+    <string name="login_code_title">输入验证码</string>
+    <string name="login_code_label">6 位验证码</string>
     <string name="login_code_placeholder">输入验证码</string>
     <string name="login_resend">重新发送 (%d)</string>
+    <string name="login_resend_seconds">%d 秒后可重新发送</string>
     <string name="login_server_address">服务器地址</string>
     <string name="login_server_address_hint">https://api.example.com</string>
     <string name="login_server_default">默认: %s</string>
@@ -143,6 +155,9 @@
     <string name="profile_message">发消息</string>
     <string name="profile_add_friend">添加好友</string>
     <string name="profile_block">拉黑</string>
+    <string name="profile_load_failed">资料加载失败</string>
+    <string name="profile_unknown_user">Nexus 用户</string>
+    <string name="profile_username_missing">暂未设置用户名</string>
 
     <!-- Foreground Service -->
     <string name="service_sync_channel">消息同步</string>

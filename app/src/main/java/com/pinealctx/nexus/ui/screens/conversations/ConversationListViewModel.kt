@@ -2,8 +2,8 @@ package com.pinealctx.nexus.ui.screens.conversations
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pinealctx.nexus.core.AppEventBus
 import com.pinealctx.nexus.core.ConversationData
-import com.pinealctx.nexus.core.EventBridge
 import com.pinealctx.nexus.core.managers.ConversationManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -24,7 +24,7 @@ data class ConversationListUiState(
 @HiltViewModel
 class ConversationListViewModel @Inject constructor(
     private val conversationManager: ConversationManager,
-    private val eventBridge: EventBridge
+    private val appEventBus: AppEventBus
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ConversationListUiState())
@@ -36,7 +36,7 @@ class ConversationListViewModel @Inject constructor(
     }
 
     private fun observeUpdates() {
-        eventBridge.conversationsUpdated
+        appEventBus.conversationsUpdated()
             .onEach { loadConversations() }
             .launchIn(viewModelScope)
     }

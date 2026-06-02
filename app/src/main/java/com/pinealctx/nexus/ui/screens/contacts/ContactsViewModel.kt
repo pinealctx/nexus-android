@@ -2,8 +2,8 @@ package com.pinealctx.nexus.ui.screens.contacts
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pinealctx.nexus.core.AppEventBus
 import com.pinealctx.nexus.core.ContactData
-import com.pinealctx.nexus.core.EventBridge
 import com.pinealctx.nexus.core.managers.ContactManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -24,7 +24,7 @@ data class ContactsUiState(
 @HiltViewModel
 class ContactsViewModel @Inject constructor(
     private val contactManager: ContactManager,
-    private val eventBridge: EventBridge
+    private val appEventBus: AppEventBus
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ContactsUiState())
@@ -36,7 +36,7 @@ class ContactsViewModel @Inject constructor(
     }
 
     private fun observeUpdates() {
-        eventBridge.contactsUpdated
+        appEventBus.contactsUpdated()
             .onEach { loadContacts() }
             .launchIn(viewModelScope)
     }
@@ -51,5 +51,9 @@ class ContactsViewModel @Inject constructor(
                 _uiState.value = ContactsUiState(error = e.message)
             }
         }
+    }
+
+    fun refresh() {
+        loadContacts()
     }
 }
