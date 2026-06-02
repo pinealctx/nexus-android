@@ -24,7 +24,12 @@ data class LoginUiState(
     val error: String? = null,
     val isLoggedIn: Boolean = false,
     val countdown: Int = 0,
-    val useEmail: Boolean = false
+    val useEmail: Boolean = false,
+    val serverApiBaseUrl: String = "",
+    val defaultServerApiBaseUrl: String = "",
+    val isCustomServer: Boolean = false,
+    val showServerConfig: Boolean = false,
+    val serverConfigError: String? = null
 )
 
 @HiltViewModel
@@ -40,6 +45,7 @@ class LoginViewModel @Inject constructor(
     private var verifyToken: String = ""
 
     init {
+        loadServerConfigState()
         checkExistingSession()
         loadClientConfig()
     }
@@ -60,6 +66,16 @@ class LoginViewModel @Inject constructor(
                 )
             } catch (_: Exception) {}
         }
+    }
+
+    private fun loadServerConfigState() {
+        val config = authManager.getServerConfig()
+        _uiState.value = _uiState.value.copy(
+            serverApiBaseUrl = config.apiBaseUrl,
+            defaultServerApiBaseUrl = config.defaultApiBaseUrl,
+            isCustomServer = config.isCustom,
+            serverConfigError = null
+        )
     }
 
     fun toggleLoginMethod() {
@@ -117,6 +133,45 @@ class LoginViewModel @Inject constructor(
 
     fun goBack() {
         _uiState.value = _uiState.value.copy(step = LoginStep.INPUT_IDENTITY, error = null)
+    }
+
+    fun showServerConfig() {
+        loadServerConfigState()
+        _uiState.value = _uiState.value.copy(showServerConfig = true, serverConfigError = null)
+    }
+
+    fun hideServerConfig() {
+        _uiState.value = _uiState.value.copy(showServerConfig = false, serverConfigError = null)
+    }
+
+    fun saveServerApiBaseUrl(apiBaseUrl: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                authManager.setServerApiBaseUrl(apiBaseUrl)
+                loadServerConfigState()
+                _uiState.value = _uiState.value.copy(showServerConfig = false)
+                loadClientConfig()
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    serverConfigError = e.message ?: "Failed to save server address"
+                )
+            }
+        }
+    }
+
+    fun resetServerConfig() {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                authManager.resetServerConfig()
+                loadServerConfigState()
+                _uiState.value = _uiState.value.copy(showServerConfig = false)
+                loadClientConfig()
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    serverConfigError = e.message ?: "Failed to reset server address"
+                )
+            }
+        }
     }
 
     fun clearError() {

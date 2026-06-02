@@ -40,6 +40,20 @@ task build
 task run-debug
 ```
 
+## 打包默认服务器地址
+
+Android 的默认服务器地址随 APK 打包进 `BuildConfig`。未指定时使用仓库默认 dev 地址；打包时可以通过 Gradle property 或环境变量覆盖：
+
+```bash
+./gradlew assembleDebug -Pnexus.apiBaseUrl=https://api.example.com -Pnexus.wsUrl=wss://api.example.com/ws
+```
+
+```bash
+NEXUS_API_BASE_URL=https://api.example.com NEXUS_WS_URL=wss://api.example.com/ws ./gradlew assembleDebug
+```
+
+登录页支持隐藏的运行时覆盖：5 秒内点击登录页 logo 5 次，输入 API base URL 后保存。运行时覆盖值保存在加密 SharedPreferences 中；退出登录只清 token，不清服务器地址。自定义 API 地址会自动派生 WebSocket 地址：`http` → `ws`，`https` → `wss`，路径后追加 `/ws`。
+
 ## 本地运行检查
 
 `task run-debug` 会执行以下步骤：

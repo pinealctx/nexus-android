@@ -6,6 +6,9 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+fun String.toBuildConfigString(): String =
+    "\"" + replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
 android {
     namespace = "com.pinealctx.nexus"
     compileSdk = 35
@@ -18,6 +21,18 @@ android {
         versionName = "0.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        val defaultApiBaseUrl = providers.gradleProperty("nexus.apiBaseUrl")
+            .orElse(providers.environmentVariable("NEXUS_API_BASE_URL"))
+            .orElse("https://api.nexus-dev.xsyphon.com")
+            .get()
+        val defaultWsUrl = providers.gradleProperty("nexus.wsUrl")
+            .orElse(providers.environmentVariable("NEXUS_WS_URL"))
+            .orElse("wss://api.nexus-dev.xsyphon.com/ws")
+            .get()
+
+        buildConfigField("String", "NEXUS_API_BASE_URL", defaultApiBaseUrl.toBuildConfigString())
+        buildConfigField("String", "NEXUS_WS_URL", defaultWsUrl.toBuildConfigString())
     }
 
     buildTypes {

@@ -3,6 +3,7 @@ package com.pinealctx.nexus.core.managers
 import com.pinealctx.nexus.core.ClientConfigData
 import com.pinealctx.nexus.core.LoginResult
 import com.pinealctx.nexus.core.NexusClientProvider
+import com.pinealctx.nexus.core.ServerConfigData
 import com.pinealctx.nexus.core.VerifyCodeData
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -39,6 +40,16 @@ class AuthManager @Inject constructor(
 
     fun reopenForUser(userId: Int) {
         clientProvider.reopenForUser(userId)
+    }
+
+    fun getServerConfig(): ServerConfigData = clientProvider.getServerConfig()
+
+    fun setServerApiBaseUrl(apiBaseUrl: String) {
+        clientProvider.setServerApiBaseUrl(apiBaseUrl)
+    }
+
+    fun resetServerConfig() {
+        clientProvider.resetServerConfig()
     }
 
     fun isAuthenticated(): Boolean = clientProvider.getOrNull()?.isAuthenticated() ?: false

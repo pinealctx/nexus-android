@@ -1,14 +1,22 @@
 package com.pinealctx.nexus.ui.screens.login
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.pinealctx.nexus.R
 
 @Composable
 fun LoginScreen(
@@ -16,9 +24,20 @@ fun LoginScreen(
     viewModel: LoginViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val logoClickTimestamps = remember { mutableStateListOf<Long>() }
 
     LaunchedEffect(uiState.isLoggedIn) {
         if (uiState.isLoggedIn) onLoginSuccess()
+    }
+
+    fun handleLogoClick() {
+        val now = System.currentTimeMillis()
+        logoClickTimestamps.removeAll { now - it > 5_000 }
+        logoClickTimestamps.add(now)
+        if (logoClickTimestamps.size >= 5) {
+            logoClickTimestamps.clear()
+            viewModel.showServerConfig()
+        }
     }
 
     Scaffold { padding ->
@@ -30,6 +49,22 @@ fun LoginScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.primary)
+                    .clickable { handleLogoClick() }
+            ) {
+                Text(
+                    text = "N",
+                    modifier = Modifier.align(Alignment.Center),
+                    color = Color.White,
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
             Text(text = "Nexus", style = MaterialTheme.typography.headlineLarge)
             Spacer(modifier = Modifier.height(48.dp))
 
@@ -56,6 +91,15 @@ fun LoginScreen(
                 )
             }
         }
+    }
+
+    if (uiState.showServerConfig) {
+        ServerConfigDialog(
+            uiState = uiState,
+            onSave = { viewModel.saveServerApiBaseUrl(it) },
+            onReset = { viewModel.resetServerConfig() },
+            onDismiss = { viewModel.hideServerConfig() }
+        )
     }
 }
 
@@ -160,4 +204,58 @@ private fun CodeInputStep(
             )
         }
     }
+}
+
+@Composable
+private fun ServerConfigDialog(
+    uiState: LoginUiState,
+    onSave: (String) -> Unit,
+    onReset: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    var apiBaseUrl by remember(uiState.serverApiBaseUrl) { mutableStateOf(uiState.serverApiBaseUrl) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.login_server_address)) },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = apiBaseUrl,
+                    onValueChange = { apiBaseUrl = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    isError = uiState.serverConfigError != null,
+                    placeholder = { Text(stringResource(R.string.login_server_address_hint)) },
+                    supportingText = {
+                        Text(
+                            uiState.serverConfigError
+                                ?: stringResource(
+                                    R.string.login_server_default,
+                                    uiState.defaultServerApiBaseUrl
+                                )
+                        )
+                    }
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onSave(apiBaseUrl) },
+                enabled = apiBaseUrl.isNotBlank()
+            ) {
+                Text(stringResource(R.string.login_server_save))
+            }
+        },
+        dismissButton = {
+            Row {
+                TextButton(onClick = onReset, enabled = uiState.isCustomServer) {
+                    Text(stringResource(R.string.login_server_reset))
+                }
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        }
+    )
 }

@@ -126,6 +126,11 @@
     <string name="login_verify">验证</string>
     <string name="login_code_placeholder">输入验证码</string>
     <string name="login_resend">重新发送 (%d)</string>
+    <string name="login_server_address">服务器地址</string>
+    <string name="login_server_address_hint">https://api.example.com</string>
+    <string name="login_server_default">默认: %s</string>
+    <string name="login_server_reset">重置</string>
+    <string name="login_server_save">保存</string>
 
     <!-- Notifications -->
     <string name="notification_channel_messages">消息</string>

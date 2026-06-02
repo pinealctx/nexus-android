@@ -12,6 +12,16 @@ import javax.inject.Singleton
 class SecureStorage @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
+    private companion object {
+        const val KEY_ACCESS_TOKEN = "access_token"
+        const val KEY_REFRESH_TOKEN = "refresh_token"
+        const val KEY_EXPIRES_IN = "expires_in"
+        const val KEY_USER_ID = "user_id"
+        const val KEY_SAVED_AT = "saved_at"
+        const val KEY_API_BASE_URL = "api_base_url"
+        const val KEY_WS_URL = "ws_url"
+    }
+
     private val prefs: SharedPreferences by lazy {
         val masterKey = MasterKey.Builder(context)
             .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
@@ -28,19 +38,37 @@ class SecureStorage @Inject constructor(
 
     fun saveTokens(accessToken: String, refreshToken: String, expiresIn: Int, userId: Int) {
         prefs.edit()
-            .putString("access_token", accessToken)
-            .putString("refresh_token", refreshToken)
-            .putInt("expires_in", expiresIn)
-            .putInt("user_id", userId)
-            .putLong("saved_at", System.currentTimeMillis())
+            .putString(KEY_ACCESS_TOKEN, accessToken)
+            .putString(KEY_REFRESH_TOKEN, refreshToken)
+            .putInt(KEY_EXPIRES_IN, expiresIn)
+            .putInt(KEY_USER_ID, userId)
+            .putLong(KEY_SAVED_AT, System.currentTimeMillis())
             .apply()
     }
 
-    fun getAccessToken(): String? = prefs.getString("access_token", null)
-    fun getRefreshToken(): String? = prefs.getString("refresh_token", null)
-    fun getExpiresIn(): Int = prefs.getInt("expires_in", 0)
-    fun getUserId(): Int = prefs.getInt("user_id", 0)
+    fun getAccessToken(): String? = prefs.getString(KEY_ACCESS_TOKEN, null)
+    fun getRefreshToken(): String? = prefs.getString(KEY_REFRESH_TOKEN, null)
+    fun getExpiresIn(): Int = prefs.getInt(KEY_EXPIRES_IN, 0)
+    fun getUserId(): Int = prefs.getInt(KEY_USER_ID, 0)
     fun hasTokens(): Boolean = getAccessToken() != null
+
+    fun saveServerConfig(apiBaseUrl: String, wsUrl: String) {
+        prefs.edit()
+            .putString(KEY_API_BASE_URL, apiBaseUrl)
+            .putString(KEY_WS_URL, wsUrl)
+            .apply()
+    }
+
+    fun getApiBaseUrl(): String? = prefs.getString(KEY_API_BASE_URL, null)
+
+    fun getWsUrl(): String? = prefs.getString(KEY_WS_URL, null)
+
+    fun clearServerConfig() {
+        prefs.edit()
+            .remove(KEY_API_BASE_URL)
+            .remove(KEY_WS_URL)
+            .apply()
+    }
 
     fun getDeviceId(): String {
         return android.provider.Settings.Secure.getString(
@@ -50,6 +78,12 @@ class SecureStorage @Inject constructor(
     }
 
     fun clearTokens() {
-        prefs.edit().clear().apply()
+        prefs.edit()
+            .remove(KEY_ACCESS_TOKEN)
+            .remove(KEY_REFRESH_TOKEN)
+            .remove(KEY_EXPIRES_IN)
+            .remove(KEY_USER_ID)
+            .remove(KEY_SAVED_AT)
+            .apply()
     }
 }
