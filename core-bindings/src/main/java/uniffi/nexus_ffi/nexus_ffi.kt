@@ -955,22 +955,30 @@ internal open class UniffiVTableCallbackInterfaceEventListener(
 
 
 
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
-// N.B. the name of the extension is very misleading, since it is 
-// rather `InterfaceTooLargeException`, caused by too many methods 
+// N.B. the name of the extension is very misleading, since it is
+// rather `InterfaceTooLargeException`, caused by too many methods
 // in the interface for large crates.
 //
 // By splitting the otherwise huge interface into two parts
-// * UniffiLib 
+// * UniffiLib
 // * IntegrityCheckingUniffiLib (this)
 // we allow for ~2x as many methods in the UniffiLib interface.
-// 
-// The `ffi_uniffi_contract_version` method and all checksum methods are put 
+//
+// The `ffi_uniffi_contract_version` method and all checksum methods are put
 // into `IntegrityCheckingUniffiLib` and these methods are called only once,
 // when the library is loaded.
 internal interface IntegrityCheckingUniffiLib : Library {
     // Integrity check functions only
-    fun uniffi_nexus_ffi_checksum_func_set_event_listener(
+    fun uniffi_nexus_ffi_checksum_func_database_path_for_user(
+): Short
+fun uniffi_nexus_ffi_checksum_func_set_event_listener(
 ): Short
 fun uniffi_nexus_ffi_checksum_method_nexusclient_accept_friend_request(
 ): Short
@@ -1076,6 +1084,8 @@ fun uniffi_nexus_ffi_checksum_method_nexusclient_rebuild_search_index(
 ): Short
 fun uniffi_nexus_ffi_checksum_method_nexusclient_recall_message(
 ): Short
+fun uniffi_nexus_ffi_checksum_method_nexusclient_recover_in_flight_messages(
+): Short
 fun uniffi_nexus_ffi_checksum_method_nexusclient_register_push_token(
 ): Short
 fun uniffi_nexus_ffi_checksum_method_nexusclient_reject_friend_request(
@@ -1089,6 +1099,8 @@ fun uniffi_nexus_ffi_checksum_method_nexusclient_request_verify_code(
 fun uniffi_nexus_ffi_checksum_method_nexusclient_resolve_username(
 ): Short
 fun uniffi_nexus_ffi_checksum_method_nexusclient_restore_session(
+): Short
+fun uniffi_nexus_ffi_checksum_method_nexusclient_retry_pending_messages(
 ): Short
 fun uniffi_nexus_ffi_checksum_method_nexusclient_search_messages(
 ): Short
@@ -1174,8 +1186,8 @@ internal interface UniffiLib : Library {
         internal val INSTANCE: UniffiLib by lazy {
             val componentName = "nexus_ffi"
             // For large crates we prevent `MethodTooLargeException` (see #2340)
-            // N.B. the name of the extension is very misleading, since it is 
-            // rather `InterfaceTooLargeException`, caused by too many methods 
+            // N.B. the name of the extension is very misleading, since it is
+            // rather `InterfaceTooLargeException`, caused by too many methods
             // in the interface for large crates.
             //
             // By splitting the otherwise huge interface into two parts
@@ -1183,7 +1195,7 @@ internal interface UniffiLib : Library {
             // * IntegrityCheckingUniffiLib
             // And all checksum methods are put into `IntegrityCheckingUniffiLib`
             // we allow for ~2x as many methods in the UniffiLib interface.
-            // 
+            //
             // Thus we first load the library with `loadIndirect` as `IntegrityCheckingUniffiLib`
             // so that we can (optionally!) call `uniffiCheckApiChecksums`...
             loadIndirect<IntegrityCheckingUniffiLib>(componentName)
@@ -1198,13 +1210,13 @@ internal interface UniffiLib : Library {
             // to trigger this issue, the performance impact is negligible, running on
             // a macOS M1 machine the `loadIndirect` call takes ~50ms.
             val lib = loadIndirect<UniffiLib>(componentName)
-            // No need to check the contract version and checksums, since 
+            // No need to check the contract version and checksums, since
             // we already did that with `IntegrityCheckingUniffiLib` above.
             uniffiCallbackInterfaceEventListener.register(lib)
             // Loading of library with integrity check done.
             lib
         }
-        
+
         // The Cleaner for the whole library
         internal val CLEANER: UniffiCleaner by lazy {
             UniffiCleaner.create()
@@ -1212,197 +1224,203 @@ internal interface UniffiLib : Library {
     }
 
     // FFI functions
-    fun uniffi_nexus_ffi_fn_clone_nexusclient(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    fun uniffi_nexus_ffi_fn_clone_nexusclient(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus,
 ): Pointer
-fun uniffi_nexus_ffi_fn_free_nexusclient(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_free_nexusclient(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_constructor_nexusclient_new(`config`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_constructor_nexusclient_new(`config`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Pointer
-fun uniffi_nexus_ffi_fn_method_nexusclient_accept_friend_request(`ptr`: Pointer,`requestId`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_accept_friend_request(`ptr`: Pointer,`requestId`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_add_contact(`ptr`: Pointer,`targetUserId`: Int,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_add_contact(`ptr`: Pointer,`targetUserId`: Int,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_batch_get_user_info(`ptr`: Pointer,`userIds`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_batch_get_user_info(`ptr`: Pointer,`userIds`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_nexus_ffi_fn_method_nexusclient_block_user(`ptr`: Pointer,`userId`: Int,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_block_user(`ptr`: Pointer,`userId`: Int,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_change_password(`ptr`: Pointer,`oldPassword`: RustBuffer.ByValue,`newPassword`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_change_password(`ptr`: Pointer,`oldPassword`: RustBuffer.ByValue,`newPassword`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_clear_badge(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_clear_badge(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_clear_local_data(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_clear_local_data(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_cold_start(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_cold_start(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus,
 ): Long
-fun uniffi_nexus_ffi_fn_method_nexusclient_complete_upload(`ptr`: Pointer,`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_complete_upload(`ptr`: Pointer,`sessionId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_nexus_ffi_fn_method_nexusclient_create_agent(`ptr`: Pointer,`username`: RustBuffer.ByValue,`nickname`: RustBuffer.ByValue,`description`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_create_agent(`ptr`: Pointer,`username`: RustBuffer.ByValue,`nickname`: RustBuffer.ByValue,`description`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Int
-fun uniffi_nexus_ffi_fn_method_nexusclient_create_group(`ptr`: Pointer,`name`: RustBuffer.ByValue,`memberIds`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_create_group(`ptr`: Pointer,`name`: RustBuffer.ByValue,`memberIds`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Int
-fun uniffi_nexus_ffi_fn_method_nexusclient_delete_contact(`ptr`: Pointer,`userId`: Int,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_delete_contact(`ptr`: Pointer,`userId`: Int,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_delete_conversation(`ptr`: Pointer,`conversationId`: Long,`clearMessages`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_delete_conversation(`ptr`: Pointer,`conversationId`: Long,`clearMessages`: Byte,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_delete_history(`ptr`: Pointer,`conversationId`: Long,`upToMessageId`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_delete_history(`ptr`: Pointer,`conversationId`: Long,`upToMessageId`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_delete_messages(`ptr`: Pointer,`conversationId`: Long,`messageIds`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_delete_messages(`ptr`: Pointer,`conversationId`: Long,`messageIds`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_dissolve_group(`ptr`: Pointer,`groupId`: Int,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_dissolve_group(`ptr`: Pointer,`groupId`: Int,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_edit_message(`ptr`: Pointer,`conversationId`: Long,`messageId`: Long,`text`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_edit_message(`ptr`: Pointer,`conversationId`: Long,`messageId`: Long,`text`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_fetch_contacts(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_fetch_contacts(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_fetch_conversations(`ptr`: Pointer,`limit`: Int,`beforeTime`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_fetch_conversations(`ptr`: Pointer,`limit`: Int,`beforeTime`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_nexus_ffi_fn_method_nexusclient_fetch_groups(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_fetch_groups(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_fetch_profile(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_fetch_profile(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_get_agent_info(`ptr`: Pointer,`agentUserId`: Int,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_get_agent_info(`ptr`: Pointer,`agentUserId`: Int,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_nexus_ffi_fn_method_nexusclient_get_blocked_users(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_get_blocked_users(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_nexus_ffi_fn_method_nexusclient_get_client_config(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_get_client_config(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_nexus_ffi_fn_method_nexusclient_get_contacts(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_get_contacts(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_nexus_ffi_fn_method_nexusclient_get_conversation(`ptr`: Pointer,`conversationId`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_get_conversation(`ptr`: Pointer,`conversationId`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_nexus_ffi_fn_method_nexusclient_get_conversations(`ptr`: Pointer,`limit`: Int,`beforeTime`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_get_conversations(`ptr`: Pointer,`limit`: Int,`beforeTime`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_nexus_ffi_fn_method_nexusclient_get_download_url(`ptr`: Pointer,`fileId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_get_download_url(`ptr`: Pointer,`fileId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_nexus_ffi_fn_method_nexusclient_get_group_info(`ptr`: Pointer,`groupId`: Int,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_get_group_info(`ptr`: Pointer,`groupId`: Int,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_get_group_members(`ptr`: Pointer,`groupId`: Int,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_get_group_members(`ptr`: Pointer,`groupId`: Int,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_nexus_ffi_fn_method_nexusclient_get_local_sn(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_get_local_sn(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus,
 ): Long
-fun uniffi_nexus_ffi_fn_method_nexusclient_get_media_url(`ptr`: Pointer,`fileId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_get_media_url(`ptr`: Pointer,`fileId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_nexus_ffi_fn_method_nexusclient_get_messages(`ptr`: Pointer,`conversationId`: RustBuffer.ByValue,`limit`: Int,`beforeId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_get_messages(`ptr`: Pointer,`conversationId`: RustBuffer.ByValue,`limit`: Int,`beforeId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_nexus_ffi_fn_method_nexusclient_get_mini_app_launch_data(`ptr`: Pointer,`agentUserId`: Int,`conversationId`: Long,`startParam`: RustBuffer.ByValue,`platform`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_get_mini_app_launch_data(`ptr`: Pointer,`agentUserId`: Int,`conversationId`: Long,`startParam`: RustBuffer.ByValue,`platform`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_nexus_ffi_fn_method_nexusclient_get_my_profile(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_get_my_profile(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_nexus_ffi_fn_method_nexusclient_get_pending_requests(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_get_pending_requests(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_nexus_ffi_fn_method_nexusclient_init_upload(`ptr`: Pointer,`fileName`: RustBuffer.ByValue,`contentType`: RustBuffer.ByValue,`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_init_upload(`ptr`: Pointer,`fileName`: RustBuffer.ByValue,`contentType`: RustBuffer.ByValue,`size`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_nexus_ffi_fn_method_nexusclient_invite_members(`ptr`: Pointer,`groupId`: Int,`memberIds`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_invite_members(`ptr`: Pointer,`groupId`: Int,`memberIds`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_is_authenticated(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_is_authenticated(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus,
 ): Byte
-fun uniffi_nexus_ffi_fn_method_nexusclient_leave_group(`ptr`: Pointer,`groupId`: Int,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_leave_group(`ptr`: Pointer,`groupId`: Int,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_list_devices(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_list_devices(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_nexus_ffi_fn_method_nexusclient_list_featured_agents(`ptr`: Pointer,`limit`: Int,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_list_featured_agents(`ptr`: Pointer,`limit`: Int,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_nexus_ffi_fn_method_nexusclient_list_groups(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_list_groups(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_nexus_ffi_fn_method_nexusclient_list_my_agents(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_list_my_agents(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_nexus_ffi_fn_method_nexusclient_list_pending_requests(`ptr`: Pointer,`beforeTime`: RustBuffer.ByValue,`limit`: Int,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_list_pending_requests(`ptr`: Pointer,`beforeTime`: RustBuffer.ByValue,`limit`: Int,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_nexus_ffi_fn_method_nexusclient_login(`ptr`: Pointer,`identityValue`: RustBuffer.ByValue,`password`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_login(`ptr`: Pointer,`identityValue`: RustBuffer.ByValue,`password`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_nexus_ffi_fn_method_nexusclient_logout(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_logout(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_logout_all(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_logout_all(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_mark_as_read(`ptr`: Pointer,`conversationId`: Long,`upToMessageId`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_mark_as_read(`ptr`: Pointer,`conversationId`: Long,`upToMessageId`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_mute_conversation(`ptr`: Pointer,`conversationId`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_mute_conversation(`ptr`: Pointer,`conversationId`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_rebuild_search_index(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_rebuild_search_index(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus,
 ): Long
-fun uniffi_nexus_ffi_fn_method_nexusclient_recall_message(`ptr`: Pointer,`conversationId`: Long,`messageId`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_recall_message(`ptr`: Pointer,`conversationId`: Long,`messageId`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_register_push_token(`ptr`: Pointer,`token`: RustBuffer.ByValue,`platform`: Int,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_recover_in_flight_messages(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus,
+): Long
+fun uniffi_nexus_ffi_fn_method_nexusclient_register_push_token(`ptr`: Pointer,`token`: RustBuffer.ByValue,`platform`: Int,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_reject_friend_request(`ptr`: Pointer,`requestId`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_reject_friend_request(`ptr`: Pointer,`requestId`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_remove_device(`ptr`: Pointer,`deviceId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_remove_device(`ptr`: Pointer,`deviceId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_remove_member(`ptr`: Pointer,`groupId`: Int,`targetId`: Int,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_remove_member(`ptr`: Pointer,`groupId`: Int,`targetId`: Int,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_request_verify_code(`ptr`: Pointer,`identityType`: Int,`identityValue`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_request_verify_code(`ptr`: Pointer,`identityType`: Int,`identityValue`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_nexus_ffi_fn_method_nexusclient_resolve_username(`ptr`: Pointer,`username`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_resolve_username(`ptr`: Pointer,`username`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_nexus_ffi_fn_method_nexusclient_restore_session(`ptr`: Pointer,`accessToken`: RustBuffer.ByValue,`refreshToken`: RustBuffer.ByValue,`expiresIn`: Int,`userId`: Int,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_restore_session(`ptr`: Pointer,`accessToken`: RustBuffer.ByValue,`refreshToken`: RustBuffer.ByValue,`expiresIn`: Int,`userId`: Int,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_search_messages(`ptr`: Pointer,`query`: RustBuffer.ByValue,`conversationId`: RustBuffer.ByValue,`limit`: Int,`offset`: Int,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_retry_pending_messages(`ptr`: Pointer,`limit`: Int,uniffi_out_err: UniffiRustCallStatus,
+): Int
+fun uniffi_nexus_ffi_fn_method_nexusclient_search_messages(`ptr`: Pointer,`query`: RustBuffer.ByValue,`conversationId`: RustBuffer.ByValue,`limit`: Int,`offset`: Int,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_nexus_ffi_fn_method_nexusclient_search_users(`ptr`: Pointer,`query`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_search_users(`ptr`: Pointer,`query`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_nexus_ffi_fn_method_nexusclient_search_users_local(`ptr`: Pointer,`query`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_search_users_local(`ptr`: Pointer,`query`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_nexus_ffi_fn_method_nexusclient_send_audio_message(`ptr`: Pointer,`conversationId`: Long,`fileId`: RustBuffer.ByValue,`durationMs`: Int,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_send_audio_message(`ptr`: Pointer,`conversationId`: Long,`fileId`: RustBuffer.ByValue,`durationMs`: Int,uniffi_out_err: UniffiRustCallStatus,
 ): Long
-fun uniffi_nexus_ffi_fn_method_nexusclient_send_card_message(`ptr`: Pointer,`conversationId`: Long,`cardJson`: RustBuffer.ByValue,`fallbackText`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_send_card_message(`ptr`: Pointer,`conversationId`: Long,`cardJson`: RustBuffer.ByValue,`fallbackText`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Long
-fun uniffi_nexus_ffi_fn_method_nexusclient_send_file_message(`ptr`: Pointer,`conversationId`: Long,`fileId`: RustBuffer.ByValue,`name`: RustBuffer.ByValue,`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_send_file_message(`ptr`: Pointer,`conversationId`: Long,`fileId`: RustBuffer.ByValue,`name`: RustBuffer.ByValue,`size`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): Long
-fun uniffi_nexus_ffi_fn_method_nexusclient_send_friend_request(`ptr`: Pointer,`targetUserId`: Int,`message`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_send_friend_request(`ptr`: Pointer,`targetUserId`: Int,`message`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_send_image_message(`ptr`: Pointer,`conversationId`: Long,`fileId`: RustBuffer.ByValue,`width`: Int,`height`: Int,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_send_image_message(`ptr`: Pointer,`conversationId`: Long,`fileId`: RustBuffer.ByValue,`width`: Int,`height`: Int,uniffi_out_err: UniffiRustCallStatus,
 ): Long
-fun uniffi_nexus_ffi_fn_method_nexusclient_send_markdown_message(`ptr`: Pointer,`conversationId`: Long,`rawMarkdown`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_send_markdown_message(`ptr`: Pointer,`conversationId`: Long,`rawMarkdown`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Long
-fun uniffi_nexus_ffi_fn_method_nexusclient_send_message(`ptr`: Pointer,`conversationId`: Long,`text`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_send_message(`ptr`: Pointer,`conversationId`: Long,`text`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Long
-fun uniffi_nexus_ffi_fn_method_nexusclient_send_reply_message(`ptr`: Pointer,`conversationId`: Long,`text`: RustBuffer.ByValue,`replyToMessageId`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_send_reply_message(`ptr`: Pointer,`conversationId`: Long,`text`: RustBuffer.ByValue,`replyToMessageId`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): Long
-fun uniffi_nexus_ffi_fn_method_nexusclient_send_video_message(`ptr`: Pointer,`conversationId`: Long,`fileId`: RustBuffer.ByValue,`width`: Int,`height`: Int,`durationMs`: Int,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_send_video_message(`ptr`: Pointer,`conversationId`: Long,`fileId`: RustBuffer.ByValue,`width`: Int,`height`: Int,`durationMs`: Int,uniffi_out_err: UniffiRustCallStatus,
 ): Long
-fun uniffi_nexus_ffi_fn_method_nexusclient_set_username(`ptr`: Pointer,`username`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_set_username(`ptr`: Pointer,`username`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_setup_password(`ptr`: Pointer,`password`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_setup_password(`ptr`: Pointer,`password`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_start_sync(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_start_sync(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_stop_sync(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_stop_sync(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_submit_card_action(`ptr`: Pointer,`conversationId`: Long,`messageId`: Long,`actionData`: RustBuffer.ByValue,`verb`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_submit_card_action(`ptr`: Pointer,`conversationId`: Long,`messageId`: Long,`actionData`: RustBuffer.ByValue,`verb`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_nexus_ffi_fn_method_nexusclient_unblock_user(`ptr`: Pointer,`userId`: Int,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_unblock_user(`ptr`: Pointer,`userId`: Int,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_unmute_conversation(`ptr`: Pointer,`conversationId`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_unmute_conversation(`ptr`: Pointer,`conversationId`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_unregister_push_token(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_unregister_push_token(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_update_contact_alias(`ptr`: Pointer,`contactUserId`: Int,`alias`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_update_contact_alias(`ptr`: Pointer,`contactUserId`: Int,`alias`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_update_group_avatar(`ptr`: Pointer,`groupId`: Int,`avatarUrl`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_update_group_avatar(`ptr`: Pointer,`groupId`: Int,`avatarUrl`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_update_group_description(`ptr`: Pointer,`groupId`: Int,`description`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_update_group_description(`ptr`: Pointer,`groupId`: Int,`description`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_update_group_name(`ptr`: Pointer,`groupId`: Int,`name`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_update_group_name(`ptr`: Pointer,`groupId`: Int,`name`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_update_profile(`ptr`: Pointer,`nickname`: RustBuffer.ByValue,`signature`: RustBuffer.ByValue,`avatarUrl`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_update_profile(`ptr`: Pointer,`nickname`: RustBuffer.ByValue,`signature`: RustBuffer.ByValue,`avatarUrl`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_upload_chunk(`ptr`: Pointer,`sessionId`: RustBuffer.ByValue,`chunk`: RustBuffer.ByValue,`offset`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_upload_chunk(`ptr`: Pointer,`sessionId`: RustBuffer.ByValue,`chunk`: RustBuffer.ByValue,`offset`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun uniffi_nexus_ffi_fn_method_nexusclient_upload_file(`ptr`: Pointer,`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,`contentType`: RustBuffer.ByValue,`purpose`: Int,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_upload_file(`ptr`: Pointer,`data`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,`contentType`: RustBuffer.ByValue,`purpose`: Int,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_nexus_ffi_fn_method_nexusclient_verify_code(`ptr`: Pointer,`verifyToken`: RustBuffer.ByValue,`code`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_method_nexusclient_verify_code(`ptr`: Pointer,`verifyToken`: RustBuffer.ByValue,`code`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun uniffi_nexus_ffi_fn_init_callback_vtable_eventlistener(`vtable`: UniffiVTableCallbackInterfaceEventListener,
 ): Unit
-fun uniffi_nexus_ffi_fn_func_set_event_listener(`listener`: Long,uniffi_out_err: UniffiRustCallStatus, 
-): Unit
-fun ffi_nexus_ffi_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_func_database_path_for_user(`baseDir`: RustBuffer.ByValue,`userId`: Int,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun ffi_nexus_ffi_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-): RustBuffer.ByValue
-fun ffi_nexus_ffi_rustbuffer_free(`buf`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_nexus_ffi_fn_func_set_event_listener(`listener`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-fun ffi_nexus_ffi_rustbuffer_reserve(`buf`: RustBuffer.ByValue,`additional`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun ffi_nexus_ffi_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus,
+): RustBuffer.ByValue
+fun ffi_nexus_ffi_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,uniffi_out_err: UniffiRustCallStatus,
+): RustBuffer.ByValue
+fun ffi_nexus_ffi_rustbuffer_free(`buf`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+): Unit
+fun ffi_nexus_ffi_rustbuffer_reserve(`buf`: RustBuffer.ByValue,`additional`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun ffi_nexus_ffi_rust_future_poll_u8(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
 ): Unit
@@ -1410,7 +1428,7 @@ fun ffi_nexus_ffi_rust_future_cancel_u8(`handle`: Long,
 ): Unit
 fun ffi_nexus_ffi_rust_future_free_u8(`handle`: Long,
 ): Unit
-fun ffi_nexus_ffi_rust_future_complete_u8(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun ffi_nexus_ffi_rust_future_complete_u8(`handle`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): Byte
 fun ffi_nexus_ffi_rust_future_poll_i8(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
 ): Unit
@@ -1418,7 +1436,7 @@ fun ffi_nexus_ffi_rust_future_cancel_i8(`handle`: Long,
 ): Unit
 fun ffi_nexus_ffi_rust_future_free_i8(`handle`: Long,
 ): Unit
-fun ffi_nexus_ffi_rust_future_complete_i8(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun ffi_nexus_ffi_rust_future_complete_i8(`handle`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): Byte
 fun ffi_nexus_ffi_rust_future_poll_u16(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
 ): Unit
@@ -1426,7 +1444,7 @@ fun ffi_nexus_ffi_rust_future_cancel_u16(`handle`: Long,
 ): Unit
 fun ffi_nexus_ffi_rust_future_free_u16(`handle`: Long,
 ): Unit
-fun ffi_nexus_ffi_rust_future_complete_u16(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun ffi_nexus_ffi_rust_future_complete_u16(`handle`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): Short
 fun ffi_nexus_ffi_rust_future_poll_i16(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
 ): Unit
@@ -1434,7 +1452,7 @@ fun ffi_nexus_ffi_rust_future_cancel_i16(`handle`: Long,
 ): Unit
 fun ffi_nexus_ffi_rust_future_free_i16(`handle`: Long,
 ): Unit
-fun ffi_nexus_ffi_rust_future_complete_i16(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun ffi_nexus_ffi_rust_future_complete_i16(`handle`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): Short
 fun ffi_nexus_ffi_rust_future_poll_u32(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
 ): Unit
@@ -1442,7 +1460,7 @@ fun ffi_nexus_ffi_rust_future_cancel_u32(`handle`: Long,
 ): Unit
 fun ffi_nexus_ffi_rust_future_free_u32(`handle`: Long,
 ): Unit
-fun ffi_nexus_ffi_rust_future_complete_u32(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun ffi_nexus_ffi_rust_future_complete_u32(`handle`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): Int
 fun ffi_nexus_ffi_rust_future_poll_i32(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
 ): Unit
@@ -1450,7 +1468,7 @@ fun ffi_nexus_ffi_rust_future_cancel_i32(`handle`: Long,
 ): Unit
 fun ffi_nexus_ffi_rust_future_free_i32(`handle`: Long,
 ): Unit
-fun ffi_nexus_ffi_rust_future_complete_i32(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun ffi_nexus_ffi_rust_future_complete_i32(`handle`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): Int
 fun ffi_nexus_ffi_rust_future_poll_u64(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
 ): Unit
@@ -1458,7 +1476,7 @@ fun ffi_nexus_ffi_rust_future_cancel_u64(`handle`: Long,
 ): Unit
 fun ffi_nexus_ffi_rust_future_free_u64(`handle`: Long,
 ): Unit
-fun ffi_nexus_ffi_rust_future_complete_u64(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun ffi_nexus_ffi_rust_future_complete_u64(`handle`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): Long
 fun ffi_nexus_ffi_rust_future_poll_i64(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
 ): Unit
@@ -1466,7 +1484,7 @@ fun ffi_nexus_ffi_rust_future_cancel_i64(`handle`: Long,
 ): Unit
 fun ffi_nexus_ffi_rust_future_free_i64(`handle`: Long,
 ): Unit
-fun ffi_nexus_ffi_rust_future_complete_i64(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun ffi_nexus_ffi_rust_future_complete_i64(`handle`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): Long
 fun ffi_nexus_ffi_rust_future_poll_f32(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
 ): Unit
@@ -1474,7 +1492,7 @@ fun ffi_nexus_ffi_rust_future_cancel_f32(`handle`: Long,
 ): Unit
 fun ffi_nexus_ffi_rust_future_free_f32(`handle`: Long,
 ): Unit
-fun ffi_nexus_ffi_rust_future_complete_f32(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun ffi_nexus_ffi_rust_future_complete_f32(`handle`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): Float
 fun ffi_nexus_ffi_rust_future_poll_f64(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
 ): Unit
@@ -1482,7 +1500,7 @@ fun ffi_nexus_ffi_rust_future_cancel_f64(`handle`: Long,
 ): Unit
 fun ffi_nexus_ffi_rust_future_free_f64(`handle`: Long,
 ): Unit
-fun ffi_nexus_ffi_rust_future_complete_f64(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun ffi_nexus_ffi_rust_future_complete_f64(`handle`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): Double
 fun ffi_nexus_ffi_rust_future_poll_pointer(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
 ): Unit
@@ -1490,7 +1508,7 @@ fun ffi_nexus_ffi_rust_future_cancel_pointer(`handle`: Long,
 ): Unit
 fun ffi_nexus_ffi_rust_future_free_pointer(`handle`: Long,
 ): Unit
-fun ffi_nexus_ffi_rust_future_complete_pointer(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun ffi_nexus_ffi_rust_future_complete_pointer(`handle`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): Pointer
 fun ffi_nexus_ffi_rust_future_poll_rust_buffer(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
 ): Unit
@@ -1498,7 +1516,7 @@ fun ffi_nexus_ffi_rust_future_cancel_rust_buffer(`handle`: Long,
 ): Unit
 fun ffi_nexus_ffi_rust_future_free_rust_buffer(`handle`: Long,
 ): Unit
-fun ffi_nexus_ffi_rust_future_complete_rust_buffer(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun ffi_nexus_ffi_rust_future_complete_rust_buffer(`handle`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun ffi_nexus_ffi_rust_future_poll_void(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
 ): Unit
@@ -1506,7 +1524,7 @@ fun ffi_nexus_ffi_rust_future_cancel_void(`handle`: Long,
 ): Unit
 fun ffi_nexus_ffi_rust_future_free_void(`handle`: Long,
 ): Unit
-fun ffi_nexus_ffi_rust_future_complete_void(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+fun ffi_nexus_ffi_rust_future_complete_void(`handle`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
 
 }
@@ -1522,6 +1540,9 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
 }
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
+    if (lib.uniffi_nexus_ffi_checksum_func_database_path_for_user() != 35790.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_nexus_ffi_checksum_func_set_event_listener() != 52069.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1681,6 +1702,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_nexus_ffi_checksum_method_nexusclient_recall_message() != 45652.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_nexus_ffi_checksum_method_nexusclient_recover_in_flight_messages() != 54985.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_nexus_ffi_checksum_method_nexusclient_register_push_token() != 37232.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1699,7 +1723,10 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_nexus_ffi_checksum_method_nexusclient_resolve_username() != 63398.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_nexus_ffi_checksum_method_nexusclient_restore_session() != 20819.toShort()) {
+    if (lib.uniffi_nexus_ffi_checksum_method_nexusclient_restore_session() != 42073.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_nexus_ffi_checksum_method_nexusclient_retry_pending_messages() != 29762.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_nexus_ffi_checksum_method_nexusclient_search_messages() != 45351.toShort()) {
@@ -1882,7 +1909,7 @@ inline fun <T : Disposable?, R> T.use(block: (T) -> R) =
         }
     }
 
-/** 
+/**
  * Used to instantiate an interface without an actual pointer, for fakes in tests, mostly.
  *
  * @suppress
@@ -2252,181 +2279,185 @@ public object FfiConverterByteArray: FfiConverterRustBuffer<ByteArray> {
 
 
 public interface NexusClientInterface {
-    
+
     fun `acceptFriendRequest`(`requestId`: kotlin.Long)
-    
+
     fun `addContact`(`targetUserId`: kotlin.Int)
-    
+
     fun `batchGetUserInfo`(`userIds`: List<kotlin.Int>): List<ContactInfo>
-    
+
     fun `blockUser`(`userId`: kotlin.Int)
-    
+
     fun `changePassword`(`oldPassword`: kotlin.String, `newPassword`: kotlin.String)
-    
+
     fun `clearBadge`()
-    
+
     fun `clearLocalData`()
-    
+
     fun `coldStart`(): kotlin.Long
-    
+
     fun `completeUpload`(`sessionId`: kotlin.String): MediaFileInfoFfi
-    
+
     fun `createAgent`(`username`: kotlin.String, `nickname`: kotlin.String, `description`: kotlin.String): kotlin.Int
-    
+
     fun `createGroup`(`name`: kotlin.String, `memberIds`: List<kotlin.Int>): kotlin.Int
-    
+
     fun `deleteContact`(`userId`: kotlin.Int)
-    
+
     fun `deleteConversation`(`conversationId`: kotlin.Long, `clearMessages`: kotlin.Boolean)
-    
+
     fun `deleteHistory`(`conversationId`: kotlin.Long, `upToMessageId`: kotlin.Long)
-    
+
     fun `deleteMessages`(`conversationId`: kotlin.Long, `messageIds`: List<kotlin.Long>)
-    
+
     fun `dissolveGroup`(`groupId`: kotlin.Int)
-    
+
     fun `editMessage`(`conversationId`: kotlin.Long, `messageId`: kotlin.Long, `text`: kotlin.String)
-    
+
     fun `fetchContacts`()
-    
+
     fun `fetchConversations`(`limit`: kotlin.Int, `beforeTime`: kotlin.Long?): List<ConversationInfo>
-    
+
     fun `fetchGroups`()
-    
+
     fun `fetchProfile`()
-    
+
     fun `getAgentInfo`(`agentUserId`: kotlin.Int): AgentInfoFfi
-    
+
     fun `getBlockedUsers`(): List<kotlin.Int>
-    
+
     fun `getClientConfig`(): ClientConfig
-    
+
     fun `getContacts`(): List<ContactInfo>
-    
+
     fun `getConversation`(`conversationId`: kotlin.Long): ConversationInfo
-    
+
     fun `getConversations`(`limit`: kotlin.Int, `beforeTime`: kotlin.Long?): List<ConversationInfo>
-    
+
     fun `getDownloadUrl`(`fileId`: kotlin.String): kotlin.String
-    
+
     fun `getGroupInfo`(`groupId`: kotlin.Int)
-    
+
     fun `getGroupMembers`(`groupId`: kotlin.Int): List<GroupMemberFfi>
-    
+
     fun `getLocalSn`(): kotlin.Long
-    
+
     fun `getMediaUrl`(`fileId`: kotlin.String): kotlin.String
-    
+
     fun `getMessages`(`conversationId`: kotlin.String, `limit`: kotlin.Int, `beforeId`: kotlin.Long?): List<MessageInfo>
-    
+
     fun `getMiniAppLaunchData`(`agentUserId`: kotlin.Int, `conversationId`: kotlin.Long, `startParam`: kotlin.String, `platform`: kotlin.String): MiniAppLaunchDataFfi
-    
+
     fun `getMyProfile`(): UserProfileFfi
-    
+
     fun `getPendingRequests`(): List<PendingRequestFfi>
-    
+
     fun `initUpload`(`fileName`: kotlin.String, `contentType`: kotlin.String, `size`: kotlin.Long): UploadSessionFfi
-    
+
     fun `inviteMembers`(`groupId`: kotlin.Int, `memberIds`: List<kotlin.Int>)
-    
+
     fun `isAuthenticated`(): kotlin.Boolean
-    
+
     fun `leaveGroup`(`groupId`: kotlin.Int)
-    
+
     fun `listDevices`(): List<DeviceFfi>
-    
+
     fun `listFeaturedAgents`(`limit`: kotlin.Int): List<AgentInfoFfi>
-    
+
     fun `listGroups`(): List<GroupInfoFfi>
-    
+
     fun `listMyAgents`(): List<AgentInfoFfi>
-    
+
     fun `listPendingRequests`(`beforeTime`: kotlin.Long?, `limit`: kotlin.Int): List<PendingRequestFfi>
-    
+
     fun `login`(`identityValue`: kotlin.String, `password`: kotlin.String): LoginResult
-    
+
     fun `logout`()
-    
+
     fun `logoutAll`()
-    
+
     fun `markAsRead`(`conversationId`: kotlin.Long, `upToMessageId`: kotlin.Long)
-    
+
     fun `muteConversation`(`conversationId`: kotlin.Long)
-    
+
     fun `rebuildSearchIndex`(): kotlin.ULong
-    
+
     fun `recallMessage`(`conversationId`: kotlin.Long, `messageId`: kotlin.Long)
-    
+
+    fun `recoverInFlightMessages`(): kotlin.ULong
+
     fun `registerPushToken`(`token`: kotlin.String, `platform`: kotlin.Int)
-    
+
     fun `rejectFriendRequest`(`requestId`: kotlin.Long)
-    
+
     fun `removeDevice`(`deviceId`: kotlin.String)
-    
+
     fun `removeMember`(`groupId`: kotlin.Int, `targetId`: kotlin.Int)
-    
+
     fun `requestVerifyCode`(`identityType`: kotlin.Int, `identityValue`: kotlin.String): VerifyCodeResult
-    
+
     fun `resolveUsername`(`username`: kotlin.String): ContactInfo
-    
+
     fun `restoreSession`(`accessToken`: kotlin.String, `refreshToken`: kotlin.String, `expiresIn`: kotlin.Int, `userId`: kotlin.Int)
-    
+
+    fun `retryPendingMessages`(`limit`: kotlin.Int): kotlin.Int
+
     fun `searchMessages`(`query`: kotlin.String, `conversationId`: kotlin.String?, `limit`: kotlin.Int, `offset`: kotlin.Int): List<MessageSearchResultFfi>
-    
+
     fun `searchUsers`(`query`: kotlin.String): List<ContactInfo>
-    
+
     fun `searchUsersLocal`(`query`: kotlin.String): List<ContactInfo>
-    
+
     fun `sendAudioMessage`(`conversationId`: kotlin.Long, `fileId`: kotlin.String, `durationMs`: kotlin.Int): kotlin.Long
-    
+
     fun `sendCardMessage`(`conversationId`: kotlin.Long, `cardJson`: kotlin.String, `fallbackText`: kotlin.String): kotlin.Long
-    
+
     fun `sendFileMessage`(`conversationId`: kotlin.Long, `fileId`: kotlin.String, `name`: kotlin.String, `size`: kotlin.Long): kotlin.Long
-    
+
     fun `sendFriendRequest`(`targetUserId`: kotlin.Int, `message`: kotlin.String)
-    
+
     fun `sendImageMessage`(`conversationId`: kotlin.Long, `fileId`: kotlin.String, `width`: kotlin.Int, `height`: kotlin.Int): kotlin.Long
-    
+
     fun `sendMarkdownMessage`(`conversationId`: kotlin.Long, `rawMarkdown`: kotlin.String): kotlin.Long
-    
+
     fun `sendMessage`(`conversationId`: kotlin.Long, `text`: kotlin.String): kotlin.Long
-    
+
     fun `sendReplyMessage`(`conversationId`: kotlin.Long, `text`: kotlin.String, `replyToMessageId`: kotlin.Long): kotlin.Long
-    
+
     fun `sendVideoMessage`(`conversationId`: kotlin.Long, `fileId`: kotlin.String, `width`: kotlin.Int, `height`: kotlin.Int, `durationMs`: kotlin.Int): kotlin.Long
-    
+
     fun `setUsername`(`username`: kotlin.String)
-    
+
     fun `setupPassword`(`password`: kotlin.String)
-    
+
     fun `startSync`()
-    
+
     fun `stopSync`()
-    
+
     fun `submitCardAction`(`conversationId`: kotlin.Long, `messageId`: kotlin.Long, `actionData`: kotlin.String, `verb`: kotlin.String?): kotlin.String
-    
+
     fun `unblockUser`(`userId`: kotlin.Int)
-    
+
     fun `unmuteConversation`(`conversationId`: kotlin.Long)
-    
+
     fun `unregisterPushToken`()
-    
+
     fun `updateContactAlias`(`contactUserId`: kotlin.Int, `alias`: kotlin.String?)
-    
+
     fun `updateGroupAvatar`(`groupId`: kotlin.Int, `avatarUrl`: kotlin.String)
-    
+
     fun `updateGroupDescription`(`groupId`: kotlin.Int, `description`: kotlin.String)
-    
+
     fun `updateGroupName`(`groupId`: kotlin.Int, `name`: kotlin.String)
-    
+
     fun `updateProfile`(`nickname`: kotlin.String?, `signature`: kotlin.String?, `avatarUrl`: kotlin.String?)
-    
+
     fun `uploadChunk`(`sessionId`: kotlin.String, `chunk`: kotlin.ByteArray, `offset`: kotlin.Long)
-    
+
     fun `uploadFile`(`data`: kotlin.ByteArray, `fileName`: kotlin.String, `contentType`: kotlin.String, `purpose`: kotlin.Int): MediaFileInfoFfi
-    
+
     fun `verifyCode`(`verifyToken`: kotlin.String, `code`: kotlin.String): LoginResult
-    
+
     companion object
 }
 
@@ -2519,31 +2550,31 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
         }
     }
 
-    
+
     @Throws(NexusException::class)override fun `acceptFriendRequest`(`requestId`: kotlin.Long)
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_accept_friend_request(
         it, FfiConverterLong.lower(`requestId`),_status)
 }
     }
-    
-    
 
-    
+
+
+
     @Throws(NexusException::class)override fun `addContact`(`targetUserId`: kotlin.Int)
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_add_contact(
         it, FfiConverterInt.lower(`targetUserId`),_status)
 }
     }
-    
-    
 
-    
+
+
+
     @Throws(NexusException::class)override fun `batchGetUserInfo`(`userIds`: List<kotlin.Int>): List<ContactInfo> {
             return FfiConverterSequenceTypeContactInfo.lift(
     callWithPointer {
@@ -2554,56 +2585,56 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `blockUser`(`userId`: kotlin.Int)
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_block_user(
         it, FfiConverterInt.lower(`userId`),_status)
 }
     }
-    
-    
 
-    
+
+
+
     @Throws(NexusException::class)override fun `changePassword`(`oldPassword`: kotlin.String, `newPassword`: kotlin.String)
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_change_password(
         it, FfiConverterString.lower(`oldPassword`),FfiConverterString.lower(`newPassword`),_status)
 }
     }
-    
-    
 
-    
+
+
+
     @Throws(NexusException::class)override fun `clearBadge`()
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_clear_badge(
         it, _status)
 }
     }
-    
-    
+
+
 
     override fun `clearLocalData`()
-        = 
+        =
     callWithPointer {
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_clear_local_data(
         it, _status)
 }
     }
-    
-    
 
-    
+
+
+
     @Throws(NexusException::class)override fun `coldStart`(): kotlin.Long {
             return FfiConverterLong.lift(
     callWithPointer {
@@ -2614,9 +2645,9 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `completeUpload`(`sessionId`: kotlin.String): MediaFileInfoFfi {
             return FfiConverterTypeMediaFileInfoFfi.lift(
     callWithPointer {
@@ -2627,9 +2658,9 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `createAgent`(`username`: kotlin.String, `nickname`: kotlin.String, `description`: kotlin.String): kotlin.Int {
             return FfiConverterInt.lift(
     callWithPointer {
@@ -2640,9 +2671,9 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `createGroup`(`name`: kotlin.String, `memberIds`: List<kotlin.Int>): kotlin.Int {
             return FfiConverterInt.lift(
     callWithPointer {
@@ -2653,93 +2684,93 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `deleteContact`(`userId`: kotlin.Int)
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_delete_contact(
         it, FfiConverterInt.lower(`userId`),_status)
 }
     }
-    
-    
 
-    
+
+
+
     @Throws(NexusException::class)override fun `deleteConversation`(`conversationId`: kotlin.Long, `clearMessages`: kotlin.Boolean)
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_delete_conversation(
         it, FfiConverterLong.lower(`conversationId`),FfiConverterBoolean.lower(`clearMessages`),_status)
 }
     }
-    
-    
 
-    
+
+
+
     @Throws(NexusException::class)override fun `deleteHistory`(`conversationId`: kotlin.Long, `upToMessageId`: kotlin.Long)
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_delete_history(
         it, FfiConverterLong.lower(`conversationId`),FfiConverterLong.lower(`upToMessageId`),_status)
 }
     }
-    
-    
 
-    
+
+
+
     @Throws(NexusException::class)override fun `deleteMessages`(`conversationId`: kotlin.Long, `messageIds`: List<kotlin.Long>)
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_delete_messages(
         it, FfiConverterLong.lower(`conversationId`),FfiConverterSequenceLong.lower(`messageIds`),_status)
 }
     }
-    
-    
 
-    
+
+
+
     @Throws(NexusException::class)override fun `dissolveGroup`(`groupId`: kotlin.Int)
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_dissolve_group(
         it, FfiConverterInt.lower(`groupId`),_status)
 }
     }
-    
-    
 
-    
+
+
+
     @Throws(NexusException::class)override fun `editMessage`(`conversationId`: kotlin.Long, `messageId`: kotlin.Long, `text`: kotlin.String)
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_edit_message(
         it, FfiConverterLong.lower(`conversationId`),FfiConverterLong.lower(`messageId`),FfiConverterString.lower(`text`),_status)
 }
     }
-    
-    
 
-    
+
+
+
     @Throws(NexusException::class)override fun `fetchContacts`()
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_fetch_contacts(
         it, _status)
 }
     }
-    
-    
 
-    
+
+
+
     @Throws(NexusException::class)override fun `fetchConversations`(`limit`: kotlin.Int, `beforeTime`: kotlin.Long?): List<ConversationInfo> {
             return FfiConverterSequenceTypeConversationInfo.lift(
     callWithPointer {
@@ -2750,33 +2781,33 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `fetchGroups`()
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_fetch_groups(
         it, _status)
 }
     }
-    
-    
 
-    
+
+
+
     @Throws(NexusException::class)override fun `fetchProfile`()
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_fetch_profile(
         it, _status)
 }
     }
-    
-    
 
-    
+
+
+
     @Throws(NexusException::class)override fun `getAgentInfo`(`agentUserId`: kotlin.Int): AgentInfoFfi {
             return FfiConverterTypeAgentInfoFfi.lift(
     callWithPointer {
@@ -2787,9 +2818,9 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `getBlockedUsers`(): List<kotlin.Int> {
             return FfiConverterSequenceInt.lift(
     callWithPointer {
@@ -2800,9 +2831,9 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `getClientConfig`(): ClientConfig {
             return FfiConverterTypeClientConfig.lift(
     callWithPointer {
@@ -2813,9 +2844,9 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `getContacts`(): List<ContactInfo> {
             return FfiConverterSequenceTypeContactInfo.lift(
     callWithPointer {
@@ -2826,9 +2857,9 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `getConversation`(`conversationId`: kotlin.Long): ConversationInfo {
             return FfiConverterTypeConversationInfo.lift(
     callWithPointer {
@@ -2839,9 +2870,9 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `getConversations`(`limit`: kotlin.Int, `beforeTime`: kotlin.Long?): List<ConversationInfo> {
             return FfiConverterSequenceTypeConversationInfo.lift(
     callWithPointer {
@@ -2852,9 +2883,9 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `getDownloadUrl`(`fileId`: kotlin.String): kotlin.String {
             return FfiConverterString.lift(
     callWithPointer {
@@ -2865,21 +2896,21 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `getGroupInfo`(`groupId`: kotlin.Int)
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_get_group_info(
         it, FfiConverterInt.lower(`groupId`),_status)
 }
     }
-    
-    
 
-    
+
+
+
     @Throws(NexusException::class)override fun `getGroupMembers`(`groupId`: kotlin.Int): List<GroupMemberFfi> {
             return FfiConverterSequenceTypeGroupMemberFfi.lift(
     callWithPointer {
@@ -2890,7 +2921,7 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
+
 
     override fun `getLocalSn`(): kotlin.Long {
             return FfiConverterLong.lift(
@@ -2902,9 +2933,9 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `getMediaUrl`(`fileId`: kotlin.String): kotlin.String {
             return FfiConverterString.lift(
     callWithPointer {
@@ -2915,9 +2946,9 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `getMessages`(`conversationId`: kotlin.String, `limit`: kotlin.Int, `beforeId`: kotlin.Long?): List<MessageInfo> {
             return FfiConverterSequenceTypeMessageInfo.lift(
     callWithPointer {
@@ -2928,9 +2959,9 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `getMiniAppLaunchData`(`agentUserId`: kotlin.Int, `conversationId`: kotlin.Long, `startParam`: kotlin.String, `platform`: kotlin.String): MiniAppLaunchDataFfi {
             return FfiConverterTypeMiniAppLaunchDataFfi.lift(
     callWithPointer {
@@ -2941,9 +2972,9 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `getMyProfile`(): UserProfileFfi {
             return FfiConverterTypeUserProfileFfi.lift(
     callWithPointer {
@@ -2954,9 +2985,9 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `getPendingRequests`(): List<PendingRequestFfi> {
             return FfiConverterSequenceTypePendingRequestFfi.lift(
     callWithPointer {
@@ -2967,9 +2998,9 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `initUpload`(`fileName`: kotlin.String, `contentType`: kotlin.String, `size`: kotlin.Long): UploadSessionFfi {
             return FfiConverterTypeUploadSessionFfi.lift(
     callWithPointer {
@@ -2980,19 +3011,19 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `inviteMembers`(`groupId`: kotlin.Int, `memberIds`: List<kotlin.Int>)
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_invite_members(
         it, FfiConverterInt.lower(`groupId`),FfiConverterSequenceInt.lower(`memberIds`),_status)
 }
     }
-    
-    
+
+
 
     override fun `isAuthenticated`(): kotlin.Boolean {
             return FfiConverterBoolean.lift(
@@ -3004,21 +3035,21 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `leaveGroup`(`groupId`: kotlin.Int)
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_leave_group(
         it, FfiConverterInt.lower(`groupId`),_status)
 }
     }
-    
-    
 
-    
+
+
+
     @Throws(NexusException::class)override fun `listDevices`(): List<DeviceFfi> {
             return FfiConverterSequenceTypeDeviceFfi.lift(
     callWithPointer {
@@ -3029,9 +3060,9 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `listFeaturedAgents`(`limit`: kotlin.Int): List<AgentInfoFfi> {
             return FfiConverterSequenceTypeAgentInfoFfi.lift(
     callWithPointer {
@@ -3042,9 +3073,9 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `listGroups`(): List<GroupInfoFfi> {
             return FfiConverterSequenceTypeGroupInfoFfi.lift(
     callWithPointer {
@@ -3055,9 +3086,9 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `listMyAgents`(): List<AgentInfoFfi> {
             return FfiConverterSequenceTypeAgentInfoFfi.lift(
     callWithPointer {
@@ -3068,9 +3099,9 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `listPendingRequests`(`beforeTime`: kotlin.Long?, `limit`: kotlin.Int): List<PendingRequestFfi> {
             return FfiConverterSequenceTypePendingRequestFfi.lift(
     callWithPointer {
@@ -3081,9 +3112,9 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `login`(`identityValue`: kotlin.String, `password`: kotlin.String): LoginResult {
             return FfiConverterTypeLoginResult.lift(
     callWithPointer {
@@ -3094,57 +3125,57 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `logout`()
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_logout(
         it, _status)
 }
     }
-    
-    
 
-    
+
+
+
     @Throws(NexusException::class)override fun `logoutAll`()
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_logout_all(
         it, _status)
 }
     }
-    
-    
 
-    
+
+
+
     @Throws(NexusException::class)override fun `markAsRead`(`conversationId`: kotlin.Long, `upToMessageId`: kotlin.Long)
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_mark_as_read(
         it, FfiConverterLong.lower(`conversationId`),FfiConverterLong.lower(`upToMessageId`),_status)
 }
     }
-    
-    
 
-    
+
+
+
     @Throws(NexusException::class)override fun `muteConversation`(`conversationId`: kotlin.Long)
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_mute_conversation(
         it, FfiConverterLong.lower(`conversationId`),_status)
 }
     }
-    
-    
 
-    
+
+
+
     @Throws(NexusException::class)override fun `rebuildSearchIndex`(): kotlin.ULong {
             return FfiConverterULong.lift(
     callWithPointer {
@@ -3155,69 +3186,82 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `recallMessage`(`conversationId`: kotlin.Long, `messageId`: kotlin.Long)
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_recall_message(
         it, FfiConverterLong.lower(`conversationId`),FfiConverterLong.lower(`messageId`),_status)
 }
     }
-    
-    
 
-    
+
+
+
+    @Throws(NexusException::class)override fun `recoverInFlightMessages`(): kotlin.ULong {
+            return FfiConverterULong.lift(
+    callWithPointer {
+    uniffiRustCallWithError(NexusException) { _status ->
+    UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_recover_in_flight_messages(
+        it, _status)
+}
+    }
+    )
+    }
+
+
+
     @Throws(NexusException::class)override fun `registerPushToken`(`token`: kotlin.String, `platform`: kotlin.Int)
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_register_push_token(
         it, FfiConverterString.lower(`token`),FfiConverterInt.lower(`platform`),_status)
 }
     }
-    
-    
 
-    
+
+
+
     @Throws(NexusException::class)override fun `rejectFriendRequest`(`requestId`: kotlin.Long)
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_reject_friend_request(
         it, FfiConverterLong.lower(`requestId`),_status)
 }
     }
-    
-    
 
-    
+
+
+
     @Throws(NexusException::class)override fun `removeDevice`(`deviceId`: kotlin.String)
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_remove_device(
         it, FfiConverterString.lower(`deviceId`),_status)
 }
     }
-    
-    
 
-    
+
+
+
     @Throws(NexusException::class)override fun `removeMember`(`groupId`: kotlin.Int, `targetId`: kotlin.Int)
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_remove_member(
         it, FfiConverterInt.lower(`groupId`),FfiConverterInt.lower(`targetId`),_status)
 }
     }
-    
-    
 
-    
+
+
+
     @Throws(NexusException::class)override fun `requestVerifyCode`(`identityType`: kotlin.Int, `identityValue`: kotlin.String): VerifyCodeResult {
             return FfiConverterTypeVerifyCodeResult.lift(
     callWithPointer {
@@ -3228,9 +3272,9 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `resolveUsername`(`username`: kotlin.String): ContactInfo {
             return FfiConverterTypeContactInfo.lift(
     callWithPointer {
@@ -3241,20 +3285,34 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    override fun `restoreSession`(`accessToken`: kotlin.String, `refreshToken`: kotlin.String, `expiresIn`: kotlin.Int, `userId`: kotlin.Int)
-        = 
+
+
+    @Throws(NexusException::class)override fun `restoreSession`(`accessToken`: kotlin.String, `refreshToken`: kotlin.String, `expiresIn`: kotlin.Int, `userId`: kotlin.Int)
+        =
     callWithPointer {
-    uniffiRustCall() { _status ->
+    uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_restore_session(
         it, FfiConverterString.lower(`accessToken`),FfiConverterString.lower(`refreshToken`),FfiConverterInt.lower(`expiresIn`),FfiConverterInt.lower(`userId`),_status)
 }
     }
-    
-    
 
-    
+
+
+
+    @Throws(NexusException::class)override fun `retryPendingMessages`(`limit`: kotlin.Int): kotlin.Int {
+            return FfiConverterInt.lift(
+    callWithPointer {
+    uniffiRustCallWithError(NexusException) { _status ->
+    UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_retry_pending_messages(
+        it, FfiConverterInt.lower(`limit`),_status)
+}
+    }
+    )
+    }
+
+
+
     @Throws(NexusException::class)override fun `searchMessages`(`query`: kotlin.String, `conversationId`: kotlin.String?, `limit`: kotlin.Int, `offset`: kotlin.Int): List<MessageSearchResultFfi> {
             return FfiConverterSequenceTypeMessageSearchResultFfi.lift(
     callWithPointer {
@@ -3265,9 +3323,9 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `searchUsers`(`query`: kotlin.String): List<ContactInfo> {
             return FfiConverterSequenceTypeContactInfo.lift(
     callWithPointer {
@@ -3278,9 +3336,9 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `searchUsersLocal`(`query`: kotlin.String): List<ContactInfo> {
             return FfiConverterSequenceTypeContactInfo.lift(
     callWithPointer {
@@ -3291,9 +3349,9 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `sendAudioMessage`(`conversationId`: kotlin.Long, `fileId`: kotlin.String, `durationMs`: kotlin.Int): kotlin.Long {
             return FfiConverterLong.lift(
     callWithPointer {
@@ -3304,9 +3362,9 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `sendCardMessage`(`conversationId`: kotlin.Long, `cardJson`: kotlin.String, `fallbackText`: kotlin.String): kotlin.Long {
             return FfiConverterLong.lift(
     callWithPointer {
@@ -3317,9 +3375,9 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `sendFileMessage`(`conversationId`: kotlin.Long, `fileId`: kotlin.String, `name`: kotlin.String, `size`: kotlin.Long): kotlin.Long {
             return FfiConverterLong.lift(
     callWithPointer {
@@ -3330,21 +3388,21 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `sendFriendRequest`(`targetUserId`: kotlin.Int, `message`: kotlin.String)
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_send_friend_request(
         it, FfiConverterInt.lower(`targetUserId`),FfiConverterString.lower(`message`),_status)
 }
     }
-    
-    
 
-    
+
+
+
     @Throws(NexusException::class)override fun `sendImageMessage`(`conversationId`: kotlin.Long, `fileId`: kotlin.String, `width`: kotlin.Int, `height`: kotlin.Int): kotlin.Long {
             return FfiConverterLong.lift(
     callWithPointer {
@@ -3355,9 +3413,9 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `sendMarkdownMessage`(`conversationId`: kotlin.Long, `rawMarkdown`: kotlin.String): kotlin.Long {
             return FfiConverterLong.lift(
     callWithPointer {
@@ -3368,9 +3426,9 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `sendMessage`(`conversationId`: kotlin.Long, `text`: kotlin.String): kotlin.Long {
             return FfiConverterLong.lift(
     callWithPointer {
@@ -3381,9 +3439,9 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `sendReplyMessage`(`conversationId`: kotlin.Long, `text`: kotlin.String, `replyToMessageId`: kotlin.Long): kotlin.Long {
             return FfiConverterLong.lift(
     callWithPointer {
@@ -3394,9 +3452,9 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `sendVideoMessage`(`conversationId`: kotlin.Long, `fileId`: kotlin.String, `width`: kotlin.Int, `height`: kotlin.Int, `durationMs`: kotlin.Int): kotlin.Long {
             return FfiConverterLong.lift(
     callWithPointer {
@@ -3407,55 +3465,55 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `setUsername`(`username`: kotlin.String)
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_set_username(
         it, FfiConverterString.lower(`username`),_status)
 }
     }
-    
-    
 
-    
+
+
+
     @Throws(NexusException::class)override fun `setupPassword`(`password`: kotlin.String)
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_setup_password(
         it, FfiConverterString.lower(`password`),_status)
 }
     }
-    
-    
+
+
 
     override fun `startSync`()
-        = 
+        =
     callWithPointer {
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_start_sync(
         it, _status)
 }
     }
-    
-    
+
+
 
     override fun `stopSync`()
-        = 
+        =
     callWithPointer {
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_stop_sync(
         it, _status)
 }
     }
-    
-    
 
-    
+
+
+
     @Throws(NexusException::class)override fun `submitCardAction`(`conversationId`: kotlin.Long, `messageId`: kotlin.Long, `actionData`: kotlin.String, `verb`: kotlin.String?): kotlin.String {
             return FfiConverterString.lift(
     callWithPointer {
@@ -3466,117 +3524,117 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `unblockUser`(`userId`: kotlin.Int)
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_unblock_user(
         it, FfiConverterInt.lower(`userId`),_status)
 }
     }
-    
-    
 
-    
+
+
+
     @Throws(NexusException::class)override fun `unmuteConversation`(`conversationId`: kotlin.Long)
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_unmute_conversation(
         it, FfiConverterLong.lower(`conversationId`),_status)
 }
     }
-    
-    
 
-    
+
+
+
     @Throws(NexusException::class)override fun `unregisterPushToken`()
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_unregister_push_token(
         it, _status)
 }
     }
-    
-    
 
-    
+
+
+
     @Throws(NexusException::class)override fun `updateContactAlias`(`contactUserId`: kotlin.Int, `alias`: kotlin.String?)
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_update_contact_alias(
         it, FfiConverterInt.lower(`contactUserId`),FfiConverterOptionalString.lower(`alias`),_status)
 }
     }
-    
-    
 
-    
+
+
+
     @Throws(NexusException::class)override fun `updateGroupAvatar`(`groupId`: kotlin.Int, `avatarUrl`: kotlin.String)
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_update_group_avatar(
         it, FfiConverterInt.lower(`groupId`),FfiConverterString.lower(`avatarUrl`),_status)
 }
     }
-    
-    
 
-    
+
+
+
     @Throws(NexusException::class)override fun `updateGroupDescription`(`groupId`: kotlin.Int, `description`: kotlin.String)
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_update_group_description(
         it, FfiConverterInt.lower(`groupId`),FfiConverterString.lower(`description`),_status)
 }
     }
-    
-    
 
-    
+
+
+
     @Throws(NexusException::class)override fun `updateGroupName`(`groupId`: kotlin.Int, `name`: kotlin.String)
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_update_group_name(
         it, FfiConverterInt.lower(`groupId`),FfiConverterString.lower(`name`),_status)
 }
     }
-    
-    
 
-    
+
+
+
     @Throws(NexusException::class)override fun `updateProfile`(`nickname`: kotlin.String?, `signature`: kotlin.String?, `avatarUrl`: kotlin.String?)
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_update_profile(
         it, FfiConverterOptionalString.lower(`nickname`),FfiConverterOptionalString.lower(`signature`),FfiConverterOptionalString.lower(`avatarUrl`),_status)
 }
     }
-    
-    
 
-    
+
+
+
     @Throws(NexusException::class)override fun `uploadChunk`(`sessionId`: kotlin.String, `chunk`: kotlin.ByteArray, `offset`: kotlin.Long)
-        = 
+        =
     callWithPointer {
     uniffiRustCallWithError(NexusException) { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_method_nexusclient_upload_chunk(
         it, FfiConverterString.lower(`sessionId`),FfiConverterByteArray.lower(`chunk`),FfiConverterLong.lower(`offset`),_status)
 }
     }
-    
-    
 
-    
+
+
+
     @Throws(NexusException::class)override fun `uploadFile`(`data`: kotlin.ByteArray, `fileName`: kotlin.String, `contentType`: kotlin.String, `purpose`: kotlin.Int): MediaFileInfoFfi {
             return FfiConverterTypeMediaFileInfoFfi.lift(
     callWithPointer {
@@ -3587,9 +3645,9 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
+
+
     @Throws(NexusException::class)override fun `verifyCode`(`verifyToken`: kotlin.String, `code`: kotlin.String): LoginResult {
             return FfiConverterTypeLoginResult.lift(
     callWithPointer {
@@ -3600,14 +3658,14 @@ open class NexusClient: Disposable, AutoCloseable, NexusClientInterface
     }
     )
     }
-    
 
-    
 
-    
-    
+
+
+
+
     companion object
-    
+
 }
 
 /**
@@ -3641,10 +3699,10 @@ public object FfiConverterTypeNexusClient: FfiConverter<NexusClient, Pointer> {
 
 
 data class AgentCommandFfi (
-    var `command`: kotlin.String, 
+    var `command`: kotlin.String,
     var `description`: kotlin.String
 ) {
-    
+
     companion object
 }
 
@@ -3673,19 +3731,19 @@ public object FfiConverterTypeAgentCommandFfi: FfiConverterRustBuffer<AgentComma
 
 
 data class AgentInfoFfi (
-    var `userId`: kotlin.Int, 
-    var `username`: kotlin.String, 
-    var `nickname`: kotlin.String, 
-    var `avatarUrl`: kotlin.String, 
-    var `signature`: kotlin.String, 
-    var `isSystemAgent`: kotlin.Boolean, 
-    var `miniAppEnabled`: kotlin.Boolean, 
-    var `miniAppUrl`: kotlin.String, 
-    var `miniAppPermissions`: kotlin.Int, 
-    var `commands`: List<AgentCommandFfi>, 
+    var `userId`: kotlin.Int,
+    var `username`: kotlin.String,
+    var `nickname`: kotlin.String,
+    var `avatarUrl`: kotlin.String,
+    var `signature`: kotlin.String,
+    var `isSystemAgent`: kotlin.Boolean,
+    var `miniAppEnabled`: kotlin.Boolean,
+    var `miniAppUrl`: kotlin.String,
+    var `miniAppPermissions`: kotlin.Int,
+    var `commands`: List<AgentCommandFfi>,
     var `createdAt`: kotlin.Long
 ) {
-    
+
     companion object
 }
 
@@ -3741,10 +3799,10 @@ public object FfiConverterTypeAgentInfoFfi: FfiConverterRustBuffer<AgentInfoFfi>
 
 
 data class ClientConfig (
-    var `phoneEnabled`: kotlin.Boolean, 
+    var `phoneEnabled`: kotlin.Boolean,
     var `emailEnabled`: kotlin.Boolean
 ) {
-    
+
     companion object
 }
 
@@ -3773,13 +3831,13 @@ public object FfiConverterTypeClientConfig: FfiConverterRustBuffer<ClientConfig>
 
 
 data class ContactInfo (
-    var `userId`: kotlin.Int, 
-    var `username`: kotlin.String, 
-    var `nickname`: kotlin.String, 
-    var `avatarUrl`: kotlin.String, 
+    var `userId`: kotlin.Int,
+    var `username`: kotlin.String,
+    var `nickname`: kotlin.String,
+    var `avatarUrl`: kotlin.String,
     var `alias`: kotlin.String?
 ) {
-    
+
     companion object
 }
 
@@ -3817,16 +3875,16 @@ public object FfiConverterTypeContactInfo: FfiConverterRustBuffer<ContactInfo> {
 
 
 data class ConversationInfo (
-    var `conversationId`: kotlin.String, 
-    var `conversationType`: kotlin.Int, 
-    var `peerId`: kotlin.Int, 
-    var `lastMessageId`: kotlin.Long, 
-    var `lastMessageTime`: kotlin.Long, 
-    var `lastMessagePreview`: kotlin.String?, 
-    var `isMuted`: kotlin.Boolean, 
+    var `conversationId`: kotlin.String,
+    var `conversationType`: kotlin.Int,
+    var `peerId`: kotlin.Int,
+    var `lastMessageId`: kotlin.Long,
+    var `lastMessageTime`: kotlin.Long,
+    var `lastMessagePreview`: kotlin.String?,
+    var `isMuted`: kotlin.Boolean,
     var `readUpToMessageId`: kotlin.Long
 ) {
-    
+
     companion object
 }
 
@@ -3873,13 +3931,13 @@ public object FfiConverterTypeConversationInfo: FfiConverterRustBuffer<Conversat
 
 
 data class CoreConfig (
-    var `databasePath`: kotlin.String, 
-    var `apiBaseUrl`: kotlin.String, 
-    var `wsUrl`: kotlin.String, 
-    var `deviceId`: kotlin.String, 
+    var `databasePath`: kotlin.String,
+    var `apiBaseUrl`: kotlin.String,
+    var `wsUrl`: kotlin.String,
+    var `deviceId`: kotlin.String,
     var `deviceInfo`: DeviceInfo
 ) {
-    
+
     companion object
 }
 
@@ -3917,17 +3975,17 @@ public object FfiConverterTypeCoreConfig: FfiConverterRustBuffer<CoreConfig> {
 
 
 data class DeviceFfi (
-    var `deviceId`: kotlin.String, 
-    var `deviceType`: kotlin.Int, 
-    var `deviceName`: kotlin.String, 
-    var `deviceModel`: kotlin.String, 
-    var `osVersion`: kotlin.String, 
-    var `appVersion`: kotlin.String, 
-    var `loginAt`: kotlin.Long, 
-    var `lastActiveAt`: kotlin.Long, 
+    var `deviceId`: kotlin.String,
+    var `deviceType`: kotlin.Int,
+    var `deviceName`: kotlin.String,
+    var `deviceModel`: kotlin.String,
+    var `osVersion`: kotlin.String,
+    var `appVersion`: kotlin.String,
+    var `loginAt`: kotlin.Long,
+    var `lastActiveAt`: kotlin.Long,
     var `isCurrent`: kotlin.Boolean
 ) {
-    
+
     companion object
 }
 
@@ -3977,12 +4035,12 @@ public object FfiConverterTypeDeviceFfi: FfiConverterRustBuffer<DeviceFfi> {
 
 
 data class DeviceInfo (
-    var `deviceName`: kotlin.String, 
-    var `deviceModel`: kotlin.String, 
-    var `osVersion`: kotlin.String, 
+    var `deviceName`: kotlin.String,
+    var `deviceModel`: kotlin.String,
+    var `osVersion`: kotlin.String,
     var `appVersion`: kotlin.String
 ) {
-    
+
     companion object
 }
 
@@ -4017,15 +4075,15 @@ public object FfiConverterTypeDeviceInfo: FfiConverterRustBuffer<DeviceInfo> {
 
 
 data class GroupInfoFfi (
-    var `groupId`: kotlin.Int, 
-    var `name`: kotlin.String, 
-    var `avatarUrl`: kotlin.String, 
-    var `description`: kotlin.String, 
-    var `ownerId`: kotlin.Int, 
-    var `memberCount`: kotlin.Int, 
+    var `groupId`: kotlin.Int,
+    var `name`: kotlin.String,
+    var `avatarUrl`: kotlin.String,
+    var `description`: kotlin.String,
+    var `ownerId`: kotlin.Int,
+    var `memberCount`: kotlin.Int,
     var `status`: kotlin.Int
 ) {
-    
+
     companion object
 }
 
@@ -4069,12 +4127,12 @@ public object FfiConverterTypeGroupInfoFfi: FfiConverterRustBuffer<GroupInfoFfi>
 
 
 data class GroupMemberFfi (
-    var `userId`: kotlin.Int, 
-    var `role`: kotlin.Int, 
-    var `joinedAt`: kotlin.Long, 
+    var `userId`: kotlin.Int,
+    var `role`: kotlin.Int,
+    var `joinedAt`: kotlin.Long,
     var `displayName`: kotlin.String
 ) {
-    
+
     companion object
 }
 
@@ -4109,13 +4167,13 @@ public object FfiConverterTypeGroupMemberFfi: FfiConverterRustBuffer<GroupMember
 
 
 data class LoginResult (
-    var `userId`: kotlin.Int, 
-    var `accessToken`: kotlin.String, 
-    var `refreshToken`: kotlin.String, 
-    var `expiresIn`: kotlin.Int, 
+    var `userId`: kotlin.Int,
+    var `accessToken`: kotlin.String,
+    var `refreshToken`: kotlin.String,
+    var `expiresIn`: kotlin.Int,
     var `isNewUser`: kotlin.Boolean
 ) {
-    
+
     companion object
 }
 
@@ -4153,17 +4211,17 @@ public object FfiConverterTypeLoginResult: FfiConverterRustBuffer<LoginResult> {
 
 
 data class MediaFileInfoFfi (
-    var `fileId`: kotlin.String, 
-    var `fileName`: kotlin.String, 
-    var `contentType`: kotlin.String, 
-    var `size`: kotlin.Long, 
-    var `width`: kotlin.Int, 
-    var `height`: kotlin.Int, 
-    var `durationMs`: kotlin.Long, 
-    var `thumbnailFileId`: kotlin.String, 
+    var `fileId`: kotlin.String,
+    var `fileName`: kotlin.String,
+    var `contentType`: kotlin.String,
+    var `size`: kotlin.Long,
+    var `width`: kotlin.Int,
+    var `height`: kotlin.Int,
+    var `durationMs`: kotlin.Long,
+    var `thumbnailFileId`: kotlin.String,
     var `publicUrl`: kotlin.String
 ) {
-    
+
     companion object
 }
 
@@ -4213,16 +4271,16 @@ public object FfiConverterTypeMediaFileInfoFfi: FfiConverterRustBuffer<MediaFile
 
 
 data class MessageInfo (
-    var `conversationId`: kotlin.String, 
-    var `messageId`: kotlin.Long, 
-    var `senderId`: kotlin.Int, 
-    var `content`: MessageContent, 
-    var `replyToMessageId`: kotlin.Long?, 
-    var `edited`: kotlin.Boolean, 
-    var `recalled`: kotlin.Boolean, 
+    var `conversationId`: kotlin.String,
+    var `messageId`: kotlin.Long,
+    var `senderId`: kotlin.Int,
+    var `content`: MessageContent,
+    var `replyToMessageId`: kotlin.Long?,
+    var `edited`: kotlin.Boolean,
+    var `recalled`: kotlin.Boolean,
     var `createdAt`: kotlin.Long
 ) {
-    
+
     companion object
 }
 
@@ -4269,13 +4327,13 @@ public object FfiConverterTypeMessageInfo: FfiConverterRustBuffer<MessageInfo> {
 
 
 data class MessageSearchResultFfi (
-    var `conversationId`: kotlin.String, 
-    var `messageId`: kotlin.Long, 
-    var `senderId`: kotlin.Int, 
-    var `textSnippet`: kotlin.String, 
+    var `conversationId`: kotlin.String,
+    var `messageId`: kotlin.Long,
+    var `senderId`: kotlin.Int,
+    var `textSnippet`: kotlin.String,
     var `createdAt`: kotlin.Long
 ) {
-    
+
     companion object
 }
 
@@ -4313,10 +4371,10 @@ public object FfiConverterTypeMessageSearchResultFfi: FfiConverterRustBuffer<Mes
 
 
 data class MiniAppLaunchDataFfi (
-    var `initData`: kotlin.String, 
+    var `initData`: kotlin.String,
     var `miniAppUrl`: kotlin.String
 ) {
-    
+
     companion object
 }
 
@@ -4345,14 +4403,14 @@ public object FfiConverterTypeMiniAppLaunchDataFfi: FfiConverterRustBuffer<MiniA
 
 
 data class PendingRequestFfi (
-    var `requestId`: kotlin.Long, 
-    var `fromUserId`: kotlin.Int, 
-    var `toUserId`: kotlin.Int, 
-    var `message`: kotlin.String?, 
-    var `status`: kotlin.Int, 
+    var `requestId`: kotlin.Long,
+    var `fromUserId`: kotlin.Int,
+    var `toUserId`: kotlin.Int,
+    var `message`: kotlin.String?,
+    var `status`: kotlin.Int,
     var `createdAt`: kotlin.Long
 ) {
-    
+
     companion object
 }
 
@@ -4393,11 +4451,11 @@ public object FfiConverterTypePendingRequestFfi: FfiConverterRustBuffer<PendingR
 
 
 data class UploadSessionFfi (
-    var `sessionId`: kotlin.String, 
-    var `uploaded`: kotlin.Long, 
+    var `sessionId`: kotlin.String,
+    var `uploaded`: kotlin.Long,
     var `createdAt`: kotlin.Long
 ) {
-    
+
     companion object
 }
 
@@ -4429,16 +4487,16 @@ public object FfiConverterTypeUploadSessionFfi: FfiConverterRustBuffer<UploadSes
 
 
 data class UserProfileFfi (
-    var `userId`: kotlin.Int, 
-    var `username`: kotlin.String, 
-    var `nickname`: kotlin.String, 
-    var `avatarUrl`: kotlin.String, 
-    var `signature`: kotlin.String, 
-    var `phone`: kotlin.String?, 
-    var `email`: kotlin.String?, 
+    var `userId`: kotlin.Int,
+    var `username`: kotlin.String,
+    var `nickname`: kotlin.String,
+    var `avatarUrl`: kotlin.String,
+    var `signature`: kotlin.String,
+    var `phone`: kotlin.String?,
+    var `email`: kotlin.String?,
     var `hasPassword`: kotlin.Boolean
 ) {
-    
+
     companion object
 }
 
@@ -4485,10 +4543,10 @@ public object FfiConverterTypeUserProfileFfi: FfiConverterRustBuffer<UserProfile
 
 
 data class VerifyCodeResult (
-    var `verifyToken`: kotlin.String, 
+    var `verifyToken`: kotlin.String,
     var `expiresIn`: kotlin.Int
 ) {
-    
+
     companion object
 }
 
@@ -4518,7 +4576,7 @@ public object FfiConverterTypeVerifyCodeResult: FfiConverterRustBuffer<VerifyCod
 
 
 enum class ConnectionStatus {
-    
+
     DISCONNECTED,
     CONNECTING,
     CONNECTED,
@@ -4549,58 +4607,58 @@ public object FfiConverterTypeConnectionStatus: FfiConverterRustBuffer<Connectio
 
 
 sealed class MessageContent {
-    
+
     data class Text(
         val `text`: kotlin.String) : MessageContent() {
         companion object
     }
-    
+
     data class Image(
-        val `fileId`: kotlin.String, 
-        val `width`: kotlin.Int, 
+        val `fileId`: kotlin.String,
+        val `width`: kotlin.Int,
         val `height`: kotlin.Int) : MessageContent() {
         companion object
     }
-    
+
     data class Audio(
-        val `fileId`: kotlin.String, 
+        val `fileId`: kotlin.String,
         val `duration`: kotlin.Int) : MessageContent() {
         companion object
     }
-    
+
     data class Video(
-        val `fileId`: kotlin.String, 
-        val `width`: kotlin.Int, 
-        val `height`: kotlin.Int, 
+        val `fileId`: kotlin.String,
+        val `width`: kotlin.Int,
+        val `height`: kotlin.Int,
         val `duration`: kotlin.Int) : MessageContent() {
         companion object
     }
-    
+
     data class File(
-        val `fileId`: kotlin.String, 
-        val `name`: kotlin.String, 
+        val `fileId`: kotlin.String,
+        val `name`: kotlin.String,
         val `size`: kotlin.Long) : MessageContent() {
         companion object
     }
-    
+
     data class Markdown(
         val `text`: kotlin.String) : MessageContent() {
         companion object
     }
-    
+
     data class Card(
         val `json`: kotlin.String) : MessageContent() {
         companion object
     }
-    
-    object Recalled : MessageContent()
-    
-    
-    object Unknown : MessageContent()
-    
-    
 
-    
+    object Recalled : MessageContent()
+
+
+    object Unknown : MessageContent()
+
+
+
+
     companion object
 }
 
@@ -4781,61 +4839,61 @@ public object FfiConverterTypeMessageContent : FfiConverterRustBuffer<MessageCon
 
 
 sealed class NexusException: kotlin.Exception() {
-    
+
     class Auth(
-        
-        val `msg`: kotlin.String, 
-        
+
+        val `msg`: kotlin.String,
+
         val `code`: kotlin.Int
         ) : NexusException() {
         override val message
             get() = "msg=${ `msg` }, code=${ `code` }"
     }
-    
+
     class Network(
-        
-        val `msg`: kotlin.String, 
-        
+
+        val `msg`: kotlin.String,
+
         val `code`: kotlin.Int
         ) : NexusException() {
         override val message
             get() = "msg=${ `msg` }, code=${ `code` }"
     }
-    
+
     class Storage(
-        
-        val `msg`: kotlin.String, 
-        
+
+        val `msg`: kotlin.String,
+
         val `code`: kotlin.Int
         ) : NexusException() {
         override val message
             get() = "msg=${ `msg` }, code=${ `code` }"
     }
-    
+
     class Business(
-        
-        val `msg`: kotlin.String, 
-        
+
+        val `msg`: kotlin.String,
+
         val `code`: kotlin.Int
         ) : NexusException() {
         override val message
             get() = "msg=${ `msg` }, code=${ `code` }"
     }
-    
+
     class Internal(
-        
+
         val `msg`: kotlin.String
         ) : NexusException() {
         override val message
             get() = "msg=${ `msg` }"
     }
-    
+
 
     companion object ErrorHandler : UniffiRustCallStatusErrorHandler<NexusException> {
         override fun lift(error_buf: RustBuffer.ByValue): NexusException = FfiConverterTypeNexusException.lift(error_buf)
     }
 
-    
+
 }
 
 /**
@@ -4843,7 +4901,7 @@ sealed class NexusException: kotlin.Exception() {
  */
 public object FfiConverterTypeNexusException : FfiConverterRustBuffer<NexusException> {
     override fun read(buf: ByteBuffer): NexusException {
-        
+
 
         return when(buf.getInt()) {
             1 -> NexusException.Auth(
@@ -4944,21 +5002,21 @@ public object FfiConverterTypeNexusException : FfiConverterRustBuffer<NexusExcep
 
 
 public interface EventListener {
-    
+
     fun `onConnectionStatusChanged`(`status`: ConnectionStatus)
-    
+
     fun `onForceLogout`(`reason`: kotlin.String)
-    
+
     fun `onColdStartRequired`()
-    
+
     fun `onConversationsUpdated`()
-    
+
     fun `onMessagesUpdated`(`conversationId`: kotlin.String)
-    
+
     fun `onContactsUpdated`()
-    
+
     fun `onTokenRefreshed`(`accessToken`: kotlin.String, `refreshToken`: kotlin.String, `expiresIn`: kotlin.Int)
-    
+
     companion object
 }
 
@@ -5479,13 +5537,22 @@ public object FfiConverterSequenceTypePendingRequestFfi: FfiConverterRustBuffer<
             FfiConverterTypePendingRequestFfi.write(it, buf)
         }
     }
-} fun `setEventListener`(`listener`: EventListener)
-        = 
+} fun `databasePathForUser`(`baseDir`: kotlin.String, `userId`: kotlin.Int): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_func_database_path_for_user(
+        FfiConverterString.lower(`baseDir`),FfiConverterInt.lower(`userId`),_status)
+}
+    )
+    }
+
+ fun `setEventListener`(`listener`: EventListener)
+        =
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_nexus_ffi_fn_func_set_event_listener(
         FfiConverterTypeEventListener.lower(`listener`),_status)
 }
-    
-    
+
+
 
 

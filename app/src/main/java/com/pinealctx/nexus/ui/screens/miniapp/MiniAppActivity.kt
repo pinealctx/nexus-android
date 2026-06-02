@@ -131,7 +131,8 @@ private fun MiniAppScreen(
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
 
     val bridge = remember {
-        MiniAppBridge(
+        var bridgeRef: MiniAppBridge? = null
+        val createdBridge = MiniAppBridge(
             context = context,
             permissions = permissions,
             onClose = onClose,
@@ -168,9 +169,11 @@ private fun MiniAppScreen(
                 }
             },
             onScanQr = if (onScanQr != null) {
-                { onScanQr { result -> bridge.deliverQrResult(result) } }
+                { onScanQr { result -> bridgeRef?.deliverQrResult(result) } }
             } else null
         )
+        bridgeRef = createdBridge
+        createdBridge
     }
 
     // Theme sync: push updated theme when system theme changes

@@ -27,5 +27,5 @@ android {
 
 dependencies {
     implementation(libs.coroutines.android)
-    implementation(libs.jna)
+    implementation("net.java.dev.jna:jna:${libs.versions.jna.get()}@aar")
 }

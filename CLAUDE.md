@@ -22,6 +22,9 @@ task build
 task build-release
 task test
 task lint
+task sync-core-libs    # Build current nexus-core Android .so files into app/src/main/jniLibs
+task run-debug         # Build, install, and launch on local emulator
+task run-debug-fast    # Install and launch existing debug APK
 ```
 
 ## Architecture
@@ -88,6 +91,19 @@ ViewModels inject domain-specific managers instead of a monolithic wrapper:
 ## Rust Integration
 
 The app loads `libnexus_ffi.so` at startup via `System.loadLibrary("nexus_ffi")`. UniFFI generates Kotlin bindings in the `core-bindings` module. `NexusClientProvider` manages the `NexusClient` lifecycle (initialization and shutdown). Domain managers receive `NexusClientProvider` via Hilt and delegate to the underlying `NexusClient`. `EventBridge` implements the callback interface for Rust-to-Kotlin events.
+
+### Core/Android Integration Rules
+
+- `core-bindings/src/main/java/uniffi/nexus_ffi/nexus_ffi.kt` and `app/src/main/jniLibs/**/libnexus_ffi.so` must come from the same `nexus-core` commit. If the FFI interface changes, regenerate Kotlin bindings and rebuild/copy the Android `.so` files before running the app.
+- `app/src/main/jniLibs/**/*.so` is intentionally ignored by git. Local emulator/device runs still require fresh `.so` files; use `task sync-core-libs` from this repo or `task sync-android-libs` from `../nexus-core`.
+- The UniFFI Kotlin binding uses JNA. Android must depend on the JNA AAR variant (`net.java.dev.jna:jna:<version>@aar`) so `libjnidispatch.so` is packaged into the APK. Using the plain jar compiles but crashes on startup with `libjnidispatch.so` missing.
+- Use `task run-debug` for local smoke tests. It reads `local.properties` `sdk.dir`, starts the `nexus_test` AVD when needed, installs the APK, launches `MainActivity`, and fails if logcat reports a fatal startup crash.
+- Native library ABI coverage currently targets `x86_64` for emulator and `arm64-v8a` for physical Android devices. Keep both refreshed when changing `nexus-core`.
+
+Common failure signatures:
+- `undefined symbol: uniffi_nexus_ffi_checksum_*`: Kotlin binding and `libnexus_ffi.so` are out of sync.
+- `Native library ... libjnidispatch.so not found`: JNA is packaged as jar instead of AAR, or native packaging was stripped incorrectly.
+- `adb is not recognized`: use `task run-debug`; do not rely on `adb` being in PATH.
 
 ## Code Standards
 

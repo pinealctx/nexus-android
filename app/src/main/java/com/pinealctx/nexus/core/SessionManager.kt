@@ -15,6 +15,7 @@ class SessionManager @Inject constructor(
         val refreshToken = secureStorage.getRefreshToken() ?: return false
         val expiresIn = secureStorage.getExpiresIn()
         val userId = secureStorage.getUserId()
+        authManager.reopenForUser(userId)
         authManager.restoreSession(accessToken, refreshToken, expiresIn, userId)
         return true
     }

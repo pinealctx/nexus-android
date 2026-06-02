@@ -97,6 +97,13 @@ class LoginViewModel @Inject constructor(
             try {
                 val result = authManager.verifyCode(verifyToken, code)
                 secureStorage.saveTokens(result.accessToken, result.refreshToken, result.expiresIn, result.userId)
+                authManager.reopenForUser(result.userId)
+                authManager.restoreSession(
+                    result.accessToken,
+                    result.refreshToken,
+                    result.expiresIn,
+                    result.userId
+                )
                 syncManager.startSession()
                 _uiState.value = _uiState.value.copy(isLoading = false, isLoggedIn = true)
             } catch (e: Exception) {

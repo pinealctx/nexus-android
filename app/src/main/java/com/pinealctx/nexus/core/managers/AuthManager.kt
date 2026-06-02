@@ -37,6 +37,10 @@ class AuthManager @Inject constructor(
         clientProvider.getOrNull()?.restoreSession(accessToken, refreshToken, expiresIn, userId)
     }
 
+    fun reopenForUser(userId: Int) {
+        clientProvider.reopenForUser(userId)
+    }
+
     fun isAuthenticated(): Boolean = clientProvider.getOrNull()?.isAuthenticated() ?: false
 
     fun logout() { clientProvider.getOrNull()?.logout() }

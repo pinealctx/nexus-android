@@ -6,6 +6,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import uniffi.nexus_ffi.CoreConfig
 import uniffi.nexus_ffi.DeviceInfo
 import uniffi.nexus_ffi.NexusClient
+import uniffi.nexus_ffi.databasePathForUser
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -15,14 +16,20 @@ class NexusClientProvider @Inject constructor(
     private val secureStorage: SecureStorage
 ) {
     private var client: NexusClient? = null
+    private var activeUserId: Int? = null
 
-    fun initialize() {
+    fun initialize(userId: Int? = secureStorage.getUserId().takeIf { it > 0 }) {
         if (client != null) return
 
         System.loadLibrary("nexus_ffi")
 
-        val dbPath = context.getDatabasePath("nexus.db").absolutePath
-        context.getDatabasePath("nexus.db").parentFile?.mkdirs()
+        val dbDir = context.getDatabasePath("nexus.db").parentFile
+        dbDir?.mkdirs()
+        val dbPath = if (userId != null) {
+            databasePathForUser(dbDir?.absolutePath ?: context.filesDir.absolutePath, userId)
+        } else {
+            context.getDatabasePath("nexus-bootstrap.db").absolutePath
+        }
 
         val config = CoreConfig(
             databasePath = dbPath,
@@ -38,11 +45,19 @@ class NexusClientProvider @Inject constructor(
         )
 
         client = NexusClient(config)
+        activeUserId = userId
+    }
+
+    fun reopenForUser(userId: Int) {
+        if (client != null && activeUserId == userId) return
+        shutdown()
+        initialize(userId)
     }
 
     fun shutdown() {
         client?.close()
         client = null
+        activeUserId = null
     }
 
     fun get(): NexusClient =
