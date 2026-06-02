@@ -30,6 +30,7 @@
     <string name="conversations_empty_desc">Search for people or agents to start a conversation.</string>
     <string name="conversations_load_failed">Failed to load conversations</string>
     <string name="conversations_no_preview">No messages yet</string>
+    <string name="conversations_search_placeholder">Search chats, contacts, or agents</string>
     <string name="conversations_title">Nexus</string>
 
     <!-- Contacts -->

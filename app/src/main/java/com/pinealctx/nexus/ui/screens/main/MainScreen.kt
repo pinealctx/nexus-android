@@ -10,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -41,7 +42,10 @@ fun MainScreen(
 
     Scaffold(
         bottomBar = {
-            NavigationBar {
+            NavigationBar(
+                containerColor = MaterialTheme.colorScheme.background,
+                tonalElevation = 0.dp
+            ) {
                 NavigationBarItem(
                     selected = selectedTab == MainTab.CHATS,
                     onClick = { selectedTab = MainTab.CHATS },
@@ -51,7 +55,8 @@ fun MainScreen(
                             contentDescription = null
                         )
                     },
-                    label = { Text(stringResource(R.string.tab_chats)) }
+                    label = { Text(stringResource(R.string.tab_chats)) },
+                    colors = nexusNavigationBarItemColors()
                 )
                 NavigationBarItem(
                     selected = selectedTab == MainTab.CONTACTS,
@@ -62,7 +67,8 @@ fun MainScreen(
                             contentDescription = null
                         )
                     },
-                    label = { Text(stringResource(R.string.tab_contacts)) }
+                    label = { Text(stringResource(R.string.tab_contacts)) },
+                    colors = nexusNavigationBarItemColors()
                 )
                 NavigationBarItem(
                     selected = selectedTab == MainTab.DISCOVER,
@@ -73,7 +79,8 @@ fun MainScreen(
                             contentDescription = null
                         )
                     },
-                    label = { Text(stringResource(R.string.tab_discover)) }
+                    label = { Text(stringResource(R.string.tab_discover)) },
+                    colors = nexusNavigationBarItemColors()
                 )
                 NavigationBarItem(
                     selected = selectedTab == MainTab.ME,
@@ -84,7 +91,8 @@ fun MainScreen(
                             contentDescription = null
                         )
                     },
-                    label = { Text(stringResource(R.string.tab_me)) }
+                    label = { Text(stringResource(R.string.tab_me)) },
+                    colors = nexusNavigationBarItemColors()
                 )
             }
         }
@@ -112,12 +120,21 @@ fun MainScreen(
 }
 
 @Composable
+private fun nexusNavigationBarItemColors() = NavigationBarItemDefaults.colors(
+    selectedIconColor = MaterialTheme.colorScheme.primary,
+    selectedTextColor = MaterialTheme.colorScheme.primary,
+    indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+)
+
+@Composable
 fun ConnectionStatusBar(status: ConnectionStatus) {
     when (status) {
         ConnectionStatus.CONNECTING,
         ConnectionStatus.RECONNECTING -> {
             Surface(
-                color = MaterialTheme.colorScheme.tertiaryContainer,
+                color = Color(0xFFFFF3D6),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -126,7 +143,8 @@ fun ConnectionStatusBar(status: ConnectionStatus) {
                 ) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(12.dp),
-                        strokeWidth = 2.dp
+                        strokeWidth = 2.dp,
+                        color = Color(0xFFB45309)
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
@@ -135,7 +153,8 @@ fun ConnectionStatusBar(status: ConnectionStatus) {
                         } else {
                             stringResource(R.string.status_reconnecting)
                         },
-                        style = MaterialTheme.typography.labelSmall
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFF92400E)
                     )
                 }
             }

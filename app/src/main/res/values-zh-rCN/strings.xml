@@ -30,6 +30,7 @@
     <string name="conversations_empty_desc">搜索用户或智能体，开始第一段对话。</string>
     <string name="conversations_load_failed">会话加载失败</string>
     <string name="conversations_no_preview">暂无消息</string>
+    <string name="conversations_search_placeholder">搜索会话、联系人或智能体</string>
     <string name="conversations_title">Nexus</string>
 
     <!-- Contacts -->
