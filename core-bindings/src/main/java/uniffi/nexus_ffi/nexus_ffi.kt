@@ -3886,9 +3886,9 @@ data class ConversationInfo (
     var `avatarUrl`: kotlin.String?,
     var `lastMessageId`: kotlin.Long,
     var `lastMessageTime`: kotlin.Long,
-    var `lastMessagePreview`: kotlin.String?,
+    var `lastMessageContent`: kotlin.String?,
     var `isMuted`: kotlin.Boolean,
-    var `readUpToMessageId`: kotlin.Long
+    var `lastReadMessageId`: kotlin.Long
 ) {
 
     companion object
@@ -3921,9 +3921,9 @@ public object FfiConverterTypeConversationInfo: FfiConverterRustBuffer<Conversat
             FfiConverterOptionalString.allocationSize(value.`avatarUrl`) +
             FfiConverterLong.allocationSize(value.`lastMessageId`) +
             FfiConverterLong.allocationSize(value.`lastMessageTime`) +
-            FfiConverterOptionalString.allocationSize(value.`lastMessagePreview`) +
+            FfiConverterOptionalString.allocationSize(value.`lastMessageContent`) +
             FfiConverterBoolean.allocationSize(value.`isMuted`) +
-            FfiConverterLong.allocationSize(value.`readUpToMessageId`)
+            FfiConverterLong.allocationSize(value.`lastReadMessageId`)
     )
 
     override fun write(value: ConversationInfo, buf: ByteBuffer) {
@@ -3934,9 +3934,9 @@ public object FfiConverterTypeConversationInfo: FfiConverterRustBuffer<Conversat
             FfiConverterOptionalString.write(value.`avatarUrl`, buf)
             FfiConverterLong.write(value.`lastMessageId`, buf)
             FfiConverterLong.write(value.`lastMessageTime`, buf)
-            FfiConverterOptionalString.write(value.`lastMessagePreview`, buf)
+            FfiConverterOptionalString.write(value.`lastMessageContent`, buf)
             FfiConverterBoolean.write(value.`isMuted`, buf)
-            FfiConverterLong.write(value.`readUpToMessageId`, buf)
+            FfiConverterLong.write(value.`lastReadMessageId`, buf)
     }
 }
 

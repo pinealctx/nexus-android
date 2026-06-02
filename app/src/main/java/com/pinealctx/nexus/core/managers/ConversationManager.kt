@@ -44,7 +44,7 @@ private fun uniffi.nexus_ffi.ConversationInfo.toData() = ConversationData(
     avatarUrl,
     lastMessageId,
     lastMessageTime,
-    lastMessagePreview,
+    lastMessageContent,
     isMuted,
-    readUpToMessageId
+    lastReadMessageId
 )

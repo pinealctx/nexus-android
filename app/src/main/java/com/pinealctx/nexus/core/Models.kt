@@ -31,11 +31,11 @@ data class ConversationData(
     val avatarUrl: String?,
     val lastMessageId: Long,
     val lastMessageTime: Long,
-    val lastMessagePreview: String?,
+    val lastMessageContent: String?,
     val isMuted: Boolean,
-    val readUpToMessageId: Long
+    val lastReadMessageId: Long
 ) {
-    val unreadCount: Long get() = (lastMessageId - readUpToMessageId).coerceAtLeast(0)
+    val unreadCount: Long get() = (lastMessageId - lastReadMessageId).coerceAtLeast(0)
 }
 
 // Messages

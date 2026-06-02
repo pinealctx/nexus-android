@@ -94,7 +94,7 @@ class ChatViewModel @Inject constructor(
             conversation?.lastMessageId ?: 0L,
             messages.maxOfOrNull { it.messageId } ?: 0L
         )
-        if (latestMessageId <= 0L || latestMessageId <= (conversation?.readUpToMessageId ?: 0L)) {
+        if (latestMessageId <= 0L || latestMessageId <= (conversation?.lastReadMessageId ?: 0L)) {
             return
         }
         conversationManager.markAsRead(convId, latestMessageId)

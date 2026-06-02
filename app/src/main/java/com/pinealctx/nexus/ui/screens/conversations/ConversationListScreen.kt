@@ -112,7 +112,7 @@ fun ConversationItem(conversation: ConversationData, onClick: () -> Unit) {
         },
         supportingContent = {
             Text(
-                text = conversation.lastMessagePreview?.takeIf { it.isNotBlank() }
+                text = conversation.lastMessageContent?.takeIf { it.isNotBlank() }
                     ?: stringResource(R.string.conversations_no_preview),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
