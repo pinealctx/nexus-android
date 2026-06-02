@@ -59,6 +59,12 @@ class SecureStorage @Inject constructor(
             .apply()
     }
 
+    fun saveWsUrl(wsUrl: String) {
+        prefs.edit()
+            .putString(KEY_WS_URL, wsUrl)
+            .apply()
+    }
+
     fun getApiBaseUrl(): String? = prefs.getString(KEY_API_BASE_URL, null)
 
     fun getWsUrl(): String? = prefs.getString(KEY_WS_URL, null)

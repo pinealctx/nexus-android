@@ -13,7 +13,8 @@ data class LoginResult(
 
 data class ClientConfigData(
     val phoneEnabled: Boolean,
-    val emailEnabled: Boolean
+    val emailEnabled: Boolean,
+    val wsUrl: String?
 )
 
 data class VerifyCodeData(

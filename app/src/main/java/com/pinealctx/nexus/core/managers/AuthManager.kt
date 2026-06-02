@@ -14,8 +14,12 @@ class AuthManager @Inject constructor(
 ) {
     fun getClientConfig(): ClientConfigData {
         val config = clientProvider.getOrNull()?.getClientConfig()
-            ?: return ClientConfigData(phoneEnabled = false, emailEnabled = false)
-        return ClientConfigData(phoneEnabled = config.phoneEnabled, emailEnabled = config.emailEnabled)
+            ?: return ClientConfigData(phoneEnabled = false, emailEnabled = false, wsUrl = null)
+        return ClientConfigData(
+            phoneEnabled = config.phoneEnabled,
+            emailEnabled = config.emailEnabled,
+            wsUrl = config.wsUrl
+        )
     }
 
     fun requestVerifyCode(identityType: Int, identityValue: String): VerifyCodeData {
@@ -47,6 +51,8 @@ class AuthManager @Inject constructor(
     fun setServerApiBaseUrl(apiBaseUrl: String) {
         clientProvider.setServerApiBaseUrl(apiBaseUrl)
     }
+
+    fun applyDiscoveredWsUrl(wsUrl: String?): Boolean = clientProvider.applyDiscoveredWsUrl(wsUrl)
 
     fun resetServerConfig() {
         clientProvider.resetServerConfig()

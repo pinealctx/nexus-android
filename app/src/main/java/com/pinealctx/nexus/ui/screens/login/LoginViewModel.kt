@@ -63,6 +63,7 @@ class LoginViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(configLoading = true, error = null)
             try {
                 val config = authManager.getClientConfig()
+                authManager.applyDiscoveredWsUrl(config.wsUrl)
                 _uiState.value = _uiState.value.copy(
                     phoneEnabled = config.phoneEnabled,
                     emailEnabled = config.emailEnabled,

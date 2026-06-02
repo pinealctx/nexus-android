@@ -3800,7 +3800,8 @@ public object FfiConverterTypeAgentInfoFfi: FfiConverterRustBuffer<AgentInfoFfi>
 
 data class ClientConfig (
     var `phoneEnabled`: kotlin.Boolean,
-    var `emailEnabled`: kotlin.Boolean
+    var `emailEnabled`: kotlin.Boolean,
+    var `wsUrl`: kotlin.String?
 ) {
 
     companion object
@@ -3814,17 +3815,20 @@ public object FfiConverterTypeClientConfig: FfiConverterRustBuffer<ClientConfig>
         return ClientConfig(
             FfiConverterBoolean.read(buf),
             FfiConverterBoolean.read(buf),
+            FfiConverterOptionalString.read(buf),
         )
     }
 
     override fun allocationSize(value: ClientConfig) = (
             FfiConverterBoolean.allocationSize(value.`phoneEnabled`) +
-            FfiConverterBoolean.allocationSize(value.`emailEnabled`)
+            FfiConverterBoolean.allocationSize(value.`emailEnabled`) +
+            FfiConverterOptionalString.allocationSize(value.`wsUrl`)
     )
 
     override fun write(value: ClientConfig, buf: ByteBuffer) {
             FfiConverterBoolean.write(value.`phoneEnabled`, buf)
             FfiConverterBoolean.write(value.`emailEnabled`, buf)
+            FfiConverterOptionalString.write(value.`wsUrl`, buf)
     }
 }
 

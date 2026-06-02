@@ -1,5 +1,6 @@
 package com.pinealctx.nexus.core
 
+import android.util.Log
 import com.pinealctx.nexus.core.managers.AuthManager
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -17,6 +18,14 @@ class SessionManager @Inject constructor(
         val userId = secureStorage.getUserId()
         authManager.reopenForUser(userId)
         authManager.restoreSession(accessToken, refreshToken, expiresIn, userId)
+        try {
+            val config = authManager.getClientConfig()
+            if (authManager.applyDiscoveredWsUrl(config.wsUrl)) {
+                authManager.restoreSession(accessToken, refreshToken, expiresIn, userId)
+            }
+        } catch (e: Exception) {
+            Log.w("NexusCore", "Failed to refresh client config during session restore", e)
+        }
         return true
     }
 

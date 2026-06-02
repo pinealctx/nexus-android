@@ -2,6 +2,7 @@ package com.pinealctx.nexus.core
 
 import android.content.Context
 import android.os.Build
+import android.util.Log
 import com.pinealctx.nexus.BuildConfig
 import dagger.hilt.android.qualifiers.ApplicationContext
 import uniffi.nexus_ffi.CoreConfig
@@ -48,6 +49,10 @@ class NexusClientProvider @Inject constructor(
             )
         )
 
+        Log.i(
+            "NexusCore",
+            "Initializing core api=${serverConfig.apiBaseUrl} ws=${serverConfig.wsUrl} user=${userId ?: "bootstrap"}"
+        )
         client = NexusClient(config)
         activeUserId = userId
     }
@@ -70,6 +75,15 @@ class NexusClientProvider @Inject constructor(
     fun resetServerConfig() {
         secureStorage.clearServerConfig()
         reopenCurrentUser()
+    }
+
+    @Synchronized
+    fun applyDiscoveredWsUrl(wsUrl: String?): Boolean {
+        val normalizedWsUrl = normalizeWsUrl(wsUrl?.takeIf { it.isNotBlank() } ?: return false)
+        if (normalizedWsUrl == resolveServerConfig().wsUrl) return false
+        secureStorage.saveWsUrl(normalizedWsUrl)
+        reopenCurrentUser()
+        return true
     }
 
     fun getServerConfig(): ServerConfigData = resolveServerConfig()
@@ -140,5 +154,18 @@ class NexusClientProvider @Inject constructor(
             null,
             null
         ).toString()
+    }
+
+    private fun normalizeWsUrl(rawUrl: String): String {
+        val trimmed = rawUrl.trim().trimEnd('/')
+        val uri = URI(trimmed)
+        val scheme = uri.scheme?.lowercase()
+        require(scheme == "ws" || scheme == "wss") {
+            "Gateway address must start with ws:// or wss://"
+        }
+        require(!uri.host.isNullOrBlank()) {
+            "Gateway address must include a host"
+        }
+        return trimmed
     }
 }

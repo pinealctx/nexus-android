@@ -1,10 +1,14 @@
 package com.pinealctx.nexus.core
 
+import android.util.Log
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.StateFlow
 import uniffi.nexus_ffi.ConnectionStatus
 import uniffi.nexus_ffi.EventListener
 import javax.inject.Inject
@@ -35,6 +39,8 @@ class AppEventBus @Inject constructor() : EventListener {
 
     private val _events = MutableSharedFlow<AppEvent>(extraBufferCapacity = 64)
     val events: SharedFlow<AppEvent> = _events.asSharedFlow()
+    private val _connectionStatus = MutableStateFlow(ConnectionStatus.DISCONNECTED)
+    val connectionStatus: StateFlow<ConnectionStatus> = _connectionStatus.asStateFlow()
 
     inline fun <reified T : AppEvent> on(): Flow<T> = events.filterIsInstance()
 
@@ -50,6 +56,8 @@ class AppEventBus @Inject constructor() : EventListener {
     // EventListener callbacks — invoked from Rust tokio thread, must not block.
 
     override fun onConnectionStatusChanged(status: ConnectionStatus) {
+        _connectionStatus.value = status
+        Log.i("NexusEvent", "Connection status: $status")
         val event = when (status) {
             ConnectionStatus.CONNECTED -> AppEvent.Connection.Connected
             ConnectionStatus.CONNECTING -> AppEvent.Connection.Connecting
