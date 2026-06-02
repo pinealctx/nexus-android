@@ -125,6 +125,12 @@
 
     <!-- Login -->
     <string name="login_title">Login</string>
+    <string name="login_subtitle">Quiet, reliable conversations for people and agents.</string>
+    <string name="login_phone_login">Phone</string>
+    <string name="login_email_login">Email</string>
+    <string name="login_phone_desc">Use your phone number to receive a verification code.</string>
+    <string name="login_email_desc">Use your email address to receive a verification code.</string>
+    <string name="login_country_code">Code</string>
     <string name="login_phone">Phone</string>
     <string name="login_email">Email</string>
     <string name="login_loading_config">Loading login config</string>
@@ -134,13 +140,19 @@
     <string name="login_use_phone">Use phone number</string>
     <string name="login_use_email">Use email</string>
     <string name="login_code_title">Enter verification code</string>
+    <string name="login_code_desc">Enter the 6-digit code sent to your account.</string>
     <string name="login_code_label">6-digit code</string>
     <string name="login_code_placeholder">Enter verification code</string>
     <string name="login_resend">Resend (%d)</string>
     <string name="login_resend_seconds">Resend in %d s</string>
+    <string name="login_resend_now">Resend</string>
+    <string name="login_auto_create">A new Nexus account will be created automatically when needed.</string>
     <string name="login_server_address">Server Address</string>
+    <string name="login_server_sheet_desc">This hidden setting overrides the packaged default for this device.</string>
+    <string name="login_api_base_url">API Base URL</string>
     <string name="login_server_address_hint">https://api.example.com</string>
     <string name="login_server_default">Default: %s</string>
+    <string name="login_ws_derived">The WebSocket URL is derived automatically from the API base URL.</string>
     <string name="login_server_reset">Reset</string>
     <string name="login_server_save">Save</string>
 

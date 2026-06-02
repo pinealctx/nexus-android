@@ -45,6 +45,8 @@ class LoginViewModel @Inject constructor(
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
     private var verifyToken: String = ""
+    private var lastIdentityType: Int = 0
+    private var lastIdentityValue: String = ""
 
     init {
         loadServerConfigState()
@@ -114,6 +116,8 @@ class LoginViewModel @Inject constructor(
             try {
                 val result = authManager.requestVerifyCode(identityType, identityValue)
                 verifyToken = result.verifyToken
+                lastIdentityType = identityType
+                lastIdentityValue = identityValue
                 _uiState.value = _uiState.value.copy(
                     step = LoginStep.INPUT_CODE,
                     isLoading = false,
@@ -124,6 +128,28 @@ class LoginViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     error = e.message ?: "Failed to send code"
+                )
+            }
+        }
+    }
+
+    fun resendCode() {
+        val state = _uiState.value
+        if (state.countdown > 0 || lastIdentityType == 0 || lastIdentityValue.isBlank()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            try {
+                val result = authManager.requestVerifyCode(lastIdentityType, lastIdentityValue)
+                verifyToken = result.verifyToken
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    countdown = result.expiresIn.coerceAtMost(60)
+                )
+                startCountdown()
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = e.message ?: "Failed to resend code"
                 )
             }
         }
