@@ -14,7 +14,7 @@ class AuthManager @Inject constructor(
 ) {
     fun getClientConfig(): ClientConfigData {
         val config = clientProvider.getOrNull()?.getClientConfig()
-            ?: return ClientConfigData(phoneEnabled = true, emailEnabled = false)
+            ?: return ClientConfigData(phoneEnabled = false, emailEnabled = false)
         return ClientConfigData(phoneEnabled = config.phoneEnabled, emailEnabled = config.emailEnabled)
     }
 

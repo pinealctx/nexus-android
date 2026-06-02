@@ -18,8 +18,10 @@ enum class LoginStep { INPUT_IDENTITY, INPUT_CODE }
 
 data class LoginUiState(
     val step: LoginStep = LoginStep.INPUT_IDENTITY,
-    val phoneEnabled: Boolean = true,
+    val phoneEnabled: Boolean = false,
     val emailEnabled: Boolean = false,
+    val configLoading: Boolean = true,
+    val configLoaded: Boolean = false,
     val isLoading: Boolean = false,
     val error: String? = null,
     val isLoggedIn: Boolean = false,
@@ -58,13 +60,25 @@ class LoginViewModel @Inject constructor(
 
     private fun loadClientConfig() {
         viewModelScope.launch(Dispatchers.IO) {
+            _uiState.value = _uiState.value.copy(configLoading = true, error = null)
             try {
                 val config = authManager.getClientConfig()
                 _uiState.value = _uiState.value.copy(
                     phoneEnabled = config.phoneEnabled,
-                    emailEnabled = config.emailEnabled
+                    emailEnabled = config.emailEnabled,
+                    useEmail = config.emailEnabled && !config.phoneEnabled,
+                    configLoading = false,
+                    configLoaded = true
                 )
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    phoneEnabled = false,
+                    emailEnabled = false,
+                    configLoading = false,
+                    configLoaded = true,
+                    error = e.message ?: "Failed to load login config"
+                )
+            }
         }
     }
 
@@ -79,6 +93,7 @@ class LoginViewModel @Inject constructor(
     }
 
     fun toggleLoginMethod() {
+        if (!_uiState.value.phoneEnabled || !_uiState.value.emailEnabled) return
         _uiState.value = _uiState.value.copy(
             useEmail = !_uiState.value.useEmail,
             error = null
@@ -86,7 +101,13 @@ class LoginViewModel @Inject constructor(
     }
 
     fun requestCode(identityValue: String) {
-        val identityType = if (_uiState.value.useEmail) 1 else 2
+        val state = _uiState.value
+        val identityType = if (state.useEmail) 1 else 2
+        val methodEnabled = if (state.useEmail) state.emailEnabled else state.phoneEnabled
+        if (!methodEnabled) {
+            _uiState.value = state.copy(error = "Login method is not enabled")
+            return
+        }
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {

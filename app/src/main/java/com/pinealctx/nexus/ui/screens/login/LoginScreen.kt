@@ -68,13 +68,33 @@ fun LoginScreen(
             Text(text = "Nexus", style = MaterialTheme.typography.headlineLarge)
             Spacer(modifier = Modifier.height(48.dp))
 
-            when (uiState.step) {
-                LoginStep.INPUT_IDENTITY -> IdentityInputStep(
+            when {
+                uiState.configLoading -> {
+                    CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 2.dp)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "Loading login config",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                uiState.configLoaded && !uiState.phoneEnabled && !uiState.emailEnabled -> {
+                    Text(
+                        text = "No login method is available",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    TextButton(onClick = { viewModel.showServerConfig() }) {
+                        Text(stringResource(R.string.login_server_address))
+                    }
+                }
+                uiState.step == LoginStep.INPUT_IDENTITY -> IdentityInputStep(
                     uiState = uiState,
                     onRequestCode = { viewModel.requestCode(it) },
                     onToggleMethod = { viewModel.toggleLoginMethod() }
                 )
-                LoginStep.INPUT_CODE -> CodeInputStep(
+                uiState.step == LoginStep.INPUT_CODE -> CodeInputStep(
                     uiState = uiState,
                     onVerify = { viewModel.verifyCode(it) },
                     onBack = { viewModel.goBack() },
@@ -111,8 +131,9 @@ private fun IdentityInputStep(
 ) {
     var identity by remember { mutableStateOf("") }
 
-    val label = if (uiState.useEmail) "Email" else "Phone number"
-    val keyboardType = if (uiState.useEmail) KeyboardType.Email else KeyboardType.Phone
+    val useEmail = uiState.emailEnabled && (uiState.useEmail || !uiState.phoneEnabled)
+    val label = if (useEmail) "Email" else "Phone number"
+    val keyboardType = if (useEmail) KeyboardType.Email else KeyboardType.Phone
 
     OutlinedTextField(
         value = identity,
