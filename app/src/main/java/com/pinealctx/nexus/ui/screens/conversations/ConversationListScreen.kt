@@ -96,7 +96,10 @@ fun ConversationItem(conversation: ConversationData, onClick: () -> Unit) {
                 color = MaterialTheme.colorScheme.secondaryContainer
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = null)
+                    Text(
+                        text = conversation.displayInitial(),
+                        style = MaterialTheme.typography.titleMedium
+                    )
                 }
             }
         },
@@ -167,11 +170,16 @@ private fun EmptyConversationState(
 }
 
 private fun ConversationData.displayTitle(): String {
+    displayName?.takeIf { it.isNotBlank() }?.let { return it }
     return when {
         peerId > 0 -> "User #$peerId"
         conversationType > 1 -> "Group #$conversationId"
         else -> "#${conversationId.takeLast(6)}"
     }
+}
+
+private fun ConversationData.displayInitial(): String {
+    return displayTitle().firstOrNull()?.uppercase() ?: "#"
 }
 
 private fun Long.formatConversationTime(): String {

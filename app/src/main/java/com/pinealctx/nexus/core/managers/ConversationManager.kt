@@ -37,5 +37,14 @@ class ConversationManager @Inject constructor(
 }
 
 private fun uniffi.nexus_ffi.ConversationInfo.toData() = ConversationData(
-    conversationId, conversationType, peerId, lastMessageId, lastMessageTime, lastMessagePreview, isMuted, readUpToMessageId
+    conversationId,
+    conversationType,
+    peerId,
+    displayName,
+    avatarUrl,
+    lastMessageId,
+    lastMessageTime,
+    lastMessagePreview,
+    isMuted,
+    readUpToMessageId
 )

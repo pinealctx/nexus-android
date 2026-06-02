@@ -27,6 +27,8 @@ data class ConversationData(
     val conversationId: String,
     val conversationType: Int,
     val peerId: Int,
+    val displayName: String?,
+    val avatarUrl: String?,
     val lastMessageId: Long,
     val lastMessageTime: Long,
     val lastMessagePreview: String?,

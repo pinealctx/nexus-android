@@ -3882,6 +3882,8 @@ data class ConversationInfo (
     var `conversationId`: kotlin.String,
     var `conversationType`: kotlin.Int,
     var `peerId`: kotlin.Int,
+    var `displayName`: kotlin.String?,
+    var `avatarUrl`: kotlin.String?,
     var `lastMessageId`: kotlin.Long,
     var `lastMessageTime`: kotlin.Long,
     var `lastMessagePreview`: kotlin.String?,
@@ -3901,6 +3903,8 @@ public object FfiConverterTypeConversationInfo: FfiConverterRustBuffer<Conversat
             FfiConverterString.read(buf),
             FfiConverterInt.read(buf),
             FfiConverterInt.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
             FfiConverterLong.read(buf),
             FfiConverterLong.read(buf),
             FfiConverterOptionalString.read(buf),
@@ -3913,6 +3917,8 @@ public object FfiConverterTypeConversationInfo: FfiConverterRustBuffer<Conversat
             FfiConverterString.allocationSize(value.`conversationId`) +
             FfiConverterInt.allocationSize(value.`conversationType`) +
             FfiConverterInt.allocationSize(value.`peerId`) +
+            FfiConverterOptionalString.allocationSize(value.`displayName`) +
+            FfiConverterOptionalString.allocationSize(value.`avatarUrl`) +
             FfiConverterLong.allocationSize(value.`lastMessageId`) +
             FfiConverterLong.allocationSize(value.`lastMessageTime`) +
             FfiConverterOptionalString.allocationSize(value.`lastMessagePreview`) +
@@ -3924,6 +3930,8 @@ public object FfiConverterTypeConversationInfo: FfiConverterRustBuffer<Conversat
             FfiConverterString.write(value.`conversationId`, buf)
             FfiConverterInt.write(value.`conversationType`, buf)
             FfiConverterInt.write(value.`peerId`, buf)
+            FfiConverterOptionalString.write(value.`displayName`, buf)
+            FfiConverterOptionalString.write(value.`avatarUrl`, buf)
             FfiConverterLong.write(value.`lastMessageId`, buf)
             FfiConverterLong.write(value.`lastMessageTime`, buf)
             FfiConverterOptionalString.write(value.`lastMessagePreview`, buf)

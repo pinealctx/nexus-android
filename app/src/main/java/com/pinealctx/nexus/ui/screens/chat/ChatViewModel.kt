@@ -7,6 +7,7 @@ import com.pinealctx.nexus.core.AppEventBus
 import com.pinealctx.nexus.core.MessageData
 import com.pinealctx.nexus.core.MessageSearchResultData
 import com.pinealctx.nexus.core.SyncManager
+import com.pinealctx.nexus.core.managers.ConversationManager
 import com.pinealctx.nexus.core.managers.MediaManager
 import com.pinealctx.nexus.core.managers.MessageManager
 import com.pinealctx.nexus.core.managers.SearchManager
@@ -32,6 +33,7 @@ data class ChatUiState(
 
 @HiltViewModel
 class ChatViewModel @Inject constructor(
+    private val conversationManager: ConversationManager,
     private val messageManager: MessageManager,
     private val mediaManager: MediaManager,
     private val searchManager: SearchManager,
@@ -75,11 +77,27 @@ class ChatViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true)
             try {
                 val messages = messageManager.getMessages(conversationId)
+                markCurrentConversationRead(messages)
                 _uiState.value = ChatUiState(messages = messages)
             } catch (e: Exception) {
                 _uiState.value = ChatUiState(error = e.message)
             }
         }
+    }
+
+    private fun markCurrentConversationRead(messages: List<MessageData>) {
+        val convId = conversationId.toLongOrNull() ?: return
+        val conversation = conversationManager
+            .getConversations()
+            .firstOrNull { it.conversationId == conversationId }
+        val latestMessageId = maxOf(
+            conversation?.lastMessageId ?: 0L,
+            messages.maxOfOrNull { it.messageId } ?: 0L
+        )
+        if (latestMessageId <= 0L || latestMessageId <= (conversation?.readUpToMessageId ?: 0L)) {
+            return
+        }
+        conversationManager.markAsRead(convId, latestMessageId)
     }
 
     fun sendMessage(text: String) {

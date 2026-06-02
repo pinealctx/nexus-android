@@ -39,6 +39,12 @@ class ConversationListViewModel @Inject constructor(
         appEventBus.conversationsUpdated()
             .onEach { loadConversations() }
             .launchIn(viewModelScope)
+        appEventBus.messagesUpdated()
+            .onEach { loadConversations() }
+            .launchIn(viewModelScope)
+        appEventBus.contactsUpdated()
+            .onEach { loadConversations() }
+            .launchIn(viewModelScope)
     }
 
     private fun loadConversations() {
