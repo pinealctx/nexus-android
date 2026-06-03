@@ -1,13 +1,15 @@
 package com.pinealctx.nexus.ui.navigation
 
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
 import android.content.Intent
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.pinealctx.nexus.core.SecureStorage
 import com.pinealctx.nexus.ui.screens.chat.ChatScreen
 import com.pinealctx.nexus.ui.screens.friends.FriendRequestsScreen
 import com.pinealctx.nexus.ui.screens.groups.GroupChatsScreen
@@ -44,7 +46,15 @@ object Routes {
 
 @Composable
 fun NexusNavGraph(navController: NavHostController) {
-    val startDestination = Routes.LOGIN
+    val context = LocalContext.current
+    val startDestination = remember(context) {
+        val secureStorage = SecureStorage(context)
+        if (secureStorage.hasTokens() && secureStorage.getUserId() > 0) {
+            Routes.MAIN
+        } else {
+            Routes.LOGIN
+        }
+    }
 
     NavHost(
         navController = navController,
@@ -61,7 +71,6 @@ fun NexusNavGraph(navController: NavHostController) {
         }
 
         composable(Routes.MAIN) {
-            val context = LocalContext.current
             MainScreen(
                 onConversationClick = { conversationId ->
                     navController.navigate(Routes.chatRoute(conversationId))

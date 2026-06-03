@@ -55,7 +55,7 @@ class LoginViewModel @Inject constructor(
     }
 
     private fun checkExistingSession() {
-        if (authManager.isAuthenticated()) {
+        if (secureStorage.hasTokens() && secureStorage.getUserId() > 0) {
             _uiState.value = _uiState.value.copy(isLoggedIn = true)
         }
     }

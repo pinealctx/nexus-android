@@ -87,6 +87,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 & $adb logcat -c
+& $adb shell am force-stop "com.pinealctx.nexus"
 & $adb shell am start -n "com.pinealctx.nexus/.MainActivity"
 if ($LASTEXITCODE -ne 0) {
     throw "MainActivity launch failed"

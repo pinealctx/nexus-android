@@ -95,8 +95,13 @@ class NexusClientProvider @Inject constructor(
         activeUserId = null
     }
 
-    fun get(): NexusClient =
-        client ?: throw IllegalStateException("Core not initialized")
+    @Synchronized
+    fun get(): NexusClient {
+        if (client == null) {
+            initialize()
+        }
+        return client ?: throw IllegalStateException("Core not initialized")
+    }
 
     fun getOrNull(): NexusClient? = client
 

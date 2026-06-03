@@ -13,8 +13,7 @@ class AuthManager @Inject constructor(
     private val clientProvider: NexusClientProvider
 ) {
     fun getClientConfig(): ClientConfigData {
-        val config = clientProvider.getOrNull()?.getClientConfig()
-            ?: return ClientConfigData(phoneEnabled = false, emailEnabled = false, wsUrl = null)
+        val config = clientProvider.get().getClientConfig()
         return ClientConfigData(
             phoneEnabled = config.phoneEnabled,
             emailEnabled = config.emailEnabled,

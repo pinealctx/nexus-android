@@ -28,12 +28,6 @@ object AppModule {
         @ApplicationContext context: Context,
         secureStorage: SecureStorage
     ): NexusClientProvider {
-        val provider = NexusClientProvider(context, secureStorage)
-        try {
-            provider.initialize()
-        } catch (e: Exception) {
-            android.util.Log.e("NexusApp", "Failed to initialize core", e)
-        }
-        return provider
+        return NexusClientProvider(context, secureStorage)
     }
 }
