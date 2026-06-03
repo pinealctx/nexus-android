@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -31,13 +32,14 @@ enum class MainTab {
 fun MainScreen(
     onConversationClick: (String) -> Unit,
     onFriendRequestsClick: () -> Unit = {},
+    onGroupChatsClick: () -> Unit = {},
     onGroupClick: (Int) -> Unit = {},
     onSearchClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     onAgentMiniApp: ((Int) -> Unit)? = null,
     connectionViewModel: ConnectionViewModel = hiltViewModel()
 ) {
-    var selectedTab by remember { mutableStateOf(MainTab.CHATS) }
+    var selectedTab by rememberSaveable { mutableStateOf(MainTab.CHATS) }
     val connectionStatus by connectionViewModel.connectionStatus.collectAsState()
 
     Scaffold(
@@ -107,6 +109,7 @@ fun MainScreen(
                     )
                     MainTab.CONTACTS -> ContactsScreen(
                         onFriendRequestsClick = onFriendRequestsClick,
+                        onGroupChatsClick = onGroupChatsClick,
                         onSearchClick = onSearchClick,
                         onGroupClick = onGroupClick
                     )

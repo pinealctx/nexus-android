@@ -83,6 +83,10 @@
     <string name="group_role_owner">群主</string>
     <string name="group_role_admin">管理员</string>
     <string name="group_role_member">成员</string>
+    <string name="group_chats_create">创建群聊</string>
+    <string name="group_chats_search_placeholder">搜索群聊</string>
+    <string name="group_chats_no_match">没有匹配的群聊</string>
+    <string name="group_chats_no_match_desc">换一个群名或描述试试。</string>
 
     <!-- Settings -->
     <string name="settings_title">设置</string>

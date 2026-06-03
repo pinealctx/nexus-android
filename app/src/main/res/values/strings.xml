@@ -83,6 +83,10 @@
     <string name="group_role_owner">Owner</string>
     <string name="group_role_admin">Admin</string>
     <string name="group_role_member">Member</string>
+    <string name="group_chats_create">Create group</string>
+    <string name="group_chats_search_placeholder">Search group chats</string>
+    <string name="group_chats_no_match">No matching group chats</string>
+    <string name="group_chats_no_match_desc">Try another group name or description.</string>
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>

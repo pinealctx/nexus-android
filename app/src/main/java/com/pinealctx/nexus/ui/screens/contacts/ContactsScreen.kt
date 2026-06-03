@@ -63,6 +63,7 @@ private enum class ContactFilter {
 @Composable
 fun ContactsScreen(
     onFriendRequestsClick: () -> Unit = {},
+    onGroupChatsClick: () -> Unit = {},
     onSearchClick: () -> Unit = {},
     onGroupClick: (Int) -> Unit = {},
     viewModel: ContactsViewModel = hiltViewModel()
@@ -124,6 +125,7 @@ fun ContactsScreen(
                     filter = filter,
                     onFilterChange = { filter = it },
                     onFriendRequestsClick = onFriendRequestsClick,
+                    onGroupChatsClick = onGroupChatsClick,
                     onSearchClick = onSearchClick,
                     onGroupClick = onGroupClick,
                     onRefresh = { viewModel.refresh() }
@@ -141,6 +143,7 @@ private fun ContactDirectory(
     filter: ContactFilter,
     onFilterChange: (ContactFilter) -> Unit,
     onFriendRequestsClick: () -> Unit,
+    onGroupChatsClick: () -> Unit,
     onSearchClick: () -> Unit,
     onGroupClick: (Int) -> Unit,
     onRefresh: () -> Unit
@@ -176,7 +179,7 @@ private fun ContactDirectory(
                 icon = {
                     Icon(Icons.Filled.Group, contentDescription = null, tint = Color.White)
                 },
-                onClick = { onFilterChange(ContactFilter.Groups) }
+                onClick = onGroupChatsClick
             )
         }
 

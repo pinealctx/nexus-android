@@ -10,6 +10,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.pinealctx.nexus.ui.screens.chat.ChatScreen
 import com.pinealctx.nexus.ui.screens.friends.FriendRequestsScreen
+import com.pinealctx.nexus.ui.screens.groups.GroupChatsScreen
 import com.pinealctx.nexus.ui.screens.groups.GroupDetailScreen
 import com.pinealctx.nexus.ui.screens.login.LoginScreen
 import com.pinealctx.nexus.ui.screens.main.MainScreen
@@ -21,6 +22,7 @@ object Routes {
     const val MAIN = "main"
     const val CHAT = "chat/{conversationId}"
     const val FRIEND_REQUESTS = "friend_requests"
+    const val GROUP_CHATS = "group_chats"
     const val GROUP_DETAIL = "group_detail/{groupId}"
     const val CREATE_GROUP = "create_group"
     const val SEARCH = "search"
@@ -63,6 +65,9 @@ fun NexusNavGraph(navController: NavHostController) {
                 onFriendRequestsClick = {
                     navController.navigate(Routes.FRIEND_REQUESTS)
                 },
+                onGroupChatsClick = {
+                    navController.navigate(Routes.GROUP_CHATS)
+                },
                 onGroupClick = { groupId ->
                     navController.navigate(Routes.groupDetailRoute(groupId))
                 },
@@ -94,6 +99,18 @@ fun NexusNavGraph(navController: NavHostController) {
         composable(Routes.FRIEND_REQUESTS) {
             FriendRequestsScreen(
                 onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.GROUP_CHATS) {
+            GroupChatsScreen(
+                onBack = { navController.popBackStack() },
+                onGroupClick = { groupId ->
+                    navController.navigate(Routes.groupDetailRoute(groupId))
+                },
+                onCreateGroupClick = {
+                    navController.navigate(Routes.CREATE_GROUP)
+                }
             )
         }
 
