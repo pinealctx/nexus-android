@@ -24,6 +24,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.pinealctx.nexus.R
 import com.pinealctx.nexus.core.ContactData
 import com.pinealctx.nexus.core.MessageSearchResultData
+import com.pinealctx.nexus.ui.components.NexusAvatar
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -31,13 +32,28 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
+    initialTab: SearchTab = SearchTab.MESSAGES,
     onBack: () -> Unit,
     onNavigateToChat: (String, Long) -> Unit = { _, _ -> },
     viewModel: SearchViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val friendRequestSentMessage = stringResource(R.string.search_friend_request_sent)
+
+    LaunchedEffect(initialTab) {
+        viewModel.switchTab(initialTab)
+    }
+
+    LaunchedEffect(uiState.friendRequestSent) {
+        if (uiState.friendRequestSent) {
+            snackbarHostState.showSnackbar(friendRequestSentMessage)
+            viewModel.consumeFriendRequestSent()
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.search_title)) },
@@ -252,7 +268,7 @@ private fun UserSearchResults(
     }
 
     LazyColumn(modifier = Modifier.fillMaxSize()) {
-        items(results) { user ->
+        items(results, key = { it.userId }) { user ->
             SearchResultItem(
                 user = user,
                 onAddFriend = { onAddFriend(user.userId) }
@@ -271,20 +287,12 @@ private fun SearchResultItem(
         headlineContent = { Text(user.nickname.ifEmpty { user.username }) },
         supportingContent = { Text("@${user.username}") },
         leadingContent = {
-            Surface(
-                modifier = Modifier.size(40.dp),
-                shape = MaterialTheme.shapes.small,
-                color = MaterialTheme.colorScheme.secondaryContainer
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        text = (user.nickname.firstOrNull()
-                            ?: user.username.firstOrNull()
-                            ?: '?').toString(),
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                }
-            }
+            NexusAvatar(
+                id = user.userId,
+                name = user.nickname.ifEmpty { user.username },
+                avatarUrl = user.avatarUrl,
+                size = 40.dp
+            )
         },
         trailingContent = {
             IconButton(onClick = onAddFriend) {

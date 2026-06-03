@@ -41,8 +41,10 @@
     <string name="contacts_groups_empty_desc">Groups you join or create will appear here.</string>
     <string name="contacts_load_failed">Failed to load contacts</string>
     <string name="contacts_search">Search users</string>
-    <string name="contacts_search_placeholder">Search contacts or groups</string>
+    <string name="contacts_search_placeholder">Search contacts</string>
     <string name="contacts_friend_requests">Friend requests</string>
+    <string name="contacts_add_friend">Add Friend</string>
+    <string name="contacts_add_friend_desc">Search users and send a friend request</string>
     <string name="contacts_new_friends">New Friends</string>
     <string name="contacts_new_friends_desc">Review pending friend requests</string>
     <string name="contacts_group_chats">Group Chats</string>
@@ -66,6 +68,7 @@
     <string name="search_hint">Enter a username or nickname to search</string>
     <string name="search_hint_messages">Enter text to search messages</string>
     <string name="search_add_friend">Add friend</string>
+    <string name="search_friend_request_sent">Friend request sent</string>
     <string name="search_tab_messages">Messages</string>
     <string name="search_tab_users">Users</string>
     <string name="search_failed">Search failed</string>

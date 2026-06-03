@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
@@ -26,7 +27,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -55,6 +55,7 @@ fun ContactsScreen(
     onFriendRequestsClick: () -> Unit = {},
     onGroupChatsClick: () -> Unit = {},
     onSearchClick: () -> Unit = {},
+    onAddFriendClick: () -> Unit = {},
     viewModel: ContactsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -68,14 +69,6 @@ fun ContactsScreen(
                         text = stringResource(R.string.contacts_title),
                         fontWeight = FontWeight.SemiBold
                     )
-                },
-                actions = {
-                    IconButton(onClick = onSearchClick) {
-                        Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.contacts_search))
-                    }
-                    IconButton(onClick = onFriendRequestsClick) {
-                        Icon(Icons.Filled.PersonAdd, contentDescription = stringResource(R.string.contacts_friend_requests))
-                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background
@@ -113,6 +106,7 @@ fun ContactsScreen(
                     onFriendRequestsClick = onFriendRequestsClick,
                     onGroupChatsClick = onGroupChatsClick,
                     onSearchClick = onSearchClick,
+                    onAddFriendClick = onAddFriendClick,
                     onRefresh = { viewModel.refresh() }
                 )
             }
@@ -128,6 +122,7 @@ private fun ContactDirectory(
     onFriendRequestsClick: () -> Unit,
     onGroupChatsClick: () -> Unit,
     onSearchClick: () -> Unit,
+    onAddFriendClick: () -> Unit,
     onRefresh: () -> Unit
 ) {
     LazyColumn(
@@ -139,11 +134,27 @@ private fun ContactDirectory(
 
         item {
             DirectoryActionRow(
-                title = stringResource(R.string.contacts_new_friends),
-                subtitle = stringResource(R.string.contacts_new_friends_desc),
+                title = stringResource(R.string.contacts_add_friend),
+                subtitle = stringResource(R.string.contacts_add_friend_desc),
                 color = MaterialTheme.colorScheme.primary,
                 icon = {
                     Icon(Icons.Filled.PersonAdd, contentDescription = null, tint = Color.White)
+                },
+                onClick = onAddFriendClick
+            )
+            HorizontalDivider(
+                modifier = Modifier.padding(start = 76.dp),
+                color = MaterialTheme.colorScheme.outlineVariant
+            )
+        }
+
+        item {
+            DirectoryActionRow(
+                title = stringResource(R.string.contacts_new_friends),
+                subtitle = stringResource(R.string.contacts_new_friends_desc),
+                color = Color(0xFF8B5CF6),
+                icon = {
+                    Icon(Icons.Filled.Notifications, contentDescription = null, tint = Color.White)
                 },
                 onClick = onFriendRequestsClick
             )

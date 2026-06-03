@@ -15,6 +15,7 @@ import com.pinealctx.nexus.ui.screens.groups.GroupDetailScreen
 import com.pinealctx.nexus.ui.screens.login.LoginScreen
 import com.pinealctx.nexus.ui.screens.main.MainScreen
 import com.pinealctx.nexus.ui.screens.search.SearchScreen
+import com.pinealctx.nexus.ui.screens.search.SearchTab
 import com.pinealctx.nexus.ui.screens.settings.SettingsScreen
 
 object Routes {
@@ -25,7 +26,9 @@ object Routes {
     const val GROUP_CHATS = "group_chats"
     const val GROUP_DETAIL = "group_detail/{groupId}"
     const val CREATE_GROUP = "create_group"
-    const val SEARCH = "search"
+    const val SEARCH = "search?tab={tab}"
+    const val SEARCH_TAB_MESSAGES = "messages"
+    const val SEARCH_TAB_USERS = "users"
     const val SETTINGS = "settings"
     const val EDIT_PROFILE = "edit_profile"
     const val DEVICES = "devices"
@@ -36,6 +39,7 @@ object Routes {
 
     fun chatRoute(conversationId: String) = "chat/$conversationId"
     fun groupDetailRoute(groupId: Int) = "group_detail/$groupId"
+    fun searchRoute(tab: String = SEARCH_TAB_MESSAGES) = "search?tab=$tab"
 }
 
 @Composable
@@ -69,7 +73,10 @@ fun NexusNavGraph(navController: NavHostController) {
                     navController.navigate(Routes.GROUP_CHATS)
                 },
                 onSearchClick = {
-                    navController.navigate(Routes.SEARCH)
+                    navController.navigate(Routes.searchRoute())
+                },
+                onAddFriendClick = {
+                    navController.navigate(Routes.searchRoute(Routes.SEARCH_TAB_USERS))
                 },
                 onSettingsClick = {
                     navController.navigate(Routes.SETTINGS)
@@ -120,8 +127,21 @@ fun NexusNavGraph(navController: NavHostController) {
             )
         }
 
-        composable(Routes.SEARCH) {
+        composable(
+            route = Routes.SEARCH,
+            arguments = listOf(
+                navArgument("tab") {
+                    type = NavType.StringType
+                    defaultValue = Routes.SEARCH_TAB_MESSAGES
+                }
+            )
+        ) { backStackEntry ->
+            val initialTab = when (backStackEntry.arguments?.getString("tab")) {
+                Routes.SEARCH_TAB_USERS -> SearchTab.USERS
+                else -> SearchTab.MESSAGES
+            }
             SearchScreen(
+                initialTab = initialTab,
                 onBack = { navController.popBackStack() },
                 onNavigateToChat = { conversationId, _ ->
                     navController.navigate("chat/$conversationId")

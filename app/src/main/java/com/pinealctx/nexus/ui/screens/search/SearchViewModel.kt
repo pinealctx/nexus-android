@@ -61,6 +61,8 @@ class SearchViewModel @Inject constructor(
     }
 
     fun switchTab(tab: SearchTab) {
+        if (_uiState.value.activeTab == tab) return
+
         _uiState.value = _uiState.value.copy(activeTab = tab)
         val query = _uiState.value.query
         if (query.isNotBlank()) {
@@ -126,5 +128,9 @@ class SearchViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(error = e.message)
             }
         }
+    }
+
+    fun consumeFriendRequestSent() {
+        _uiState.value = _uiState.value.copy(friendRequestSent = false)
     }
 }
