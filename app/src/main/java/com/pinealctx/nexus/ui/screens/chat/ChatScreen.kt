@@ -32,6 +32,7 @@ import com.pinealctx.nexus.core.MessageData
 import com.pinealctx.nexus.core.MessageSearchResultData
 import com.pinealctx.nexus.ui.components.EmojiPicker
 import com.pinealctx.nexus.ui.components.ImagePreviewDialog
+import kotlinx.coroutines.flow.distinctUntilChanged
 import uniffi.nexus_ffi.MessageContent
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -50,6 +51,22 @@ fun ChatScreen(
     var searchResults by remember { mutableStateOf<List<MessageSearchResultData>>(emptyList()) }
     var previewImageId by remember { mutableStateOf<String?>(null) }
     val context = androidx.compose.ui.platform.LocalContext.current
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(listState) {
+        snapshotFlow {
+            val layoutInfo = listState.layoutInfo
+            val lastVisibleIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            val totalItems = layoutInfo.totalItemsCount
+            totalItems > 0 && lastVisibleIndex >= totalItems - 3
+        }
+            .distinctUntilChanged()
+            .collect { shouldLoadMore ->
+                if (shouldLoadMore) {
+                    viewModel.loadMore()
+                }
+            }
+    }
 
     if (previewImageId != null) {
         ImagePreviewDialog(
@@ -189,9 +206,9 @@ fun ChatScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 reverseLayout = true,
-                state = rememberLazyListState()
+                state = listState
             ) {
-                items(uiState.messages.reversed(), key = { it.messageId }) { message ->
+                items(uiState.messages, key = { it.messageId }) { message ->
                     MessageBubble(
                         message = message,
                         onImageClick = { fileId -> previewImageId = fileId }

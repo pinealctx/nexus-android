@@ -115,12 +115,12 @@ class ChatViewModel @Inject constructor(
     }
 
     fun loadMore() {
-        val oldest = _uiState.value.messages.firstOrNull() ?: return
+        val oldest = _uiState.value.messages.lastOrNull() ?: return
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val older = messageManager.getMessages(conversationId, beforeId = oldest.messageId)
                 _uiState.value = _uiState.value.copy(
-                    messages = older + _uiState.value.messages
+                    messages = _uiState.value.messages + older
                 )
             } catch (_: Exception) {}
         }
