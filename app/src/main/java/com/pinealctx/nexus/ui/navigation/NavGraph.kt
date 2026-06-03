@@ -68,9 +68,6 @@ fun NexusNavGraph(navController: NavHostController) {
                 onGroupChatsClick = {
                     navController.navigate(Routes.GROUP_CHATS)
                 },
-                onGroupClick = { groupId ->
-                    navController.navigate(Routes.groupDetailRoute(groupId))
-                },
                 onSearchClick = {
                     navController.navigate(Routes.SEARCH)
                 },

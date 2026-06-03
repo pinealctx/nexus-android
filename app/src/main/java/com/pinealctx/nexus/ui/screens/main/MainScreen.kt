@@ -33,7 +33,6 @@ fun MainScreen(
     onConversationClick: (String) -> Unit,
     onFriendRequestsClick: () -> Unit = {},
     onGroupChatsClick: () -> Unit = {},
-    onGroupClick: (Int) -> Unit = {},
     onSearchClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     onAgentMiniApp: ((Int) -> Unit)? = null,
@@ -110,8 +109,7 @@ fun MainScreen(
                     MainTab.CONTACTS -> ContactsScreen(
                         onFriendRequestsClick = onFriendRequestsClick,
                         onGroupChatsClick = onGroupChatsClick,
-                        onSearchClick = onSearchClick,
-                        onGroupClick = onGroupClick
+                        onSearchClick = onSearchClick
                     )
                     MainTab.DISCOVER -> com.pinealctx.nexus.ui.screens.agents.AgentsScreen(
                         onOpenMiniApp = { agentUserId -> onAgentMiniApp?.invoke(agentUserId) }

@@ -48,11 +48,7 @@
     <string name="contacts_group_chats">Group Chats</string>
     <string name="contacts_group_count">%d groups</string>
     <string name="contacts_group_chat">Group chat</string>
-    <string name="contacts_filter_all">All %d</string>
-    <string name="contacts_filter_contacts">Contacts %d</string>
-    <string name="contacts_filter_groups">Groups %d</string>
     <string name="contacts_section_contacts">Contacts</string>
-    <string name="contacts_section_groups">Groups</string>
 
     <!-- Friend Requests -->
     <string name="friend_requests_title">Friend Requests</string>

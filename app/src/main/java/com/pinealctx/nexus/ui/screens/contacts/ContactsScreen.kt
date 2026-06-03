@@ -36,9 +36,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -51,13 +48,6 @@ import com.pinealctx.nexus.R
 import com.pinealctx.nexus.core.ContactData
 import com.pinealctx.nexus.core.GroupData
 import com.pinealctx.nexus.ui.components.NexusAvatar
-import com.pinealctx.nexus.ui.components.NexusAvatarBadge
-
-private enum class ContactFilter {
-    All,
-    Contacts,
-    Groups
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,11 +55,9 @@ fun ContactsScreen(
     onFriendRequestsClick: () -> Unit = {},
     onGroupChatsClick: () -> Unit = {},
     onSearchClick: () -> Unit = {},
-    onGroupClick: (Int) -> Unit = {},
     viewModel: ContactsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var filter by remember { mutableStateOf(ContactFilter.All) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -122,12 +110,9 @@ fun ContactsScreen(
                     modifier = Modifier.padding(padding),
                     contacts = uiState.contacts,
                     groups = uiState.groups,
-                    filter = filter,
-                    onFilterChange = { filter = it },
                     onFriendRequestsClick = onFriendRequestsClick,
                     onGroupChatsClick = onGroupChatsClick,
                     onSearchClick = onSearchClick,
-                    onGroupClick = onGroupClick,
                     onRefresh = { viewModel.refresh() }
                 )
             }
@@ -140,12 +125,9 @@ private fun ContactDirectory(
     modifier: Modifier,
     contacts: List<ContactData>,
     groups: List<GroupData>,
-    filter: ContactFilter,
-    onFilterChange: (ContactFilter) -> Unit,
     onFriendRequestsClick: () -> Unit,
     onGroupChatsClick: () -> Unit,
     onSearchClick: () -> Unit,
-    onGroupClick: (Int) -> Unit,
     onRefresh: () -> Unit
 ) {
     LazyColumn(
@@ -183,80 +165,31 @@ private fun ContactDirectory(
             )
         }
 
-        item {
-            FilterTabs(
-                selected = filter,
-                contactsCount = contacts.size,
-                groupsCount = groups.size,
-                onSelect = onFilterChange
-            )
-        }
-
-        val showContacts = filter == ContactFilter.All || filter == ContactFilter.Contacts
-        val showGroups = filter == ContactFilter.All || filter == ContactFilter.Groups
-
-        if (showContacts) {
-            if (contacts.isNotEmpty()) {
-                item {
-                    SectionHeader(
-                        text = stringResource(R.string.contacts_section_contacts),
-                        count = contacts.size
-                    )
-                }
-                items(
-                    items = contacts.sortedBy { it.displayName().lowercase() },
-                    key = { "contact-${it.userId}" }
-                ) { contact ->
-                    ContactRow(contact = contact)
-                    HorizontalDivider(
-                        modifier = Modifier.padding(start = 76.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant
-                    )
-                }
+        if (contacts.isNotEmpty()) {
+            item {
+                SectionHeader(
+                    text = stringResource(R.string.contacts_section_contacts),
+                    count = contacts.size
+                )
             }
-        }
-
-        if (showGroups) {
-            if (groups.isNotEmpty()) {
-                item {
-                    SectionHeader(
-                        text = stringResource(R.string.contacts_section_groups),
-                        count = groups.size
-                    )
-                }
-                items(
-                    items = groups.sortedBy { it.name.lowercase() },
-                    key = { "group-${it.groupId}" }
-                ) { group ->
-                    GroupRow(group = group, onClick = { onGroupClick(group.groupId) })
-                    HorizontalDivider(
-                        modifier = Modifier.padding(start = 76.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant
-                    )
-                }
+            items(
+                items = contacts.sortedBy { it.displayName().lowercase() },
+                key = { "contact-${it.userId}" }
+            ) { contact ->
+                ContactRow(contact = contact)
+                HorizontalDivider(
+                    modifier = Modifier.padding(start = 76.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
             }
-        }
-
-        val visibleItemsEmpty = when (filter) {
-            ContactFilter.All -> contacts.isEmpty() && groups.isEmpty()
-            ContactFilter.Contacts -> contacts.isEmpty()
-            ContactFilter.Groups -> groups.isEmpty()
-        }
-
-        if (visibleItemsEmpty) {
+        } else {
             item {
                 ContactsEmptyState(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(320.dp),
-                    title = when (filter) {
-                        ContactFilter.Groups -> stringResource(R.string.contacts_groups_empty)
-                        else -> stringResource(R.string.contacts_empty)
-                    },
-                    message = when (filter) {
-                        ContactFilter.Groups -> stringResource(R.string.contacts_groups_empty_desc)
-                        else -> stringResource(R.string.contacts_empty_desc)
-                    },
+                    title = stringResource(R.string.contacts_empty),
+                    message = stringResource(R.string.contacts_empty_desc),
                     actionLabel = stringResource(R.string.friend_requests_retry),
                     onAction = onRefresh
                 )
@@ -346,67 +279,6 @@ private fun DirectoryActionRow(
 }
 
 @Composable
-private fun FilterTabs(
-    selected: ContactFilter,
-    contactsCount: Int,
-    groupsCount: Int,
-    onSelect: (ContactFilter) -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        FilterChip(
-            text = stringResource(R.string.contacts_filter_all, contactsCount + groupsCount),
-            selected = selected == ContactFilter.All,
-            modifier = Modifier.weight(1f),
-            onClick = { onSelect(ContactFilter.All) }
-        )
-        FilterChip(
-            text = stringResource(R.string.contacts_filter_contacts, contactsCount),
-            selected = selected == ContactFilter.Contacts,
-            modifier = Modifier.weight(1f),
-            onClick = { onSelect(ContactFilter.Contacts) }
-        )
-        FilterChip(
-            text = stringResource(R.string.contacts_filter_groups, groupsCount),
-            selected = selected == ContactFilter.Groups,
-            modifier = Modifier.weight(1f),
-            onClick = { onSelect(ContactFilter.Groups) }
-        )
-    }
-}
-
-@Composable
-private fun FilterChip(
-    text: String,
-    selected: Boolean,
-    modifier: Modifier,
-    onClick: () -> Unit
-) {
-    Surface(
-        modifier = modifier
-            .height(34.dp)
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(8.dp),
-        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-        contentColor = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Text(
-                text = text,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-    }
-}
-
-@Composable
 private fun SectionHeader(text: String, count: Int) {
     Text(
         text = "$text · $count",
@@ -450,48 +322,6 @@ private fun ContactRow(contact: ContactData) {
                 overflow = TextOverflow.Ellipsis
             )
         }
-    }
-}
-
-@Composable
-private fun GroupRow(group: GroupData, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        NexusAvatar(
-            id = group.groupId,
-            name = group.name,
-            avatarUrl = group.avatarUrl,
-            size = 48.dp,
-            badge = NexusAvatarBadge.Group
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = group.name.ifBlank { "Group #${group.groupId}" },
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(3.dp))
-            Text(
-                text = group.description.ifBlank { stringResource(R.string.contacts_group_chat) },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        Icon(
-            Icons.Filled.ChevronRight,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 
