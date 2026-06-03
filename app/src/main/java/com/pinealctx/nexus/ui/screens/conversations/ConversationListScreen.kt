@@ -23,16 +23,12 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -46,13 +42,13 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pinealctx.nexus.R
 import com.pinealctx.nexus.core.ConversationData
+import com.pinealctx.nexus.ui.components.NexusMainHeader
 import com.pinealctx.nexus.ui.components.NexusAvatar
 import com.pinealctx.nexus.ui.components.NexusAvatarBadge
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConversationListScreen(
     onConversationClick: (String) -> Unit,
@@ -61,76 +57,69 @@ fun ConversationListScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = stringResource(R.string.conversations_title),
-                        fontWeight = FontWeight.SemiBold
-                    )
-                },
-                actions = {
-                    IconButton(onClick = onSearchClick) {
-                        Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.search_title))
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
-            )
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            SearchEntry(onClick = onSearchClick)
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        NexusMainHeader(
+            title = stringResource(R.string.conversations_title),
+            actions = {
+                IconButton(onClick = onSearchClick) {
+                    Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.search_title))
+                }
+            }
+        )
 
-            when {
-                uiState.isLoading && uiState.conversations.isEmpty() -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
+        SearchEntry(onClick = onSearchClick)
+
+        when {
+            uiState.isLoading && uiState.conversations.isEmpty() -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
                 }
-                uiState.error != null -> {
-                    EmptyConversationState(
-                        modifier = Modifier.fillMaxSize(),
-                        title = stringResource(R.string.conversations_load_failed),
-                        message = uiState.error ?: stringResource(R.string.error_unknown),
-                        actionLabel = stringResource(R.string.friend_requests_retry),
-                        onAction = { viewModel.refresh() }
-                    )
-                }
-                uiState.conversations.isEmpty() -> {
-                    EmptyConversationState(
-                        modifier = Modifier.fillMaxSize(),
-                        title = stringResource(R.string.conversations_empty),
-                        message = stringResource(R.string.conversations_empty_desc),
-                        actionLabel = stringResource(R.string.search_title),
-                        onAction = onSearchClick
-                    )
-                }
-                else -> {
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(
-                            items = uiState.conversations,
-                            key = { it.conversationId }
-                        ) { conversation ->
-                            ConversationRow(
-                                conversation = conversation,
-                                onClick = { onConversationClick(conversation.conversationId) }
-                            )
-                            HorizontalDivider(
-                                modifier = Modifier.padding(start = 76.dp),
-                                color = MaterialTheme.colorScheme.outlineVariant
-                            )
-                        }
+            }
+            uiState.error != null -> {
+                EmptyConversationState(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f),
+                    title = stringResource(R.string.conversations_load_failed),
+                    message = uiState.error ?: stringResource(R.string.error_unknown),
+                    actionLabel = stringResource(R.string.friend_requests_retry),
+                    onAction = { viewModel.refresh() }
+                )
+            }
+            uiState.conversations.isEmpty() -> {
+                EmptyConversationState(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f),
+                    title = stringResource(R.string.conversations_empty),
+                    message = stringResource(R.string.conversations_empty_desc),
+                    actionLabel = stringResource(R.string.search_title),
+                    onAction = onSearchClick
+                )
+            }
+            else -> {
+                LazyColumn(modifier = Modifier.weight(1f)) {
+                    items(
+                        items = uiState.conversations,
+                        key = { it.conversationId }
+                    ) { conversation ->
+                        ConversationRow(
+                            conversation = conversation,
+                            onClick = { onConversationClick(conversation.conversationId) }
+                        )
+                        HorizontalDivider(
+                            modifier = Modifier.padding(start = 76.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant
+                        )
                     }
                 }
             }

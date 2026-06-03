@@ -25,6 +25,7 @@ import com.pinealctx.nexus.R
 import com.pinealctx.nexus.core.AgentInfoData
 import com.pinealctx.nexus.core.managers.AgentManager
 import com.pinealctx.nexus.core.managers.ContactManager
+import com.pinealctx.nexus.ui.components.NexusMainHeader
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -95,7 +96,6 @@ class AgentsViewModel @Inject constructor(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AgentsScreen(
     onAgentClick: (Int) -> Unit = {},
@@ -105,7 +105,7 @@ fun AgentsScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     Column(modifier = Modifier.fillMaxSize()) {
-        TopAppBar(title = { Text(stringResource(R.string.agents_title)) })
+        NexusMainHeader(title = stringResource(R.string.agents_title))
 
         // Search bar
         OutlinedTextField(

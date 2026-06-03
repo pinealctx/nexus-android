@@ -24,15 +24,11 @@ import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -48,8 +44,8 @@ import com.pinealctx.nexus.R
 import com.pinealctx.nexus.core.ContactData
 import com.pinealctx.nexus.core.GroupData
 import com.pinealctx.nexus.ui.components.NexusAvatar
+import com.pinealctx.nexus.ui.components.NexusMainHeader
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ContactsScreen(
     onFriendRequestsClick: () -> Unit = {},
@@ -60,28 +56,19 @@ fun ContactsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = stringResource(R.string.contacts_title),
-                        fontWeight = FontWeight.SemiBold
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
-            )
-        }
-    ) { padding ->
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        NexusMainHeader(title = stringResource(R.string.contacts_title))
+
         when {
             uiState.isLoading && uiState.contacts.isEmpty() && uiState.groups.isEmpty() -> {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(padding),
+                        .weight(1f),
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator()
@@ -91,7 +78,7 @@ fun ContactsScreen(
                 ContactsEmptyState(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(padding),
+                        .weight(1f),
                     title = stringResource(R.string.contacts_load_failed),
                     message = uiState.error ?: stringResource(R.string.error_unknown),
                     actionLabel = stringResource(R.string.friend_requests_retry),
@@ -100,7 +87,7 @@ fun ContactsScreen(
             }
             else -> {
                 ContactDirectory(
-                    modifier = Modifier.padding(padding),
+                    modifier = Modifier.weight(1f),
                     contacts = uiState.contacts,
                     groups = uiState.groups,
                     onFriendRequestsClick = onFriendRequestsClick,

@@ -13,8 +13,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pinealctx.nexus.R
+import com.pinealctx.nexus.ui.components.NexusMainHeader
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     onSettingsClick: () -> Unit = {},
@@ -23,7 +23,7 @@ fun ProfileScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     Column(modifier = Modifier.fillMaxSize()) {
-        TopAppBar(title = { Text(stringResource(R.string.tab_me)) })
+        NexusMainHeader(title = stringResource(R.string.tab_me))
 
         Card(
             modifier = Modifier

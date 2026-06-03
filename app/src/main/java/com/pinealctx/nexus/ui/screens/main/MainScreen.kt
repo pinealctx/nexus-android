@@ -43,6 +43,7 @@ fun MainScreen(
     val connectionStatus by connectionViewModel.connectionStatus.collectAsState()
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         bottomBar = {
             NavigationBar(
                 containerColor = MaterialTheme.colorScheme.background,
