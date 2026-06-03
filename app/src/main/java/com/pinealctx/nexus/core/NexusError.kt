@@ -60,6 +60,11 @@ sealed class NexusError {
             is NexusException -> from(exception)
             else -> Internal(message = exception.message ?: "Unknown error")
         }
+
+        fun requiresRelogin(exception: Exception): Boolean {
+            val error = from(exception)
+            return error is Auth && error.requiresRelogin
+        }
     }
 }
 

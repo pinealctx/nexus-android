@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.pinealctx.nexus.core.AppEventBus
 import com.pinealctx.nexus.core.ContactData
 import com.pinealctx.nexus.core.GroupData
+import com.pinealctx.nexus.core.NexusError
 import com.pinealctx.nexus.core.managers.ContactManager
 import com.pinealctx.nexus.core.managers.GroupManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -74,11 +75,13 @@ class ContactsViewModel @Inject constructor(
                         }
                         Log.i("Contacts", "Fetched directory: contacts=${contacts.size}, groups=${groups.size}")
                     } catch (e: Exception) {
+                        if (e.requiresRelogin()) return@launch
                         Log.w("Contacts", "Remote directory fetch failed", e)
                     }
                 }
                 _uiState.value = ContactsUiState(contacts = contacts, groups = groups)
             } catch (e: Exception) {
+                if (e.requiresRelogin()) return@launch
                 _uiState.value = ContactsUiState(error = e.message)
             }
         }
@@ -86,5 +89,11 @@ class ContactsViewModel @Inject constructor(
 
     fun refresh() {
         loadDirectory(fetchIfEmpty = true)
+    }
+
+    private fun Exception.requiresRelogin(): Boolean {
+        if (!NexusError.requiresRelogin(this)) return false
+        appEventBus.emitForceLogout(message ?: "Authentication expired")
+        return true
     }
 }

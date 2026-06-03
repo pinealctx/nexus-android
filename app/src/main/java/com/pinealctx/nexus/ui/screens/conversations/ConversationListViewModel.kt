@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pinealctx.nexus.core.AppEventBus
 import com.pinealctx.nexus.core.ConversationData
+import com.pinealctx.nexus.core.NexusError
 import com.pinealctx.nexus.data.repository.ConversationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -66,11 +67,13 @@ class ConversationListViewModel @Inject constructor(
                         conversations = conversationRepository.getConversations()
                         Log.i("ConversationList", "Fetched remote conversations: count=${conversations.size}")
                     } catch (e: Exception) {
+                        if (e.requiresRelogin()) return@launch
                         Log.w("ConversationList", "Remote conversation fetch failed", e)
                     }
                 }
                 _uiState.value = ConversationListUiState(conversations = conversations)
             } catch (e: Exception) {
+                if (e.requiresRelogin()) return@launch
                 _uiState.value = ConversationListUiState(error = e.message)
             }
         }
@@ -78,5 +81,11 @@ class ConversationListViewModel @Inject constructor(
 
     fun refresh() {
         loadConversations()
+    }
+
+    private fun Exception.requiresRelogin(): Boolean {
+        if (!NexusError.requiresRelogin(this)) return false
+        appEventBus.emitForceLogout(message ?: "Authentication expired")
+        return true
     }
 }

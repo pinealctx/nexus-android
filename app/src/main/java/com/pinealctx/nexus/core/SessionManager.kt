@@ -14,10 +14,17 @@ class SessionManager @Inject constructor(
         if (!secureStorage.hasTokens()) return false
         val accessToken = secureStorage.getAccessToken() ?: return false
         val refreshToken = secureStorage.getRefreshToken() ?: return false
-        val expiresIn = secureStorage.getExpiresIn()
+        val expiresIn = secureStorage.getRemainingExpiresIn()
         val userId = secureStorage.getUserId()
-        authManager.reopenForUser(userId)
-        authManager.restoreSession(accessToken, refreshToken, expiresIn, userId)
+        if (userId <= 0) return false
+        try {
+            authManager.reopenForUser(userId)
+            authManager.restoreSession(accessToken, refreshToken, expiresIn, userId)
+        } catch (e: Exception) {
+            Log.w("NexusCore", "Failed to restore saved session", e)
+            clearSession()
+            return false
+        }
         try {
             val config = authManager.getClientConfig()
             if (authManager.applyDiscoveredWsUrl(config.wsUrl)) {

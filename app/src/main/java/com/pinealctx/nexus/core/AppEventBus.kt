@@ -53,6 +53,10 @@ class AppEventBus @Inject constructor() : EventListener {
     fun forceLogout(): Flow<AppEvent.ForceLogout> = on()
     fun coldStartRequired(): Flow<AppEvent.ColdStartRequired> = on()
 
+    fun emitForceLogout(reason: String) {
+        _events.tryEmit(AppEvent.ForceLogout(reason))
+    }
+
     // EventListener callbacks — invoked from Rust tokio thread, must not block.
 
     override fun onConnectionStatusChanged(status: ConnectionStatus) {

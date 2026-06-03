@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pinealctx.nexus.core.AppEventBus
 import com.pinealctx.nexus.core.GroupData
+import com.pinealctx.nexus.core.NexusError
 import com.pinealctx.nexus.core.managers.GroupManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -60,6 +61,7 @@ class GroupChatsViewModel @Inject constructor(
                 Log.i("GroupChats", "Loaded groups: count=${groups.size}")
                 _uiState.value = GroupChatsUiState(groups = groups)
             } catch (e: Exception) {
+                if (e.requiresRelogin()) return@launch
                 _uiState.value = GroupChatsUiState(error = e.message)
             }
         }
@@ -67,5 +69,11 @@ class GroupChatsViewModel @Inject constructor(
 
     fun refresh() {
         loadGroups(fetchIfEmpty = true)
+    }
+
+    private fun Exception.requiresRelogin(): Boolean {
+        if (!NexusError.requiresRelogin(this)) return false
+        appEventBus.emitForceLogout(message ?: "Authentication expired")
+        return true
     }
 }

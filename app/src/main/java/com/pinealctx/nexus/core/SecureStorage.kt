@@ -49,6 +49,14 @@ class SecureStorage @Inject constructor(
     fun getAccessToken(): String? = prefs.getString(KEY_ACCESS_TOKEN, null)
     fun getRefreshToken(): String? = prefs.getString(KEY_REFRESH_TOKEN, null)
     fun getExpiresIn(): Int = prefs.getInt(KEY_EXPIRES_IN, 0)
+    fun getRemainingExpiresIn(nowMs: Long = System.currentTimeMillis()): Int {
+        val expiresIn = getExpiresIn()
+        if (expiresIn <= 0) return 0
+        val savedAt = prefs.getLong(KEY_SAVED_AT, 0L)
+        if (savedAt <= 0L) return 0
+        val elapsedSeconds = ((nowMs - savedAt).coerceAtLeast(0L) / 1000L).toInt()
+        return (expiresIn - elapsedSeconds).coerceAtLeast(0)
+    }
     fun getUserId(): Int = prefs.getInt(KEY_USER_ID, 0)
     fun hasTokens(): Boolean = getAccessToken() != null
 
