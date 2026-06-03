@@ -78,8 +78,23 @@ fun NexusNavGraph(navController: NavHostController) {
                 onAddFriendClick = {
                     navController.navigate(Routes.searchRoute(Routes.SEARCH_TAB_USERS))
                 },
-                onSettingsClick = {
-                    navController.navigate(Routes.SETTINGS)
+                onEditProfileClick = {
+                    navController.navigate(Routes.EDIT_PROFILE)
+                },
+                onDevicesClick = {
+                    navController.navigate(Routes.DEVICES)
+                },
+                onNotificationsClick = {
+                    navController.navigate(Routes.NOTIFICATION_SETTINGS)
+                },
+                onPrivacyClick = {
+                    navController.navigate(Routes.BLOCKED_USERS)
+                },
+                onLanguageClick = {
+                    navController.navigate(Routes.LANGUAGE_SETTINGS)
+                },
+                onAboutClick = {
+                    navController.navigate(Routes.ABOUT)
                 },
                 onAgentMiniApp = { agentUserId ->
                     val intent = Intent(context, com.pinealctx.nexus.ui.screens.miniapp.MiniAppActivity::class.java).apply {

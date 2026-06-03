@@ -99,6 +99,7 @@
     <string name="settings_about_desc">Version %s</string>
     <string name="settings_language">Language</string>
     <string name="settings_language_desc">App display language</string>
+    <string name="settings_devices_desc">Signed-in devices and sessions</string>
     <string name="settings_logout">Logout</string>
     <string name="settings_logout_title">Logout</string>
     <string name="settings_logout_message">Are you sure you want to logout?</string>

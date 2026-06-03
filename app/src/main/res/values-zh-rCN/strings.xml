@@ -99,6 +99,7 @@
     <string name="settings_about_desc">版本 %s</string>
     <string name="settings_language">语言</string>
     <string name="settings_language_desc">应用显示语言</string>
+    <string name="settings_devices_desc">已登录设备和会话</string>
     <string name="settings_logout">退出登录</string>
     <string name="settings_logout_title">退出登录</string>
     <string name="settings_logout_message">确定要退出登录吗？</string>

@@ -35,7 +35,12 @@ fun MainScreen(
     onGroupChatsClick: () -> Unit = {},
     onSearchClick: () -> Unit = {},
     onAddFriendClick: () -> Unit = {},
-    onSettingsClick: () -> Unit = {},
+    onEditProfileClick: () -> Unit = {},
+    onDevicesClick: () -> Unit = {},
+    onNotificationsClick: () -> Unit = {},
+    onPrivacyClick: () -> Unit = {},
+    onLanguageClick: () -> Unit = {},
+    onAboutClick: () -> Unit = {},
     onAgentMiniApp: ((Int) -> Unit)? = null,
     connectionViewModel: ConnectionViewModel = hiltViewModel()
 ) {
@@ -117,7 +122,14 @@ fun MainScreen(
                     MainTab.DISCOVER -> com.pinealctx.nexus.ui.screens.agents.AgentsScreen(
                         onOpenMiniApp = { agentUserId -> onAgentMiniApp?.invoke(agentUserId) }
                     )
-                    MainTab.ME -> ProfileScreen(onSettingsClick = onSettingsClick)
+                    MainTab.ME -> ProfileScreen(
+                        onEditProfileClick = onEditProfileClick,
+                        onDevicesClick = onDevicesClick,
+                        onNotificationsClick = onNotificationsClick,
+                        onPrivacyClick = onPrivacyClick,
+                        onLanguageClick = onLanguageClick,
+                        onAboutClick = onAboutClick
+                    )
                 }
             }
         }
