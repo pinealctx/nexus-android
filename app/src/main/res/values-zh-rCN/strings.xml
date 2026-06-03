@@ -37,9 +37,22 @@
     <string name="contacts_title">通讯录</string>
     <string name="contacts_empty">暂无联系人</string>
     <string name="contacts_empty_desc">搜索用户，添加你的第一个联系人。</string>
+    <string name="contacts_groups_empty">暂无群聊</string>
+    <string name="contacts_groups_empty_desc">你加入或创建的群聊会显示在这里。</string>
     <string name="contacts_load_failed">联系人加载失败</string>
     <string name="contacts_search">搜索用户</string>
+    <string name="contacts_search_placeholder">搜索联系人或群聊</string>
     <string name="contacts_friend_requests">好友请求</string>
+    <string name="contacts_new_friends">新的朋友</string>
+    <string name="contacts_new_friends_desc">查看待处理好友请求</string>
+    <string name="contacts_group_chats">群聊</string>
+    <string name="contacts_group_count">%d 个群聊</string>
+    <string name="contacts_group_chat">群聊</string>
+    <string name="contacts_filter_all">全部 %d</string>
+    <string name="contacts_filter_contacts">联系人 %d</string>
+    <string name="contacts_filter_groups">群聊 %d</string>
+    <string name="contacts_section_contacts">联系人</string>
+    <string name="contacts_section_groups">群聊</string>
 
     <!-- Friend Requests -->
     <string name="friend_requests_title">好友请求</string>

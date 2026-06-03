@@ -107,7 +107,8 @@ fun MainScreen(
                     )
                     MainTab.CONTACTS -> ContactsScreen(
                         onFriendRequestsClick = onFriendRequestsClick,
-                        onSearchClick = onSearchClick
+                        onSearchClick = onSearchClick,
+                        onGroupClick = onGroupClick
                     )
                     MainTab.DISCOVER -> com.pinealctx.nexus.ui.screens.agents.AgentsScreen(
                         onOpenMiniApp = { agentUserId -> onAgentMiniApp?.invoke(agentUserId) }
