@@ -29,8 +29,8 @@ class ConversationRepository @Inject constructor(
         return conversationManager.getConversations(limit, beforeTime)
     }
 
-    suspend fun fetchFromRemote(limit: Int = 50, beforeTime: Long? = null) {
-        conversationManager.fetchConversations(limit, beforeTime)
+    suspend fun fetchFromRemote(limit: Int = 50, beforeTime: Long? = null): List<ConversationData> {
+        return conversationManager.fetchConversations(limit, beforeTime)
     }
 
     suspend fun markAsRead(conversationId: Long, upToMessageId: Long) {

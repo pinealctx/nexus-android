@@ -1,18 +1,21 @@
 package com.pinealctx.nexus.ui.screens.conversations
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pinealctx.nexus.core.AppEventBus
 import com.pinealctx.nexus.core.ConversationData
-import com.pinealctx.nexus.core.managers.ConversationManager
+import com.pinealctx.nexus.data.repository.ConversationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import uniffi.nexus_ffi.ConnectionStatus
 import javax.inject.Inject
 
 data class ConversationListUiState(
@@ -23,7 +26,7 @@ data class ConversationListUiState(
 
 @HiltViewModel
 class ConversationListViewModel @Inject constructor(
-    private val conversationManager: ConversationManager,
+    private val conversationRepository: ConversationRepository,
     private val appEventBus: AppEventBus
 ) : ViewModel() {
 
@@ -31,7 +34,7 @@ class ConversationListViewModel @Inject constructor(
     val uiState: StateFlow<ConversationListUiState> = _uiState.asStateFlow()
 
     init {
-        loadConversations()
+        loadConversations(fetchIfEmpty = true)
         observeUpdates()
     }
 
@@ -45,13 +48,27 @@ class ConversationListViewModel @Inject constructor(
         appEventBus.contactsUpdated()
             .onEach { loadConversations() }
             .launchIn(viewModelScope)
+        appEventBus.connectionStatus
+            .filter { it == ConnectionStatus.CONNECTED }
+            .onEach { loadConversations(fetchIfEmpty = true) }
+            .launchIn(viewModelScope)
     }
 
-    private fun loadConversations() {
+    private fun loadConversations(fetchIfEmpty: Boolean = false) {
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = _uiState.value.copy(isLoading = true)
             try {
-                val conversations = conversationManager.getConversations()
+                var conversations = conversationRepository.getConversations()
+                Log.i("ConversationList", "Loaded local conversations: count=${conversations.size}")
+                if (fetchIfEmpty && conversations.isEmpty()) {
+                    try {
+                        conversationRepository.fetchFromRemote()
+                        conversations = conversationRepository.getConversations()
+                        Log.i("ConversationList", "Fetched remote conversations: count=${conversations.size}")
+                    } catch (e: Exception) {
+                        Log.w("ConversationList", "Remote conversation fetch failed", e)
+                    }
+                }
                 _uiState.value = ConversationListUiState(conversations = conversations)
             } catch (e: Exception) {
                 _uiState.value = ConversationListUiState(error = e.message)
