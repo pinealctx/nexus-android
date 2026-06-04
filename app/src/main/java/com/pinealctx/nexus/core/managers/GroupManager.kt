@@ -1,47 +1,97 @@
 package com.pinealctx.nexus.core.managers
 
+import com.pinealctx.nexus.client.GroupApi
 import com.pinealctx.nexus.core.GroupData
 import com.pinealctx.nexus.core.GroupMemberData
-import com.pinealctx.nexus.core.NexusClientProvider
+import com.pinealctx.nexus.local.LocalDataStore
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.runBlocking
 
 @Singleton
 class GroupManager @Inject constructor(
-    private val clientProvider: NexusClientProvider
+    private val groupApi: GroupApi,
+    private val localDataStore: LocalDataStore
 ) {
     fun listGroups(): List<GroupData> {
-        val groups = clientProvider.getOrNull()?.listGroups() ?: return emptyList()
-        return groups.map { g ->
-            GroupData(g.groupId, g.name, g.avatarUrl, g.description, g.ownerId, g.status)
+        val cached = localDataStore.listGroups()
+        if (cached.isNotEmpty()) return cached
+
+        return runBlocking {
+            groupApi.listGroups()
+                .also { localDataStore.upsertGroups(it) }
         }
     }
 
-    fun fetchGroups() { clientProvider.getOrNull()?.fetchGroups() }
+    fun fetchGroups() {
+        runBlocking {
+            groupApi.listGroups()
+                .also { localDataStore.upsertGroups(it) }
+        }
+    }
 
-    fun getGroupInfo(groupId: Int) { clientProvider.getOrNull()?.getGroupInfo(groupId) }
+    fun getGroupInfo(groupId: Int): GroupData? {
+        return localDataStore.getGroup(groupId)
+            ?: runBlocking {
+                groupApi.getGroupInfo(groupId)
+                    .also { localDataStore.upsertGroup(it) }
+            }
+    }
 
     fun getGroupMembers(groupId: Int): List<GroupMemberData> {
-        val members = clientProvider.getOrNull()?.getGroupMembers(groupId) ?: return emptyList()
-        return members.map { m ->
-            GroupMemberData(m.userId, m.role, m.joinedAt, m.displayName)
+        val cached = localDataStore.listGroupMembers(groupId)
+        if (cached.isNotEmpty()) return cached
+
+        return runBlocking {
+            groupApi.getGroupMembers(groupId)
+                .also { localDataStore.replaceGroupMembers(groupId, it) }
         }
     }
 
-    fun createGroup(name: String, memberIds: List<Int>): Int =
-        clientProvider.get().createGroup(name, memberIds)
+    fun createGroup(name: String, memberIds: List<Int>): Int {
+        val groupId = runBlocking { groupApi.createGroup(name, memberIds) }
+        runBlocking {
+            groupApi.getGroupInfo(groupId)
+                .also { localDataStore.upsertGroup(it) }
+        }
+        return groupId
+    }
 
-    fun dissolveGroup(groupId: Int) { clientProvider.getOrNull()?.dissolveGroup(groupId) }
+    fun dissolveGroup(groupId: Int) {
+        runBlocking { groupApi.dissolveGroup(groupId) }
+        localDataStore.deleteGroup(groupId)
+    }
 
-    fun leaveGroup(groupId: Int) { clientProvider.getOrNull()?.leaveGroup(groupId) }
+    fun leaveGroup(groupId: Int) {
+        runBlocking { groupApi.leaveGroup(groupId) }
+        localDataStore.deleteGroup(groupId)
+    }
 
-    fun updateGroupName(groupId: Int, name: String) { clientProvider.getOrNull()?.updateGroupName(groupId, name) }
+    fun updateGroupName(groupId: Int, name: String) {
+        runBlocking { groupApi.updateGroupName(groupId, name) }
+        localDataStore.updateGroupName(groupId, name)
+    }
 
-    fun updateGroupAvatar(groupId: Int, avatarUrl: String) { clientProvider.getOrNull()?.updateGroupAvatar(groupId, avatarUrl) }
+    fun updateGroupAvatar(groupId: Int, avatarUrl: String) {
+        runBlocking { groupApi.updateGroupAvatar(groupId, avatarUrl) }
+        localDataStore.updateGroupAvatar(groupId, avatarUrl)
+    }
 
-    fun updateGroupDescription(groupId: Int, description: String) { clientProvider.getOrNull()?.updateGroupDescription(groupId, description) }
+    fun updateGroupDescription(groupId: Int, description: String) {
+        runBlocking { groupApi.updateGroupDescription(groupId, description) }
+        localDataStore.updateGroupDescription(groupId, description)
+    }
 
-    fun inviteMembers(groupId: Int, memberIds: List<Int>) { clientProvider.getOrNull()?.inviteMembers(groupId, memberIds) }
+    fun inviteMembers(groupId: Int, memberIds: List<Int>) {
+        runBlocking { groupApi.inviteMembers(groupId, memberIds) }
+        runBlocking {
+            groupApi.getGroupMembers(groupId)
+                .also { localDataStore.replaceGroupMembers(groupId, it) }
+        }
+    }
 
-    fun removeMember(groupId: Int, targetId: Int) { clientProvider.getOrNull()?.removeMember(groupId, targetId) }
+    fun removeMember(groupId: Int, targetId: Int) {
+        runBlocking { groupApi.removeMember(groupId, targetId) }
+        localDataStore.removeGroupMember(groupId, targetId)
+    }
 }

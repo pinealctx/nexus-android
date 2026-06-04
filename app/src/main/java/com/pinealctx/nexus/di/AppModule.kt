@@ -1,7 +1,6 @@
 package com.pinealctx.nexus.di
 
 import android.content.Context
-import com.pinealctx.nexus.core.NexusClientProvider
 import com.pinealctx.nexus.core.SecureStorage
 import dagger.Module
 import dagger.Provides
@@ -20,14 +19,5 @@ object AppModule {
         @ApplicationContext context: Context
     ): SecureStorage {
         return SecureStorage(context)
-    }
-
-    @Provides
-    @Singleton
-    fun provideNexusClientProvider(
-        @ApplicationContext context: Context,
-        secureStorage: SecureStorage
-    ): NexusClientProvider {
-        return NexusClientProvider(context, secureStorage)
     }
 }

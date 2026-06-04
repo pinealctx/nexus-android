@@ -41,9 +41,9 @@ class GroupDetailViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = _uiState.value.copy(isLoading = true)
             try {
-                groupManager.getGroupInfo(groupId)
+                val group = groupManager.getGroupInfo(groupId)
                 val members = groupManager.getGroupMembers(groupId)
-                _uiState.value = GroupDetailUiState(group = null, members = members)
+                _uiState.value = GroupDetailUiState(group = group, members = members)
             } catch (e: Exception) {
                 _uiState.value = GroupDetailUiState(error = e.message)
             }

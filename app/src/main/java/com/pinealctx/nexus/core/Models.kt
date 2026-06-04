@@ -1,7 +1,5 @@
 package com.pinealctx.nexus.core
 
-import uniffi.nexus_ffi.MessageContent
-
 // Auth
 data class LoginResult(
     val userId: Int,
@@ -39,6 +37,18 @@ data class ConversationData(
 }
 
 // Messages
+sealed interface MessageContent {
+    data class Text(val text: String) : MessageContent
+    data class Image(val fileId: String, val width: Int, val height: Int) : MessageContent
+    data class Audio(val fileId: String, val duration: Int) : MessageContent
+    data class Video(val fileId: String, val duration: Int, val width: Int = 0, val height: Int = 0) : MessageContent
+    data class File(val fileId: String, val name: String, val size: Long, val mimeType: String = "") : MessageContent
+    data class Markdown(val text: String) : MessageContent
+    data class Card(val json: String, val fallbackText: String = "") : MessageContent
+    data object Recalled : MessageContent
+    data object Unknown : MessageContent
+}
+
 data class MessageData(
     val conversationId: String,
     val messageId: Long,
@@ -147,7 +157,8 @@ data class AgentInfoData(
     val miniAppUrl: String,
     val miniAppPermissions: Int,
     val commands: List<AgentCommandData>,
-    val createdAt: Long
+    val createdAt: Long,
+    val status: Int = 0
 )
 
 data class AgentCommandData(

@@ -18,7 +18,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import uniffi.nexus_ffi.ConnectionStatus
+import com.pinealctx.nexus.core.ConnectionStatus
 import javax.inject.Inject
 
 data class ContactsUiState(

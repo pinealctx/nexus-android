@@ -1,39 +1,38 @@
 package com.pinealctx.nexus.core.managers
 
+import com.pinealctx.nexus.client.MediaApi
 import com.pinealctx.nexus.core.MediaFileData
-import com.pinealctx.nexus.core.NexusClientProvider
 import com.pinealctx.nexus.core.UploadSessionData
+import com.pinealctx.nexus.local.LocalDataStore
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.runBlocking
 
 @Singleton
 class MediaManager @Inject constructor(
-    private val clientProvider: NexusClientProvider
+    private val mediaApi: MediaApi,
+    private val localDataStore: LocalDataStore
 ) {
-    fun getMediaUrl(fileId: String): String = clientProvider.getOrNull()?.getMediaUrl(fileId) ?: ""
+    fun getMediaUrl(fileId: String): String = getDownloadUrl(fileId)
 
-    fun getDownloadUrl(fileId: String): String = clientProvider.getOrNull()?.getDownloadUrl(fileId) ?: ""
-
-    fun uploadFile(data: ByteArray, fileName: String, contentType: String, purpose: Int): MediaFileData {
-        val result = clientProvider.get().uploadFile(data, fileName, contentType, purpose)
-        return result.toMediaFileData()
+    fun getDownloadUrl(fileId: String): String {
+        val url = runBlocking { mediaApi.getDownloadUrl(fileId) }
+        localDataStore.updateMediaPublicUrl(fileId, url)
+        return url
     }
 
-    fun initUpload(fileName: String, contentType: String, size: Long): UploadSessionData {
-        val result = clientProvider.get().initUpload(fileName, contentType, size)
-        return UploadSessionData(result.sessionId, result.uploaded, result.createdAt)
-    }
+    fun uploadFile(data: ByteArray, fileName: String, contentType: String, purpose: Int): MediaFileData =
+        runBlocking { mediaApi.uploadFile(data, fileName, contentType, purpose) }
+            .also { localDataStore.upsertMediaFile(it) }
+
+    fun initUpload(fileName: String, contentType: String, size: Long): UploadSessionData =
+        runBlocking { mediaApi.initUpload(fileName, contentType, size) }
 
     fun uploadChunk(sessionId: String, chunk: ByteArray, offset: Long) {
-        clientProvider.get().uploadChunk(sessionId, chunk, offset)
+        runBlocking { mediaApi.uploadChunk(sessionId, chunk, offset) }
     }
 
-    fun completeUpload(sessionId: String): MediaFileData {
-        val result = clientProvider.get().completeUpload(sessionId)
-        return result.toMediaFileData()
-    }
+    fun completeUpload(sessionId: String): MediaFileData =
+        runBlocking { mediaApi.completeUpload(sessionId) }
+            .also { localDataStore.upsertMediaFile(it) }
 }
-
-private fun uniffi.nexus_ffi.MediaFileInfoFfi.toMediaFileData() = MediaFileData(
-    fileId, fileName, contentType, size, width, height, durationMs, thumbnailFileId, publicUrl
-)

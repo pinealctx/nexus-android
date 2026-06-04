@@ -28,12 +28,12 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import com.pinealctx.nexus.R
+import com.pinealctx.nexus.core.MessageContent
 import com.pinealctx.nexus.core.MessageData
 import com.pinealctx.nexus.core.MessageSearchResultData
 import com.pinealctx.nexus.ui.components.EmojiPicker
 import com.pinealctx.nexus.ui.components.ImagePreviewDialog
 import kotlinx.coroutines.flow.distinctUntilChanged
-import uniffi.nexus_ffi.MessageContent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

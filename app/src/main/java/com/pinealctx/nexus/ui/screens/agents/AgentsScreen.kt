@@ -23,6 +23,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pinealctx.nexus.R
 import com.pinealctx.nexus.core.AgentInfoData
+import com.pinealctx.nexus.core.AppEventBus
 import com.pinealctx.nexus.core.managers.AgentManager
 import com.pinealctx.nexus.core.managers.ContactManager
 import com.pinealctx.nexus.ui.components.NexusMainHeader
@@ -31,6 +32,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -46,7 +49,8 @@ data class AgentsUiState(
 @HiltViewModel
 class AgentsViewModel @Inject constructor(
     private val agentManager: AgentManager,
-    private val contactManager: ContactManager
+    private val contactManager: ContactManager,
+    private val appEventBus: AppEventBus
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AgentsUiState())
@@ -54,6 +58,7 @@ class AgentsViewModel @Inject constructor(
 
     init {
         loadAgents()
+        observeAgentUpdates()
     }
 
     private fun loadAgents() {
@@ -67,6 +72,12 @@ class AgentsViewModel @Inject constructor(
                 _uiState.value = AgentsUiState(error = e.message)
             }
         }
+    }
+
+    private fun observeAgentUpdates() {
+        appEventBus.agentsUpdated()
+            .onEach { loadAgents() }
+            .launchIn(viewModelScope)
     }
 
     fun search(query: String) {

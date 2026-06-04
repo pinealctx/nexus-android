@@ -16,4 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "nexus-android"
 include(":app")
-include(":core-bindings")
+include(":protocol")

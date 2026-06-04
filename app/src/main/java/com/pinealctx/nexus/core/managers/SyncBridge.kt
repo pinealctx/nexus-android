@@ -1,20 +1,30 @@
 package com.pinealctx.nexus.core.managers
 
-import com.pinealctx.nexus.core.NexusClientProvider
+import com.pinealctx.nexus.client.GatewayClient
+import com.pinealctx.nexus.client.SyncEngine
+import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class SyncBridge @Inject constructor(
-    private val clientProvider: NexusClientProvider
+    private val gatewayClient: GatewayClient,
+    private val syncEngine: SyncEngine
 ) {
-    fun startSync() { clientProvider.getOrNull()?.startSync() }
+    fun startSync() {
+        runBlocking { syncEngine.fetchDifference() }
+        gatewayClient.connect()
+    }
 
-    fun stopSync() { clientProvider.getOrNull()?.stopSync() }
+    fun stopSync() {
+        gatewayClient.disconnect()
+    }
 
-    fun coldStart(): Long = clientProvider.get().coldStart()
+    fun coldStart(): Long = runBlocking { syncEngine.coldStart().toLong() }
 
-    fun getLocalSn(): Long = clientProvider.getOrNull()?.getLocalSn() ?: 0
+    fun getLocalSn(): Long = syncEngine.getLocalSn().toLong()
 
-    fun clearLocalData() { clientProvider.getOrNull()?.clearLocalData() }
+    fun clearLocalData() {
+        syncEngine.clearLocalData()
+    }
 }

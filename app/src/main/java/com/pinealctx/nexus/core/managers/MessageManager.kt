@@ -1,71 +1,70 @@
 package com.pinealctx.nexus.core.managers
 
+import com.pinealctx.nexus.client.MessageApi
 import com.pinealctx.nexus.core.MessageData
-import com.pinealctx.nexus.core.MessageSearchResultData
-import com.pinealctx.nexus.core.NexusClientProvider
+import com.pinealctx.nexus.local.LocalDataStore
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.runBlocking
 
 @Singleton
 class MessageManager @Inject constructor(
-    private val clientProvider: NexusClientProvider
+    private val messageApi: MessageApi,
+    private val localDataStore: LocalDataStore
 ) {
     fun getMessages(conversationId: String, limit: Int = 50, beforeId: Long? = null): List<MessageData> {
-        val messages = clientProvider.getOrNull()?.getMessages(conversationId, limit, beforeId) ?: return emptyList()
-        return messages.map { m ->
-            MessageData(
-                conversationId = m.conversationId,
-                messageId = m.messageId,
-                senderId = m.senderId,
-                content = m.content,
-                replyToMessageId = m.replyToMessageId,
-                createdAt = m.createdAt,
-                edited = m.edited,
-                recalled = m.recalled
-            )
+        val convId = conversationId.toLongOrNull() ?: return emptyList()
+        val cached = localDataStore.listMessages(convId, limit, beforeId)
+        if (cached.isNotEmpty()) return cached
+
+        return runBlocking {
+            messageApi.getMessages(convId, limit, beforeId)
+                .also { localDataStore.upsertMessages(it) }
         }
     }
 
     fun sendMessage(conversationId: Long, text: String): Long =
-        clientProvider.get().sendMessage(conversationId, text)
+        runBlocking { messageApi.sendMessage(conversationId, text) }
 
     fun sendReplyMessage(conversationId: Long, text: String, replyToMessageId: Long): Long =
-        clientProvider.get().sendReplyMessage(conversationId, text, replyToMessageId)
+        runBlocking { messageApi.sendReplyMessage(conversationId, text, replyToMessageId) }
 
     fun sendImageMessage(conversationId: Long, fileId: String, width: Int, height: Int): Long =
-        clientProvider.get().sendImageMessage(conversationId, fileId, width, height)
+        runBlocking { messageApi.sendImageMessage(conversationId, fileId, width, height) }
 
     fun sendFileMessage(conversationId: Long, fileId: String, name: String, size: Long): Long =
-        clientProvider.get().sendFileMessage(conversationId, fileId, name, size)
+        runBlocking { messageApi.sendFileMessage(conversationId, fileId, name, size) }
 
     fun sendAudioMessage(conversationId: Long, fileId: String, durationMs: Int): Long =
-        clientProvider.get().sendAudioMessage(conversationId, fileId, durationMs)
+        runBlocking { messageApi.sendAudioMessage(conversationId, fileId, durationMs) }
 
     fun sendVideoMessage(conversationId: Long, fileId: String, width: Int, height: Int, durationMs: Int): Long =
-        clientProvider.get().sendVideoMessage(conversationId, fileId, width, height, durationMs)
+        runBlocking { messageApi.sendVideoMessage(conversationId, fileId, width, height, durationMs) }
 
     fun sendMarkdownMessage(conversationId: Long, rawMarkdown: String): Long =
-        clientProvider.get().sendMarkdownMessage(conversationId, rawMarkdown)
+        runBlocking { messageApi.sendMarkdownMessage(conversationId, rawMarkdown) }
 
     fun sendCardMessage(conversationId: Long, cardJson: String, fallbackText: String): Long =
-        clientProvider.get().sendCardMessage(conversationId, cardJson, fallbackText)
+        runBlocking { messageApi.sendCardMessage(conversationId, cardJson, fallbackText) }
 
     fun editMessage(conversationId: Long, messageId: Long, text: String) {
-        clientProvider.get().editMessage(conversationId, messageId, text)
+        runBlocking { messageApi.editMessage(conversationId, messageId, text) }
     }
 
     fun recallMessage(conversationId: Long, messageId: Long) {
-        clientProvider.getOrNull()?.recallMessage(conversationId, messageId)
+        runBlocking { messageApi.recallMessage(conversationId, messageId) }
     }
 
     fun deleteMessages(conversationId: Long, messageIds: List<Long>) {
-        clientProvider.getOrNull()?.deleteMessages(conversationId, messageIds)
+        runBlocking { messageApi.deleteMessages(conversationId, messageIds) }
+        localDataStore.deleteMessages(conversationId, messageIds)
     }
 
     fun deleteHistory(conversationId: Long, upToMessageId: Long) {
-        clientProvider.getOrNull()?.deleteHistory(conversationId, upToMessageId)
+        runBlocking { messageApi.deleteHistory(conversationId, upToMessageId) }
+        localDataStore.deleteHistory(conversationId, upToMessageId)
     }
 
     fun submitCardAction(conversationId: Long, messageId: Long, actionData: String, verb: String? = null): String =
-        clientProvider.get().submitCardAction(conversationId, messageId, actionData, verb)
+        runBlocking { messageApi.submitCardAction(conversationId, messageId, actionData, verb) }
 }

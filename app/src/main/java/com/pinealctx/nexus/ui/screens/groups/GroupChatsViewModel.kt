@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import uniffi.nexus_ffi.ConnectionStatus
+import com.pinealctx.nexus.core.ConnectionStatus
 
 data class GroupChatsUiState(
     val groups: List<GroupData> = emptyList(),

@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import com.pinealctx.nexus.core.AppEventBus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.StateFlow
-import uniffi.nexus_ffi.ConnectionStatus
+import com.pinealctx.nexus.core.ConnectionStatus
 import javax.inject.Inject
 
 @HiltViewModel

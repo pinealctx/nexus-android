@@ -19,7 +19,7 @@ import com.pinealctx.nexus.R
 import com.pinealctx.nexus.ui.screens.contacts.ContactsScreen
 import com.pinealctx.nexus.ui.screens.conversations.ConversationListScreen
 import com.pinealctx.nexus.ui.screens.profile.ProfileScreen
-import uniffi.nexus_ffi.ConnectionStatus
+import com.pinealctx.nexus.core.ConnectionStatus
 
 enum class MainTab {
     CHATS,

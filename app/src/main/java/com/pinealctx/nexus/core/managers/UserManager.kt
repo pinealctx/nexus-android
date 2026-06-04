@@ -2,48 +2,74 @@ package com.pinealctx.nexus.core.managers
 
 import com.pinealctx.nexus.core.ContactData
 import com.pinealctx.nexus.core.DeviceData
-import com.pinealctx.nexus.core.NexusClientProvider
 import com.pinealctx.nexus.core.ProfileData
+import com.pinealctx.nexus.client.UserApi
+import com.pinealctx.nexus.local.LocalDataStore
+import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class UserManager @Inject constructor(
-    private val clientProvider: NexusClientProvider
+    private val userApi: UserApi,
+    private val localDataStore: LocalDataStore
 ) {
     fun getMyProfile(): ProfileData? {
-        val p = clientProvider.getOrNull()?.getMyProfile() ?: return null
-        return ProfileData(p.userId, p.username, p.nickname, p.avatarUrl, p.signature, p.phone, p.email)
+        return localDataStore.getMyProfile()
+            ?: runBlocking {
+                userApi.getMyProfile()
+                    .also { localDataStore.upsertMyProfile(it) }
+            }
     }
 
-    fun fetchProfile() { clientProvider.getOrNull()?.fetchProfile() }
-
-    fun updateProfile(nickname: String? = null, signature: String? = null, avatarUrl: String? = null) {
-        clientProvider.getOrNull()?.updateProfile(nickname, signature, avatarUrl)
-    }
-
-    fun setUsername(username: String) { clientProvider.get().setUsername(username) }
-
-    fun resolveUsername(username: String): ContactData? {
-        val result = clientProvider.getOrNull()?.resolveUsername(username) ?: return null
-        return result.toContactData()
-    }
-
-    fun batchGetUserInfo(userIds: List<Int>): List<ContactData> {
-        val results = clientProvider.getOrNull()?.batchGetUserInfo(userIds) ?: return emptyList()
-        return results.map { it.toContactData() }
-    }
-
-    fun listDevices(): List<DeviceData> {
-        val devices = clientProvider.getOrNull()?.listDevices() ?: return emptyList()
-        return devices.map { d ->
-            DeviceData(d.deviceId, d.deviceType, d.deviceName, d.deviceModel, d.osVersion, d.appVersion, d.loginAt, d.lastActiveAt, d.isCurrent)
+    fun fetchProfile() {
+        runBlocking {
+            userApi.fetchProfile()
+                .also { localDataStore.upsertMyProfile(it) }
         }
     }
 
-    fun removeDevice(deviceId: String) { clientProvider.getOrNull()?.removeDevice(deviceId) }
-}
+    fun updateProfile(nickname: String? = null, signature: String? = null, avatarUrl: String? = null) {
+        runBlocking {
+            userApi.updateProfile(nickname, signature, avatarUrl)
+                .also { localDataStore.upsertMyProfile(it) }
+        }
+    }
 
-private fun uniffi.nexus_ffi.ContactInfo.toContactData() = ContactData(
-    userId, username, nickname, avatarUrl, alias
-)
+    fun setUsername(username: String) {
+        runBlocking {
+            userApi.setUsername(username)
+                .also { localDataStore.upsertMyProfile(it) }
+        }
+    }
+
+    fun resolveUsername(username: String): ContactData? {
+        return localDataStore.getUserByUsername(username)
+            ?: runBlocking {
+                userApi.resolveUsername(username)
+                    ?.also { localDataStore.upsertUser(it) }
+            }
+    }
+
+    fun batchGetUserInfo(userIds: List<Int>): List<ContactData> {
+        if (userIds.isEmpty()) return emptyList()
+        val cached = localDataStore.getUsers(userIds).associateBy { it.userId }
+        val missingIds = userIds.distinct().filterNot { cached.containsKey(it) }
+        val fetched = if (missingIds.isEmpty()) {
+            emptyList()
+        } else {
+            runBlocking { userApi.batchGetUserInfo(missingIds) }
+                .also { localDataStore.upsertUsers(it) }
+        }
+        val fetchedById = fetched.associateBy { it.userId }
+        return userIds.mapNotNull { userId -> cached[userId] ?: fetchedById[userId] }
+    }
+
+    fun listDevices(): List<DeviceData> {
+        return runBlocking { userApi.listDevices() }
+    }
+
+    fun removeDevice(deviceId: String) {
+        runBlocking { userApi.removeDevice(deviceId) }
+    }
+}

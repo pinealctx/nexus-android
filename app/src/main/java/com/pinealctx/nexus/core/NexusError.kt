@@ -1,7 +1,5 @@
 package com.pinealctx.nexus.core
 
-import uniffi.nexus_ffi.NexusException
-
 sealed class NexusError {
     abstract val message: String
 
@@ -32,32 +30,7 @@ sealed class NexusError {
     ) : NexusError()
 
     companion object {
-        fun from(exception: NexusException): NexusError = when (exception) {
-            is NexusException.Auth -> Auth(
-                message = exception.msg,
-                code = exception.code,
-                requiresRelogin = exception.code == 1002 || exception.code == 1003
-            )
-            is NexusException.Network -> Network(
-                message = exception.msg,
-                code = exception.code,
-                isRetryable = exception.code != 9002
-            )
-            is NexusException.Business -> Business(
-                message = exception.msg,
-                code = exception.code
-            )
-            is NexusException.Storage -> Storage(
-                message = exception.msg,
-                code = exception.code
-            )
-            is NexusException.Internal -> Internal(
-                message = exception.msg
-            )
-        }
-
         fun from(exception: Exception): NexusError = when (exception) {
-            is NexusException -> from(exception)
             else -> Internal(message = exception.message ?: "Unknown error")
         }
 
@@ -103,8 +76,6 @@ sealed class NexusResult<out T> {
 
 inline fun <T> runCatching(block: () -> T): NexusResult<T> = try {
     NexusResult.Success(block())
-} catch (e: NexusException) {
-    NexusResult.Failure(NexusError.from(e))
 } catch (e: Exception) {
     NexusResult.Failure(NexusError.from(e))
 }

@@ -1,13 +1,13 @@
 [versions]
-kotlin = "2.0.21"
-agp = "8.9.3"
+kotlin = "2.2.21"
+agp = "9.2.1"
 compose-bom = "2025.05.01"
-hilt = "2.56.2"
+hilt = "2.59.2"
 navigation = "2.9.0"
 coil = "3.2.0"
 telephoto = "0.19.0"
 lifecycle = "2.9.0"
-coroutines = "1.10.2"
+coroutines = "1.11.0"
 firebase-bom = "33.14.0"
 activity = "1.10.1"
 appcompat = "1.7.0"
@@ -15,6 +15,10 @@ core-ktx = "1.16.0"
 jna = "5.14.0"
 camerax = "1.4.2"
 mlkit-barcode = "17.3.0"
+protobuf = "4.35.0"
+okhttp = "5.3.2"
+connect-kotlin = "0.8.2"
+robolectric = "4.16.1"
 
 [libraries]
 # Compose
@@ -52,6 +56,15 @@ telephoto-zoomable = { group = "me.saket.telephoto", name = "zoomable-image-coil
 
 # Coroutines
 coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
+
+# Native protocol
+protobuf-javalite = { group = "com.google.protobuf", name = "protobuf-javalite", version.ref = "protobuf" }
+protobuf-kotlinlite = { group = "com.google.protobuf", name = "protobuf-kotlin-lite", version.ref = "protobuf" }
+connect-kotlin = { group = "com.connectrpc", name = "connect-kotlin", version.ref = "connect-kotlin" }
+connect-kotlin-okhttp = { group = "com.connectrpc", name = "connect-kotlin-okhttp", version.ref = "connect-kotlin" }
+connect-kotlin-google-javalite = { group = "com.connectrpc", name = "connect-kotlin-google-javalite-ext", version.ref = "connect-kotlin" }
+okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 
 # Firebase
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebase-bom" }
@@ -72,6 +85,7 @@ mlkit-barcode = { group = "com.google.mlkit", name = "barcode-scanning", version
 
 # Testing
 junit = { group = "junit", name = "junit", version = "4.13.2" }
+robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
 compose-test = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 compose-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 
@@ -81,4 +95,4 @@ android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
-ksp = { id = "com.google.devtools.ksp", version = "2.0.21-1.0.28" }
+ksp = { id = "com.google.devtools.ksp", version = "2.3.3" }

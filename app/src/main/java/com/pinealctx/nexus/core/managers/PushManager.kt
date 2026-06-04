@@ -1,18 +1,23 @@
 package com.pinealctx.nexus.core.managers
 
-import com.pinealctx.nexus.core.NexusClientProvider
+import com.pinealctx.nexus.client.PushApi
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.runBlocking
 
 @Singleton
 class PushManager @Inject constructor(
-    private val clientProvider: NexusClientProvider
+    private val pushApi: PushApi
 ) {
     fun registerPushToken(token: String, platform: Int) {
-        clientProvider.getOrNull()?.registerPushToken(token, platform)
+        runBlocking { pushApi.registerPushToken(token, platform) }
     }
 
-    fun unregisterPushToken() { clientProvider.getOrNull()?.unregisterPushToken() }
+    fun unregisterPushToken() {
+        runBlocking { pushApi.unregisterPushToken() }
+    }
 
-    fun clearBadge() { clientProvider.getOrNull()?.clearBadge() }
+    fun clearBadge() {
+        runBlocking { pushApi.clearBadge() }
+    }
 }

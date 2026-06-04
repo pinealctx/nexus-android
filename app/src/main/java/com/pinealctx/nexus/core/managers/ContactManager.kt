@@ -1,64 +1,98 @@
 package com.pinealctx.nexus.core.managers
 
+import com.pinealctx.nexus.client.ContactApi
 import com.pinealctx.nexus.core.ContactData
-import com.pinealctx.nexus.core.NexusClientProvider
 import com.pinealctx.nexus.core.PendingRequestData
+import com.pinealctx.nexus.local.LocalDataStore
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.runBlocking
 
 @Singleton
 class ContactManager @Inject constructor(
-    private val clientProvider: NexusClientProvider
+    private val contactApi: ContactApi,
+    private val localDataStore: LocalDataStore
 ) {
     fun getContacts(): List<ContactData> {
-        val contacts = clientProvider.getOrNull()?.getContacts() ?: return emptyList()
-        return contacts.map { it.toContactData() }
+        val cached = localDataStore.listContacts()
+        if (cached.isNotEmpty()) return cached
+
+        return runBlocking {
+            contactApi.listContacts()
+                .also { localDataStore.upsertContacts(it) }
+        }
     }
 
-    fun fetchContacts() { clientProvider.getOrNull()?.fetchContacts() }
+    fun fetchContacts() {
+        runBlocking {
+            contactApi.listContacts()
+                .also { localDataStore.upsertContacts(it) }
+        }
+    }
 
-    fun deleteContact(userId: Int) { clientProvider.getOrNull()?.deleteContact(userId) }
+    fun deleteContact(userId: Int) {
+        runBlocking { contactApi.deleteContact(userId) }
+        localDataStore.deleteContact(userId)
+    }
 
-    fun addContact(targetUserId: Int) { clientProvider.getOrNull()?.addContact(targetUserId) }
+    fun addContact(targetUserId: Int) {
+        runBlocking { contactApi.addContact(targetUserId) }
+        fetchContacts()
+    }
 
     fun updateContactAlias(contactUserId: Int, alias: String?) {
-        clientProvider.getOrNull()?.updateContactAlias(contactUserId, alias)
+        runBlocking { contactApi.updateContactAlias(contactUserId, alias) }
+        localDataStore.updateContactAlias(contactUserId, alias)
     }
 
-    fun searchUsers(query: String): List<ContactData> {
-        val results = clientProvider.getOrNull()?.searchUsers(query) ?: return emptyList()
-        return results.map { it.toContactData() }
-    }
+    fun searchUsers(query: String): List<ContactData> =
+        runBlocking { contactApi.searchUsers(query) }
 
     fun sendFriendRequest(targetUserId: Int, message: String) {
-        clientProvider.getOrNull()?.sendFriendRequest(targetUserId, message)
+        runBlocking { contactApi.sendFriendRequest(targetUserId, message) }
     }
 
-    fun acceptFriendRequest(requestId: Long) { clientProvider.getOrNull()?.acceptFriendRequest(requestId) }
-
-    fun rejectFriendRequest(requestId: Long) { clientProvider.getOrNull()?.rejectFriendRequest(requestId) }
-
-    fun getPendingRequests(): List<PendingRequestData> {
-        val requests = clientProvider.getOrNull()?.getPendingRequests() ?: return emptyList()
-        return requests.map { r ->
-            PendingRequestData(r.requestId, r.fromUserId, r.toUserId, r.message, r.status, r.createdAt)
-        }
+    fun acceptFriendRequest(requestId: Long) {
+        runBlocking { contactApi.acceptFriendRequest(requestId) }
+        localDataStore.removePendingRequest(requestId)
+        fetchContacts()
     }
+
+    fun rejectFriendRequest(requestId: Long) {
+        runBlocking { contactApi.rejectFriendRequest(requestId) }
+        localDataStore.removePendingRequest(requestId)
+    }
+
+    fun getPendingRequests(): List<PendingRequestData> =
+        listPendingRequests()
 
     fun listPendingRequests(beforeTime: Long? = null, limit: Int = 20): List<PendingRequestData> {
-        val requests = clientProvider.getOrNull()?.listPendingRequests(beforeTime, limit) ?: return emptyList()
-        return requests.map { r ->
-            PendingRequestData(r.requestId, r.fromUserId, r.toUserId, r.message, r.status, r.createdAt)
+        val cached = localDataStore.listPendingRequests(beforeTime, limit)
+        if (cached.isNotEmpty()) return cached
+
+        return runBlocking {
+            contactApi.listPendingRequests(beforeTime, limit)
+                .also { localDataStore.upsertPendingRequests(it) }
         }
     }
 
-    fun blockUser(userId: Int) { clientProvider.getOrNull()?.blockUser(userId) }
+    fun blockUser(userId: Int) {
+        runBlocking { contactApi.blockUser(userId) }
+        localDataStore.setBlockedUser(userId, true)
+    }
 
-    fun unblockUser(userId: Int) { clientProvider.getOrNull()?.unblockUser(userId) }
+    fun unblockUser(userId: Int) {
+        runBlocking { contactApi.unblockUser(userId) }
+        localDataStore.setBlockedUser(userId, false)
+    }
 
-    fun getBlockedUsers(): List<Int> = clientProvider.getOrNull()?.getBlockedUsers() ?: emptyList()
+    fun getBlockedUsers(): List<Int> {
+        val cached = localDataStore.listBlockedUsers()
+        if (cached.isNotEmpty()) return cached
+
+        return runBlocking {
+            contactApi.listBlockedUsers()
+                .also { localDataStore.replaceBlockedUsers(it) }
+        }
+    }
 }
-
-private fun uniffi.nexus_ffi.ContactInfo.toContactData() = ContactData(
-    userId, username, nickname, avatarUrl, alias
-)

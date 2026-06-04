@@ -1,6 +1,6 @@
 package com.pinealctx.nexus.di
 
-import com.pinealctx.nexus.core.NexusClientProvider
+import com.pinealctx.nexus.core.SecureStorage
 import com.pinealctx.nexus.core.managers.AgentManager
 import com.pinealctx.nexus.core.managers.AuthManager
 import com.pinealctx.nexus.core.managers.ContactManager
@@ -12,6 +12,18 @@ import com.pinealctx.nexus.core.managers.PushManager
 import com.pinealctx.nexus.core.managers.SearchManager
 import com.pinealctx.nexus.core.managers.SyncBridge
 import com.pinealctx.nexus.core.managers.UserManager
+import com.pinealctx.nexus.client.AgentApi
+import com.pinealctx.nexus.client.AuthApi
+import com.pinealctx.nexus.client.ContactApi
+import com.pinealctx.nexus.client.ConversationApi
+import com.pinealctx.nexus.client.GatewayClient
+import com.pinealctx.nexus.client.GroupApi
+import com.pinealctx.nexus.client.MediaApi
+import com.pinealctx.nexus.client.MessageApi
+import com.pinealctx.nexus.client.PushApi
+import com.pinealctx.nexus.client.SyncEngine
+import com.pinealctx.nexus.client.UserApi
+import com.pinealctx.nexus.local.LocalDataStore
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -24,56 +36,86 @@ object ManagerModule {
 
     @Provides
     @Singleton
-    fun provideAuthManager(clientProvider: NexusClientProvider): AuthManager =
-        AuthManager(clientProvider)
+    fun provideAuthManager(
+        authApi: AuthApi,
+        secureStorage: SecureStorage
+    ): AuthManager =
+        AuthManager(authApi, secureStorage)
 
     @Provides
     @Singleton
-    fun provideConversationManager(clientProvider: NexusClientProvider): ConversationManager =
-        ConversationManager(clientProvider)
+    fun provideConversationManager(
+        conversationApi: ConversationApi,
+        localDataStore: LocalDataStore
+    ): ConversationManager =
+        ConversationManager(conversationApi, localDataStore)
 
     @Provides
     @Singleton
-    fun provideMessageManager(clientProvider: NexusClientProvider): MessageManager =
-        MessageManager(clientProvider)
+    fun provideMessageManager(
+        messageApi: MessageApi,
+        localDataStore: LocalDataStore
+    ): MessageManager =
+        MessageManager(messageApi, localDataStore)
 
     @Provides
     @Singleton
-    fun provideContactManager(clientProvider: NexusClientProvider): ContactManager =
-        ContactManager(clientProvider)
+    fun provideContactManager(
+        contactApi: ContactApi,
+        localDataStore: LocalDataStore
+    ): ContactManager =
+        ContactManager(contactApi, localDataStore)
 
     @Provides
     @Singleton
-    fun provideGroupManager(clientProvider: NexusClientProvider): GroupManager =
-        GroupManager(clientProvider)
+    fun provideGroupManager(
+        groupApi: GroupApi,
+        localDataStore: LocalDataStore
+    ): GroupManager =
+        GroupManager(groupApi, localDataStore)
 
     @Provides
     @Singleton
-    fun provideMediaManager(clientProvider: NexusClientProvider): MediaManager =
-        MediaManager(clientProvider)
+    fun provideMediaManager(
+        mediaApi: MediaApi,
+        localDataStore: LocalDataStore
+    ): MediaManager =
+        MediaManager(mediaApi, localDataStore)
 
     @Provides
     @Singleton
-    fun provideAgentManager(clientProvider: NexusClientProvider): AgentManager =
-        AgentManager(clientProvider)
+    fun provideAgentManager(
+        agentApi: AgentApi,
+        localDataStore: LocalDataStore
+    ): AgentManager =
+        AgentManager(agentApi, localDataStore)
 
     @Provides
     @Singleton
-    fun provideSearchManager(clientProvider: NexusClientProvider): SearchManager =
-        SearchManager(clientProvider)
+    fun provideSearchManager(
+        contactApi: ContactApi,
+        localDataStore: LocalDataStore
+    ): SearchManager =
+        SearchManager(contactApi, localDataStore)
 
     @Provides
     @Singleton
-    fun provideUserManager(clientProvider: NexusClientProvider): UserManager =
-        UserManager(clientProvider)
+    fun provideUserManager(
+        userApi: UserApi,
+        localDataStore: LocalDataStore
+    ): UserManager =
+        UserManager(userApi, localDataStore)
 
     @Provides
     @Singleton
-    fun providePushManager(clientProvider: NexusClientProvider): PushManager =
-        PushManager(clientProvider)
+    fun providePushManager(pushApi: PushApi): PushManager =
+        PushManager(pushApi)
 
     @Provides
     @Singleton
-    fun provideSyncBridge(clientProvider: NexusClientProvider): SyncBridge =
-        SyncBridge(clientProvider)
+    fun provideSyncBridge(
+        gatewayClient: GatewayClient,
+        syncEngine: SyncEngine
+    ): SyncBridge =
+        SyncBridge(gatewayClient, syncEngine)
 }
