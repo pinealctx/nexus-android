@@ -55,9 +55,39 @@ data class MessageData(
     val senderId: Int,
     val content: MessageContent,
     val replyToMessageId: Long?,
+    val replyContext: MessageReplyContextData?,
     val createdAt: Long,
     val edited: Boolean,
     val recalled: Boolean
+)
+
+data class MessageReplyContextData(
+    val messageId: Long,
+    val senderId: Int,
+    val senderNickname: String,
+    val contentPreview: String
+)
+
+enum class MessageSendState(val code: Int) {
+    SENDING(0),
+    FAILED(1),
+    SENT(2);
+
+    companion object {
+        fun fromCode(code: Int): MessageSendState =
+            entries.firstOrNull { it.code == code } ?: FAILED
+    }
+}
+
+data class LocalMessageData(
+    val clientMessageId: Long,
+    val conversationId: String,
+    val serverMessageId: Long?,
+    val senderId: Int,
+    val content: MessageContent,
+    val replyToMessageId: Long?,
+    val createdAt: Long,
+    val sendState: MessageSendState
 )
 
 data class MessageSearchResultData(

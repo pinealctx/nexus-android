@@ -21,6 +21,26 @@
     <string name="chat_emoji">表情</string>
     <string name="chat_search">搜索聊天记录</string>
     <string name="chat_close_search">关闭搜索</string>
+    <string name="chat_send_state_sending">发送中…</string>
+    <string name="chat_send_state_failed">发送失败</string>
+    <string name="chat_send_retry">重试</string>
+    <string name="chat_action_copy">复制</string>
+    <string name="chat_action_reply">回复</string>
+    <string name="chat_action_edit">编辑</string>
+    <string name="chat_action_recall">撤回</string>
+    <string name="chat_action_recalling">撤回中…</string>
+    <string name="chat_action_delete">删除</string>
+    <string name="chat_action_deleting">删除中…</string>
+    <string name="chat_replying_to">正在回复用户 %1$d</string>
+    <string name="chat_reply_reference">回复 #%1$d</string>
+    <string name="chat_reply_preview_sender">用户 %1$d</string>
+    <string name="chat_cancel_reply">取消回复</string>
+    <string name="chat_editing_message">正在编辑 #%1$d</string>
+    <string name="chat_cancel_edit">取消编辑</string>
+    <string name="chat_recall_confirm_title">撤回消息？</string>
+    <string name="chat_recall_confirm_message">该消息将对会话内所有人撤回。</string>
+    <string name="chat_delete_confirm_title">删除消息？</string>
+    <string name="chat_delete_confirm_message">该消息将从你的本地会话记录中移除。</string>
     <string name="message_recalled">消息已撤回</string>
     <string name="message_edited">(已编辑)</string>
     <string name="message_unsupported">[不支持的消息类型]</string>
@@ -75,10 +95,22 @@
 
     <!-- Group -->
     <string name="group_title">群组</string>
+    <string name="group_name">群名称</string>
+    <string name="group_description">群描述</string>
+    <string name="group_edit_info">编辑群资料</string>
+    <string name="group_update_avatar">更新群头像</string>
     <string name="group_members">成员 (%d)</string>
     <string name="group_leave">退出群组</string>
     <string name="group_leave_confirm_title">退出群组</string>
     <string name="group_leave_confirm_message">确定要退出该群组吗？</string>
+    <string name="group_dissolve">解散群组</string>
+    <string name="group_dissolve_confirm_title">解散群组</string>
+    <string name="group_dissolve_confirm_message">该群组将对所有成员永久解散。</string>
+    <string name="group_exit_processing">处理中…</string>
+    <string name="group_user_fallback">用户 #%1$d</string>
+    <string name="group_remove_member">移除成员</string>
+    <string name="group_remove_member_confirm_title">移除成员？</string>
+    <string name="group_remove_member_confirm_message">确定要将 %1$s 移出该群组吗？</string>
     <string name="group_role_owner">群主</string>
     <string name="group_role_admin">管理员</string>
     <string name="group_role_member">成员</string>
@@ -126,6 +158,7 @@
     <string name="invite_all_added">所有联系人都已在群组中。</string>
     <string name="invite_selected">已选择 %d 人</string>
     <string name="invite_action">邀请</string>
+    <string name="invite_processing">邀请中…</string>
 
     <!-- User Profile -->
     <string name="profile_alias">备注: %s</string>
@@ -138,6 +171,9 @@
     <string name="back">返回</string>
     <string name="cancel">取消</string>
     <string name="confirm">确认</string>
+    <string name="save">保存</string>
+    <string name="saving">保存中…</string>
+    <string name="retry">重试</string>
     <string name="error_unknown">未知错误</string>
     <string name="loading">加载中…</string>
 

@@ -2,19 +2,22 @@
 
 Native Android IM client for Nexus, built with Jetpack Compose + Kotlin.
 
-Core business logic (sync engine, network protocol, local storage) is provided by the shared Rust library (`nexus-core`) via UniFFI-generated Kotlin bindings.
+The app is implemented as a native Android client. It talks to Nexus backend services through generated Connect-Kotlin clients and keeps a local SQLite cache for conversations, messages, contacts, groups, agents, and media metadata.
 
 ## Requirements
 
 - Android Studio Ladybug or later
 - JDK 17
 - Android SDK 35
-- NDK (for Rust .so integration)
+- `buf` CLI for protobuf generation
 
-## Build
+## Commands
 
 ```bash
+./gradlew generateProtocol
 ./gradlew assembleDebug
+./gradlew test
+./gradlew lint
 ```
 
 ## Architecture
@@ -22,5 +25,14 @@ Core business logic (sync engine, network protocol, local storage) is provided b
 - **UI**: Jetpack Compose + Material 3
 - **DI**: Hilt
 - **Navigation**: Compose Navigation
-- **Core**: Rust shared library via UniFFI (JNI)
-- **Push**: Firebase Cloud Messaging
+- **Protocol**: Protobuf + Connect-Kotlin generated from `../nexus-proto/proto`
+- **Network**: Connect RPC over OkHttp + WebSocket gateway
+- **Storage**: Android SQLite through `SQLiteOpenHelper`
+- **Push**: Android notification infrastructure; Firebase Messaging integration is still pending
+
+## Modules
+
+| Module | Purpose |
+| --- | --- |
+| `app` | Android application, UI, DI, network wrappers, sync, and local storage |
+| `protocol` | Generated protobuf messages and Connect-Kotlin clients |

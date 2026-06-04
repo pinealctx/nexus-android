@@ -1,4 +1,7 @@
-.PHONY: build build-release test lint clean install sync-core-libs run-debug run-debug-fast
+.PHONY: generate build build-release test lint clean install run-debug run-debug-fast
+
+generate:
+	./gradlew generateProtocol
 
 build:
 	./gradlew assembleDebug
@@ -17,9 +20,6 @@ clean:
 
 install:
 	./gradlew installDebug
-
-sync-core-libs:
-	cd ../nexus-core && powershell -ExecutionPolicy Bypass -File scripts/build-android-libs.ps1
 
 run-debug:
 	powershell -ExecutionPolicy Bypass -File scripts/run-debug.ps1

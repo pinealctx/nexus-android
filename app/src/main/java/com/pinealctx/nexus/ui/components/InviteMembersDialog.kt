@@ -17,6 +17,7 @@ import com.pinealctx.nexus.core.ContactData
 fun InviteMembersDialog(
     contacts: List<ContactData>,
     existingMemberIds: Set<Int>,
+    isInviting: Boolean = false,
     onDismiss: () -> Unit,
     onInvite: (List<Int>) -> Unit
 ) {
@@ -78,9 +79,14 @@ fun InviteMembersDialog(
         confirmButton = {
             TextButton(
                 onClick = { onInvite(selectedIds.toList()) },
-                enabled = selectedIds.isNotEmpty()
+                enabled = selectedIds.isNotEmpty() && !isInviting
             ) {
-                Text(stringResource(R.string.invite_action))
+                Text(
+                    stringResource(
+                        if (isInviting) R.string.invite_processing
+                        else R.string.invite_action
+                    )
+                )
             }
         },
         dismissButton = {

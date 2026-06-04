@@ -54,9 +54,10 @@ object ManagerModule {
     @Singleton
     fun provideMessageManager(
         messageApi: MessageApi,
-        localDataStore: LocalDataStore
+        localDataStore: LocalDataStore,
+        secureStorage: SecureStorage
     ): MessageManager =
-        MessageManager(messageApi, localDataStore)
+        MessageManager(messageApi, localDataStore, secureStorage)
 
     @Provides
     @Singleton

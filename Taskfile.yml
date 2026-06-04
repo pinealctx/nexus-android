@@ -2,6 +2,11 @@
 version: '3'
 
 tasks:
+  generate:
+    desc: Generate Kotlin protobuf and Connect clients from nexus-proto
+    cmds:
+      - ./gradlew generateProtocol
+
   build:
     desc: Build debug APK
     cmds:
@@ -31,11 +36,6 @@ tasks:
     desc: Install debug APK on connected device
     cmds:
       - ./gradlew installDebug
-
-  sync-core-libs:
-    desc: Build nexus-core Android .so files and copy them into app jniLibs
-    cmds:
-      - cmd: cd ../nexus-core && powershell -ExecutionPolicy Bypass -File scripts/build-android-libs.ps1
 
   run-debug:
     desc: Build, install, and launch debug APK on local emulator

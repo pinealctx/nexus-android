@@ -1,6 +1,6 @@
 # Nexus Android Development
 
-本文记录 Android 本地开发、Core 集成和模拟器运行的环境要求。Android 代码、注释、日志和提交信息仍使用英文。
+本文记录 Android 原生客户端的本地开发、协议生成和模拟器运行要求。Android 代码、注释、日志和提交信息仍使用英文。
 
 ## 必需环境
 
@@ -8,36 +8,23 @@
 | --- | --- | --- |
 | JDK | 17 或更高 | 当前本机使用 JDK 21；Gradle/AGP 可正常运行。 |
 | Android SDK | `local.properties` 中配置 `sdk.dir` | 脚本优先读取 `local.properties`，不要求 `adb` 在 PATH。 |
-| Android NDK | `ANDROID_NDK_HOME` 或 `NEXUS_ANDROID_NDK_HOME` | 用于从 `nexus-core` 构建 `libnexus_ffi.so`。也可安装到 Android SDK 的 `ndk/` 目录。 |
-| Rust targets | `x86_64-linux-android`、`aarch64-linux-android` | 分别对应模拟器和 arm64 真机。 |
+| buf CLI | 可执行 `buf` | 用于从 `../nexus-proto/proto` 生成 Kotlin protobuf 和 Connect 客户端。 |
 | AVD | 默认 `nexus_test` | `task run-debug` 默认启动该 AVD。 |
 
 ## 推荐流程
 
-当只改 Android UI/Kotlin：
+改动 Android UI/Kotlin 或本地业务代码：
 
 ```bash
 task build
 task run-debug
 ```
 
-当 `nexus-core` 的 FFI、schema、sync、message 或 native code 改动后：
+当 `nexus-proto` 的 proto schema 改动后：
 
 ```bash
-task sync-core-libs
+task generate
 task build
-task run-debug
-```
-
-当 FFI 方法、record、enum 或 callback 发生变化后，还必须先从 `../nexus-core` 生成 Kotlin binding：
-
-```bash
-cd ../nexus-core
-task bindgen-kotlin
-task sync-android-libs
-cd ../nexus-android
-task build
-task run-debug
 ```
 
 ## 打包默认服务器地址
@@ -72,39 +59,16 @@ task run-debug-fast
 
 ## 常见问题
 
-### Kotlin binding 与 so 不一致
+### protobuf 或 Connect 客户端类型找不到
 
 现象：
 
 ```text
-undefined symbol: uniffi_nexus_ffi_checksum_*
+Unresolved reference: com.api.v1.*
+Unresolved reference: com.shared.v1.*
 ```
 
-处理：
-
-```bash
-cd ../nexus-core
-task bindgen-kotlin
-task sync-android-libs
-cd ../nexus-android
-task run-debug
-```
-
-### JNA native dispatch 缺失
-
-现象：
-
-```text
-Native library ... libjnidispatch.so not found
-```
-
-要求：
-
-```kotlin
-implementation("net.java.dev.jna:jna:${libs.versions.jna.get()}@aar")
-```
-
-不要使用普通 jar 依赖；普通 jar 能编译，但不会把 Android ABI 的 `libjnidispatch.so` 打进 APK。
+处理：确认 `buf` 已安装，并运行 `task generate` 或直接运行 `./gradlew generateProtocol`。普通构建会依赖 `:protocol:generateNexusProtocol`，但单独打开 IDE 时可能需要先触发一次生成。
 
 ### adb 或 emulator 不在 PATH
 
@@ -121,7 +85,3 @@ sdk.dir=<path-to-android-sdk>
 ```bash
 task run-debug
 ```
-
-### jniLibs 不出现在 git status
-
-`app/src/main/jniLibs/**/*.so` 被 `.gitignore` 忽略，这是预期行为。提交源码时不提交 `.so`；本地运行前用 `task sync-core-libs` 生成并复制。

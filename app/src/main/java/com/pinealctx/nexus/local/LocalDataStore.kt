@@ -11,12 +11,15 @@ import com.pinealctx.nexus.core.ConversationData
 import com.pinealctx.nexus.core.ContactData
 import com.pinealctx.nexus.core.MessageContent
 import com.pinealctx.nexus.core.MessageData
+import com.pinealctx.nexus.core.MessageReplyContextData
 import com.pinealctx.nexus.core.MessageSearchResultData
 import com.pinealctx.nexus.core.GroupData
 import com.pinealctx.nexus.core.GroupMemberData
+import com.pinealctx.nexus.core.LocalMessageData
 import com.pinealctx.nexus.core.MediaFileData
 import com.pinealctx.nexus.core.PendingRequestData
 import com.pinealctx.nexus.core.ProfileData
+import com.pinealctx.nexus.core.MessageSendState
 import com.pinealctx.nexus.core.previewText
 import com.shared.v1.ConversationActionType
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -67,10 +70,37 @@ class LocalDataStore @Inject constructor(
                 card_json TEXT,
                 fallback_text TEXT,
                 reply_to_message_id INTEGER,
+                reply_sender_id INTEGER,
+                reply_sender_nickname TEXT,
+                reply_content_preview TEXT,
                 created_at INTEGER NOT NULL,
                 edited INTEGER NOT NULL,
                 recalled INTEGER NOT NULL,
                 PRIMARY KEY (conversation_id, message_id)
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            CREATE TABLE local_messages (
+                client_message_id INTEGER PRIMARY KEY,
+                conversation_id TEXT NOT NULL,
+                server_message_id INTEGER,
+                sender_id INTEGER NOT NULL,
+                content_kind TEXT NOT NULL,
+                text TEXT,
+                file_id TEXT,
+                file_name TEXT,
+                file_size INTEGER,
+                mime_type TEXT,
+                width INTEGER,
+                height INTEGER,
+                duration INTEGER,
+                card_json TEXT,
+                fallback_text TEXT,
+                reply_to_message_id INTEGER,
+                created_at INTEGER NOT NULL,
+                send_state INTEGER NOT NULL
             )
             """.trimIndent()
         )
@@ -196,6 +226,8 @@ class LocalDataStore @Inject constructor(
         db.execSQL("CREATE INDEX idx_conversations_sort ON conversations(deleted, last_message_time DESC, last_message_id DESC)")
         db.execSQL("CREATE INDEX idx_messages_sort ON messages(conversation_id, message_id DESC)")
         db.execSQL("CREATE INDEX idx_messages_search ON messages(conversation_id, content_kind, text)")
+        db.execSQL("CREATE INDEX idx_local_messages_sort ON local_messages(conversation_id, created_at DESC, client_message_id DESC)")
+        db.execSQL("CREATE INDEX idx_local_messages_server_id ON local_messages(conversation_id, server_message_id)")
         db.execSQL("CREATE INDEX idx_users_cache_username ON users_cache(username)")
         db.execSQL("CREATE INDEX idx_agents_featured ON agents_cache(is_featured, nickname COLLATE NOCASE)")
         db.execSQL("CREATE INDEX idx_agents_mine ON agents_cache(is_mine, nickname COLLATE NOCASE)")
@@ -213,6 +245,7 @@ class LocalDataStore @Inject constructor(
         db.execSQL("DROP TABLE IF EXISTS users_cache")
         db.execSQL("DROP TABLE IF EXISTS my_profile")
         db.execSQL("DROP TABLE IF EXISTS contacts")
+        db.execSQL("DROP TABLE IF EXISTS local_messages")
         db.execSQL("DROP TABLE IF EXISTS messages")
         db.execSQL("DROP TABLE IF EXISTS conversations")
         onCreate(db)
@@ -788,6 +821,121 @@ class LocalDataStore @Inject constructor(
         }
     }
 
+    fun upsertLocalMessage(message: LocalMessageData) {
+        writableDatabase.transaction {
+            insertWithOnConflict(
+                "local_messages",
+                null,
+                message.toContentValues(),
+                SQLiteDatabase.CONFLICT_REPLACE
+            )
+            ensureConversation(message.conversationId, this)
+        }
+    }
+
+    fun listLocalMessages(conversationId: Long): List<LocalMessageData> {
+        return readableDatabase.rawQuery(
+            """
+            SELECT * FROM local_messages
+            WHERE conversation_id = ?
+            ORDER BY created_at DESC, client_message_id DESC
+            """.trimIndent(),
+            arrayOf(conversationId.toString())
+        ).use { cursor ->
+            buildList {
+                while (cursor.moveToNext()) {
+                    add(cursor.toLocalMessageData())
+                }
+            }
+        }
+    }
+
+    fun getLocalMessage(clientMessageId: Long): LocalMessageData? {
+        return readableDatabase.rawQuery(
+            "SELECT * FROM local_messages WHERE client_message_id = ?",
+            arrayOf(clientMessageId.toString())
+        ).use { cursor ->
+            if (cursor.moveToFirst()) cursor.toLocalMessageData() else null
+        }
+    }
+
+    fun markLocalMessageSending(clientMessageId: Long) {
+        val values = ContentValues().apply {
+            putNull("server_message_id")
+            put("send_state", MessageSendState.SENDING.code)
+        }
+        writableDatabase.update(
+            "local_messages",
+            values,
+            "client_message_id = ?",
+            arrayOf(clientMessageId.toString())
+        )
+    }
+
+    fun markLocalMessageSent(clientMessageId: Long, serverMessageId: Long) {
+        val values = ContentValues().apply {
+            put("server_message_id", serverMessageId)
+            put("send_state", MessageSendState.SENT.code)
+        }
+        writableDatabase.update(
+            "local_messages",
+            values,
+            "client_message_id = ?",
+            arrayOf(clientMessageId.toString())
+        )
+    }
+
+    fun markLocalMessageFailed(clientMessageId: Long) {
+        val values = ContentValues().apply {
+            put("send_state", MessageSendState.FAILED.code)
+        }
+        writableDatabase.update(
+            "local_messages",
+            values,
+            "client_message_id = ?",
+            arrayOf(clientMessageId.toString())
+        )
+    }
+
+    fun deleteLocalMessage(clientMessageId: Long) {
+        writableDatabase.delete(
+            "local_messages",
+            "client_message_id = ?",
+            arrayOf(clientMessageId.toString())
+        )
+    }
+
+    fun editMessage(conversationId: Long, messageId: Long, text: String) {
+        writableDatabase.transaction {
+            val values = clearedMessageContentValues("text").apply {
+                put("text", text)
+                put("edited", 1)
+            }
+            update(
+                "messages",
+                values,
+                "conversation_id = ? AND message_id = ?",
+                arrayOf(conversationId.toString(), messageId.toString())
+            )
+            refreshConversationPreview(conversationId.toString(), this)
+        }
+    }
+
+    fun recallMessage(conversationId: Long, messageId: Long) {
+        writableDatabase.transaction {
+            val values = clearedMessageContentValues("recalled").apply {
+                put("recalled", 1)
+            }
+            update(
+                "messages",
+                values,
+                "conversation_id = ? AND message_id = ?",
+                arrayOf(conversationId.toString(), messageId.toString())
+            )
+            refreshConversationPreview(conversationId.toString(), this)
+        }
+    }
+
     fun markConversationRead(conversationId: Long, lastReadMessageId: Long) {
         writableDatabase.transaction {
             ensureConversation(conversationId.toString(), this)
@@ -815,6 +963,7 @@ class LocalDataStore @Inject constructor(
                     updateConversationFlags(conversationId, deleted = true, db = this)
                     if (clearMessages) {
                         delete("messages", "conversation_id = ?", arrayOf(conversationId.toString()))
+                        delete("local_messages", "conversation_id = ?", arrayOf(conversationId.toString()))
                     }
                 }
                 ConversationActionType.CONVERSATION_ACTION_TYPE_UNSPECIFIED,
@@ -829,6 +978,7 @@ class LocalDataStore @Inject constructor(
             val placeholders = messageIds.joinToString(",") { "?" }
             val args = arrayOf(conversationId.toString()) + messageIds.map { it.toString() }
             delete("messages", "conversation_id = ? AND message_id IN ($placeholders)", args)
+            delete("local_messages", "conversation_id = ? AND server_message_id IN ($placeholders)", args)
             refreshConversationPreview(conversationId.toString(), this)
         }
     }
@@ -909,6 +1059,7 @@ class LocalDataStore @Inject constructor(
             delete("users_cache", null, null)
             delete("my_profile", null, null)
             delete("contacts", null, null)
+            delete("local_messages", null, null)
             delete("messages", null, null)
             delete("conversations", null, null)
         }
@@ -934,6 +1085,11 @@ class LocalDataStore @Inject constructor(
 
     private fun upsertMessage(message: MessageData, db: SQLiteDatabase) {
         db.insertWithOnConflict("messages", null, message.toContentValues(), SQLiteDatabase.CONFLICT_REPLACE)
+        db.delete(
+            "local_messages",
+            "conversation_id = ? AND server_message_id = ?",
+            arrayOf(message.conversationId, message.messageId.toString())
+        )
 
         val conversationId = message.conversationId
         val existing = db.rawQuery(
@@ -1052,9 +1208,51 @@ class LocalDataStore @Inject constructor(
             putNullable("card_json", content.cardJsonValue)
             putNullable("fallback_text", content.fallbackValue)
             putNullable("reply_to_message_id", replyToMessageId)
+            putNullable("reply_sender_id", replyContext?.senderId)
+            putNullable("reply_sender_nickname", replyContext?.senderNickname)
+            putNullable("reply_content_preview", replyContext?.contentPreview)
             put("created_at", createdAt)
             put("edited", edited.toInt())
             put("recalled", recalled.toInt())
+        }
+    }
+
+    private fun LocalMessageData.toContentValues(): ContentValues {
+        return ContentValues().apply {
+            put("client_message_id", clientMessageId)
+            put("conversation_id", conversationId)
+            putNullable("server_message_id", serverMessageId)
+            put("sender_id", senderId)
+            put("content_kind", content.kind)
+            putNullable("text", content.textValue)
+            putNullable("file_id", content.fileIdValue)
+            putNullable("file_name", content.fileNameValue)
+            putNullable("file_size", content.fileSizeValue)
+            putNullable("mime_type", content.mimeTypeValue)
+            putNullable("width", content.widthValue)
+            putNullable("height", content.heightValue)
+            putNullable("duration", content.durationValue)
+            putNullable("card_json", content.cardJsonValue)
+            putNullable("fallback_text", content.fallbackValue)
+            putNullable("reply_to_message_id", replyToMessageId)
+            put("created_at", createdAt)
+            put("send_state", sendState.code)
+        }
+    }
+
+    private fun clearedMessageContentValues(contentKind: String): ContentValues {
+        return ContentValues().apply {
+            put("content_kind", contentKind)
+            putNull("text")
+            putNull("file_id")
+            putNull("file_name")
+            putNull("file_size")
+            putNull("mime_type")
+            putNull("width")
+            putNull("height")
+            putNull("duration")
+            putNull("card_json")
+            putNull("fallback_text")
         }
     }
 
@@ -1296,9 +1494,33 @@ class LocalDataStore @Inject constructor(
             senderId = getInt(getColumnIndexOrThrow("sender_id")),
             content = toMessageContent(),
             replyToMessageId = longOrNull("reply_to_message_id"),
+            replyContext = toMessageReplyContextData(),
             createdAt = getLong(getColumnIndexOrThrow("created_at")),
             edited = int("edited") == 1,
             recalled = int("recalled") == 1
+        )
+    }
+
+    private fun Cursor.toMessageReplyContextData(): MessageReplyContextData? {
+        val messageId = longOrNull("reply_to_message_id") ?: return null
+        return MessageReplyContextData(
+            messageId = messageId,
+            senderId = intOrNull("reply_sender_id") ?: 0,
+            senderNickname = stringOrNull("reply_sender_nickname").orEmpty(),
+            contentPreview = stringOrNull("reply_content_preview").orEmpty()
+        )
+    }
+
+    private fun Cursor.toLocalMessageData(): LocalMessageData {
+        return LocalMessageData(
+            clientMessageId = getLong(getColumnIndexOrThrow("client_message_id")),
+            conversationId = getString(getColumnIndexOrThrow("conversation_id")),
+            serverMessageId = longOrNull("server_message_id"),
+            senderId = getInt(getColumnIndexOrThrow("sender_id")),
+            content = toMessageContent(),
+            replyToMessageId = longOrNull("reply_to_message_id"),
+            createdAt = getLong(getColumnIndexOrThrow("created_at")),
+            sendState = MessageSendState.fromCode(getInt(getColumnIndexOrThrow("send_state")))
         )
     }
 
@@ -1474,6 +1696,6 @@ class LocalDataStore @Inject constructor(
 
     private companion object {
         const val DATABASE_NAME = "nexus.db"
-        const val DATABASE_VERSION = 5
+        const val DATABASE_VERSION = 7
     }
 }

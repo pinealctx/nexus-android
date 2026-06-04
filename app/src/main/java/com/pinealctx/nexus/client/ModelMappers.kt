@@ -3,6 +3,7 @@ package com.pinealctx.nexus.client
 import com.pinealctx.nexus.core.ConversationData
 import com.pinealctx.nexus.core.MessageContent
 import com.pinealctx.nexus.core.MessageData
+import com.pinealctx.nexus.core.MessageReplyContextData
 import com.shared.v1.ConversationInfo
 import com.shared.v1.ConversationType
 import com.shared.v1.GroupInfo
@@ -39,9 +40,19 @@ internal fun MessageEnvelope.toMessageData(): MessageData {
         senderId = senderId,
         content = content,
         replyToMessageId = if (hasReplyTo()) replyTo.messageId else null,
+        replyContext = if (hasReplyTo()) replyTo.toMessageReplyContextData() else null,
         createdAt = createdAt,
         edited = edited,
         recalled = content is MessageContent.Recalled || (hasBody() && body.type == MessageType.MESSAGE_TYPE_RECALLED)
+    )
+}
+
+private fun com.shared.v1.ReplyContext.toMessageReplyContextData(): MessageReplyContextData {
+    return MessageReplyContextData(
+        messageId = messageId,
+        senderId = senderId,
+        senderNickname = senderNickname,
+        contentPreview = contentPreview
     )
 }
 

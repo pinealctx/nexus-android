@@ -12,7 +12,6 @@ firebase-bom = "33.14.0"
 activity = "1.10.1"
 appcompat = "1.7.0"
 core-ktx = "1.16.0"
-jna = "5.14.0"
 camerax = "1.4.2"
 mlkit-barcode = "17.3.0"
 protobuf = "4.35.0"
@@ -72,7 +71,6 @@ firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging
 
 # Security
 security-crypto = { group = "androidx.security", name = "security-crypto", version = "1.1.0-alpha06" }
-jna = { group = "net.java.dev.jna", name = "jna", version.ref = "jna" }
 
 # CameraX
 camerax-core = { group = "androidx.camera", name = "camera-core", version.ref = "camerax" }

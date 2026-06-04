@@ -5,9 +5,7 @@
 /.idea
 /build
 /app/build
-/core-bindings/build
 /protocol/build
-/app/src/main/jniLibs/**/*.so
 /captures
 .externalNativeBuild
 .cxx

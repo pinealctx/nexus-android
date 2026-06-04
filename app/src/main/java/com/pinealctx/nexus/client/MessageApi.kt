@@ -28,6 +28,8 @@ class MessageApi @Inject constructor(
 ) {
     private val clientMessageIds = AtomicLong(System.currentTimeMillis() shl 20)
 
+    fun nextClientMessageId(): Long = clientMessageIds.incrementAndGet()
+
     suspend fun getMessages(conversationId: Long, limit: Int = 50, beforeId: Long? = null): List<MessageData> {
         val request = GetMessageHistoryRequest.newBuilder()
             .setConversationId(conversationId)
@@ -45,29 +47,77 @@ class MessageApi @Inject constructor(
             .map { it.toMessageData() }
     }
 
-    suspend fun sendMessage(conversationId: Long, text: String): Long =
-        send(conversationId, textBody(text))
+    suspend fun sendMessage(
+        conversationId: Long,
+        text: String,
+        clientMessageId: Long = nextClientMessageId(),
+        replyToMessageId: Long? = null
+    ): Long =
+        send(
+            conversationId = conversationId,
+            body = textBody(text),
+            clientMessageId = clientMessageId,
+            replyToMessageId = replyToMessageId
+        )
 
     suspend fun sendReplyMessage(conversationId: Long, text: String, replyToMessageId: Long): Long =
-        send(conversationId, textBody(text), replyToMessageId)
+        sendMessage(
+            conversationId = conversationId,
+            text = text,
+            clientMessageId = nextClientMessageId(),
+            replyToMessageId = replyToMessageId
+        )
 
-    suspend fun sendImageMessage(conversationId: Long, fileId: String, width: Int, height: Int): Long =
-        send(conversationId, imageBody(fileId, width, height))
+    suspend fun sendImageMessage(
+        conversationId: Long,
+        fileId: String,
+        width: Int,
+        height: Int,
+        clientMessageId: Long = nextClientMessageId()
+    ): Long =
+        send(conversationId, imageBody(fileId, width, height), clientMessageId = clientMessageId)
 
-    suspend fun sendFileMessage(conversationId: Long, fileId: String, name: String, size: Long): Long =
-        send(conversationId, fileBody(fileId, name, size))
+    suspend fun sendFileMessage(
+        conversationId: Long,
+        fileId: String,
+        name: String,
+        size: Long,
+        clientMessageId: Long = nextClientMessageId()
+    ): Long =
+        send(conversationId, fileBody(fileId, name, size), clientMessageId = clientMessageId)
 
-    suspend fun sendAudioMessage(conversationId: Long, fileId: String, durationMs: Int): Long =
-        send(conversationId, audioBody(fileId, durationMs))
+    suspend fun sendAudioMessage(
+        conversationId: Long,
+        fileId: String,
+        durationMs: Int,
+        clientMessageId: Long = nextClientMessageId()
+    ): Long =
+        send(conversationId, audioBody(fileId, durationMs), clientMessageId = clientMessageId)
 
-    suspend fun sendVideoMessage(conversationId: Long, fileId: String, width: Int, height: Int, durationMs: Int): Long =
-        send(conversationId, videoBody(fileId, width, height, durationMs))
+    suspend fun sendVideoMessage(
+        conversationId: Long,
+        fileId: String,
+        width: Int,
+        height: Int,
+        durationMs: Int,
+        clientMessageId: Long = nextClientMessageId()
+    ): Long =
+        send(conversationId, videoBody(fileId, width, height, durationMs), clientMessageId = clientMessageId)
 
-    suspend fun sendMarkdownMessage(conversationId: Long, rawMarkdown: String): Long =
-        send(conversationId, markdownBody(rawMarkdown))
+    suspend fun sendMarkdownMessage(
+        conversationId: Long,
+        rawMarkdown: String,
+        clientMessageId: Long = nextClientMessageId()
+    ): Long =
+        send(conversationId, markdownBody(rawMarkdown), clientMessageId = clientMessageId)
 
-    suspend fun sendCardMessage(conversationId: Long, cardJson: String, fallbackText: String): Long =
-        send(conversationId, cardBody(cardJson, fallbackText))
+    suspend fun sendCardMessage(
+        conversationId: Long,
+        cardJson: String,
+        fallbackText: String,
+        clientMessageId: Long = nextClientMessageId()
+    ): Long =
+        send(conversationId, cardBody(cardJson, fallbackText), clientMessageId = clientMessageId)
 
     suspend fun editMessage(conversationId: Long, messageId: Long, text: String) {
         apiClientFactory.createClients()
@@ -147,9 +197,14 @@ class MessageApi @Inject constructor(
         return response.actionId
     }
 
-    private suspend fun send(conversationId: Long, body: MessageBody, replyToMessageId: Long? = null): Long {
+    private suspend fun send(
+        conversationId: Long,
+        body: MessageBody,
+        clientMessageId: Long,
+        replyToMessageId: Long? = null
+    ): Long {
         val request = SendMessageRequest.newBuilder()
-            .setClientMessageId(clientMessageIds.incrementAndGet())
+            .setClientMessageId(clientMessageId)
             .setConversationId(conversationId)
             .setBody(body)
             .apply {

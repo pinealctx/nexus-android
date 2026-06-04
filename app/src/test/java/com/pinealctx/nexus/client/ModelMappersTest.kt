@@ -1,6 +1,7 @@
 package com.pinealctx.nexus.client
 
 import com.pinealctx.nexus.core.MessageContent
+import com.pinealctx.nexus.core.MessageReplyContextData
 import com.shared.v1.ConversationInfo
 import com.shared.v1.ConversationType
 import com.shared.v1.FileContent
@@ -89,6 +90,7 @@ class ModelMappersTest {
         assertEquals(1001, data.senderId)
         assertEquals(MessageContent.Text("reply"), data.content)
         assertEquals(11L, data.replyToMessageId)
+        assertEquals(MessageReplyContextData(11L, 7, "Bob", "previous"), data.replyContext)
         assertTrue(data.edited)
     }
 

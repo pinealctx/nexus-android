@@ -6,9 +6,8 @@ plugins {
     alias(libs.plugins.ksp) apply false
 }
 
-tasks.register<Exec>("generateProtocol") {
+tasks.register("generateProtocol") {
     group = "code generation"
     description = "Generate Kotlin protobuf and Connect clients from nexus-proto."
     dependsOn(":protocol:generateNexusProtocol")
-    commandLine("cmd", "/c", "echo", "protocol generated")
 }
