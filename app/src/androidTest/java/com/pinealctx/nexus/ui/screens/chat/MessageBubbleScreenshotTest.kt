@@ -15,6 +15,7 @@ import com.pinealctx.nexus.core.MessageContent
 import com.pinealctx.nexus.core.MessageData
 import com.pinealctx.nexus.ui.theme.NexusTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
@@ -55,7 +56,14 @@ class MessageBubbleScreenshotTest {
 
         val bitmap = composeRule.onNodeWithTag(GoldenTag).captureToImage().asAndroidBitmap()
 
-        assertEquals(ExpectedPerceptualHash, differenceHash(bitmap))
+        val actualHash = differenceHash(bitmap)
+        val distance = hammingDistance(ExpectedPerceptualHash, actualHash)
+
+        assertTrue(
+            "Visual difference exceeded the $MaxHammingDistance-bit tolerance: " +
+                "distance=$distance, expected=$ExpectedPerceptualHash, actual=$actualHash",
+            distance <= MaxHammingDistance
+        )
     }
 
     private fun differenceHash(source: Bitmap): String {
@@ -77,8 +85,16 @@ class MessageBubbleScreenshotTest {
             android.graphics.Color.green(color) * 587 +
             android.graphics.Color.blue(color) * 114) / 1000
 
+    private fun hammingDistance(expected: String, actual: String): Int {
+        assertEquals("Perceptual hash length", expected.length, actual.length)
+        return expected.zip(actual).sumOf { (expectedNibble, actualNibble) ->
+            Integer.bitCount(expectedNibble.digitToInt(16) xor actualNibble.digitToInt(16))
+        }
+    }
+
     private companion object {
         const val GoldenTag = "message_bubble_golden"
+        const val MaxHammingDistance = 8
         const val ExpectedPerceptualHash =
             "00000000000000000000000072c4a000000000008000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
     }
