@@ -1,0 +1,127 @@
+name: Android
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout Android client
+        uses: actions/checkout@v4
+        with:
+          path: nexus-android
+
+      - name: Checkout protocol definitions
+        uses: actions/checkout@v4
+        with:
+          repository: pinealctx/nexus-proto
+          path: nexus-proto
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android API 36
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Set up Buf
+        uses: bufbuild/buf-setup-action@v1
+        with:
+          version: "1.72.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Verify protocol schemas
+        working-directory: nexus-proto/proto
+        run: buf lint
+
+      - name: Verify Android client
+        working-directory: nexus-android
+        run: ./gradlew generateProtocol test lint assembleDebug bundleRelease --no-daemon
+
+      - name: Upload build outputs and reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexus-android-${{ github.sha }}
+          if-no-files-found: warn
+          path: |
+            nexus-android/app/build/outputs/apk/debug/*.apk
+            nexus-android/app/build/outputs/bundle/release/*.aab
+            nexus-android/app/build/reports/**
+            nexus-android/app/build/test-results/**
+
+  instrumentation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        api-level: [26, 33, 36]
+
+    steps:
+      - name: Checkout Android client
+        uses: actions/checkout@v4
+        with:
+          path: nexus-android
+
+      - name: Checkout protocol definitions
+        uses: actions/checkout@v4
+        with:
+          repository: pinealctx/nexus-proto
+          path: nexus-proto
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Buf
+        uses: bufbuild/buf-setup-action@v1
+        with:
+          version: "1.72.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Enable KVM
+        run: sudo chmod 666 /dev/kvm
+
+      - name: Run device tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api-level }}
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          disable-animations: true
+          working-directory: nexus-android
+          script: ./gradlew connectedDebugAndroidTest --no-daemon
+
+      - name: Upload device test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexus-android-device-api-${{ matrix.api-level }}-${{ github.sha }}
+          if-no-files-found: warn
+          path: |
+            nexus-android/app/build/reports/androidTests/**
+            nexus-android/app/build/outputs/androidTest-results/**

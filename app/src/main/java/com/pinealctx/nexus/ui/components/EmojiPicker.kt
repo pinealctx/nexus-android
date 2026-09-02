@@ -130,7 +130,7 @@ fun EmojiPicker(
     }
 
     Column(modifier = modifier.fillMaxWidth().height(300.dp)) {
-        ScrollableTabRow(
+        PrimaryScrollableTabRow(
             selectedTabIndex = selectedTab,
             edgePadding = 0.dp,
             modifier = Modifier.fillMaxWidth()

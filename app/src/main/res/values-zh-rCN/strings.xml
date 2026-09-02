@@ -21,6 +21,9 @@
     <string name="chat_emoji">表情</string>
     <string name="chat_search">搜索聊天记录</string>
     <string name="chat_close_search">关闭搜索</string>
+    <string name="chat_load_failed">消息加载失败</string>
+    <string name="chat_empty">暂无消息</string>
+    <string name="chat_user_fallback">用户 %1$d</string>
     <string name="chat_send_state_sending">发送中…</string>
     <string name="chat_send_state_failed">发送失败</string>
     <string name="chat_send_retry">重试</string>
@@ -44,6 +47,23 @@
     <string name="message_recalled">消息已撤回</string>
     <string name="message_edited">(已编辑)</string>
     <string name="message_unsupported">[不支持的消息类型]</string>
+    <string name="message_group_update">群组信息已更新</string>
+    <string name="group_event_joined">%1$s 加入了群聊</string>
+    <string name="group_event_invited">%1$s 邀请 %2$s 加入了群聊</string>
+    <string name="group_event_left">%1$s 退出了群聊</string>
+    <string name="group_event_removed">%1$s 被移出了群聊</string>
+    <string name="group_event_removed_by">%1$s 将 %2$s 移出了群聊</string>
+    <string name="group_event_changed">群%1$s已更新</string>
+    <string name="group_event_changed_by">%1$s 修改了群%2$s</string>
+    <string name="group_event_field_name">名称</string>
+    <string name="group_event_field_avatar">头像</string>
+    <string name="group_event_field_description">描述</string>
+    <string name="group_event_field_information">资料</string>
+    <string name="voice_record">录制语音消息</string>
+    <string name="voice_cancel">取消录音</string>
+    <string name="voice_send">发送语音消息</string>
+    <string name="voice_message">语音消息</string>
+    <string name="voice_permission_denied">录制语音需要麦克风权限。</string>
 
     <!-- Conversations -->
     <string name="conversations_empty">暂无会话</string>
@@ -78,6 +98,21 @@
     <string name="friend_requests_accept">接受</string>
     <string name="friend_requests_reject">拒绝</string>
     <string name="friend_requests_retry">重试</string>
+    <string name="friend_request_user">用户 #%1$d</string>
+    <string name="media_camera">相机</string>
+    <string name="media_gallery">相册</string>
+    <string name="media_file">文件</string>
+    <string name="media_uploading">正在上传 %1$s…</string>
+    <string name="media_send_failed">媒体发送失败：%1$s</string>
+    <string name="create_group_title">创建群组</string>
+    <string name="create_group_action">创建</string>
+    <string name="create_group_name">群组名称</string>
+    <string name="create_group_members">选择成员（已选 %1$d 人，至少 2 人）</string>
+    <string name="edit_profile_title">编辑资料</string>
+    <string name="edit_profile_nickname">昵称</string>
+    <string name="edit_profile_signature">个性签名</string>
+    <string name="edit_profile_username">用户名</string>
+    <string name="edit_profile_username_locked">用户名不可修改</string>
 
     <!-- Search -->
     <string name="search_title">搜索</string>
@@ -100,6 +135,7 @@
     <string name="group_edit_info">编辑群资料</string>
     <string name="group_update_avatar">更新群头像</string>
     <string name="group_members">成员 (%d)</string>
+    <string name="group_details">群聊详情</string>
     <string name="group_leave">退出群组</string>
     <string name="group_leave_confirm_title">退出群组</string>
     <string name="group_leave_confirm_message">确定要退出该群组吗？</string>
@@ -135,6 +171,13 @@
     <string name="settings_logout">退出登录</string>
     <string name="settings_logout_title">退出登录</string>
     <string name="settings_logout_message">确定要退出登录吗？</string>
+    <string name="account_security_title">账号安全</string>
+    <string name="account_current_password">当前密码</string>
+    <string name="account_new_password">新密码</string>
+    <string name="account_confirm_password">确认新密码</string>
+    <string name="account_change_password">修改密码</string>
+    <string name="account_setup_password">首次设置密码</string>
+    <string name="account_logout_all">退出所有设备</string>
 
     <!-- Devices -->
     <string name="devices_title">设备管理</string>
@@ -187,6 +230,9 @@
     <string name="login_country_code">区号</string>
     <string name="login_phone">手机号</string>
     <string name="login_email">邮箱</string>
+    <string name="login_password">密码</string>
+    <string name="login_with_password">使用密码登录</string>
+    <string name="login_or_code">或使用验证码</string>
     <string name="login_loading_config">正在加载登录配置</string>
     <string name="login_no_method">当前没有可用的登录方式</string>
     <string name="login_send_code">发送验证码</string>
@@ -214,8 +260,16 @@
     <string name="notification_channel_messages">消息</string>
     <string name="notification_channel_messages_desc">新消息通知</string>
     <string name="notification_channel_friend_requests">好友请求</string>
+    <string name="notification_channel_friend_requests_desc">好友请求通知</string>
+    <string name="notification_friend_request_title">好友请求</string>
+    <string name="notification_friend_request_body">%1$s 想添加你为好友</string>
     <string name="notification_new_message">新消息</string>
     <string name="notification_new_message_body">你收到了一条新消息</string>
+    <string name="notification_message_image">[图片]</string>
+    <string name="notification_message_audio">[语音]</string>
+    <string name="notification_message_video">[视频]</string>
+    <string name="notification_message_file">[文件]</string>
+    <string name="notification_message_card">[卡片]</string>
 
     <!-- Profile -->
     <string name="profile_message">发消息</string>
@@ -254,4 +308,6 @@
     <string name="about_title">关于</string>
     <string name="about_version">版本 %s</string>
     <string name="about_copyright">Copyright 2024-2025 PinealCtx. All rights reserved.</string>
+    <string name="miniapp_agent_not_found">未找到该 Agent</string>
+    <string name="miniapp_open_failed">无法打开 Mini App</string>
 </resources>

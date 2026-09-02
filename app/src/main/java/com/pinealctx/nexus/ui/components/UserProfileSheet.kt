@@ -61,9 +61,9 @@ fun UserProfileSheet(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            if (!user.alias.isNullOrBlank()) {
+            user.alias?.takeIf { it.isNotBlank() }?.let { alias ->
                 Text(
-                    text = stringResource(R.string.profile_alias, user.alias!!),
+                    text = stringResource(R.string.profile_alias, alias),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

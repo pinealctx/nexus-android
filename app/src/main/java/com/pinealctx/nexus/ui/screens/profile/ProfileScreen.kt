@@ -14,7 +14,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.pinealctx.nexus.R
 import com.pinealctx.nexus.core.ProfileData
 import com.pinealctx.nexus.ui.components.NexusAvatar
@@ -23,6 +23,7 @@ import com.pinealctx.nexus.ui.components.NexusMainHeader
 @Composable
 fun ProfileScreen(
     onEditProfileClick: () -> Unit = {},
+    onAccountSecurityClick: () -> Unit = {},
     onDevicesClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
     onPrivacyClick: () -> Unit = {},
@@ -52,7 +53,7 @@ fun ProfileScreen(
                     title = stringResource(R.string.settings_account),
                     subtitle = stringResource(R.string.settings_account_desc),
                     icon = Icons.Filled.AccountCircle,
-                    onClick = onEditProfileClick
+                    onClick = onAccountSecurityClick
                 )
                 HorizontalDivider(modifier = Modifier.padding(start = 72.dp))
             }
@@ -121,7 +122,7 @@ private fun ProfileSummary(
         when {
             uiState.isLoading -> LoadingProfileSummary()
             uiState.error != null -> ProfileErrorSummary(
-                error = uiState.error ?: stringResource(R.string.error_unknown),
+                error = uiState.error,
                 onRetry = onRetry
             )
             else -> LoadedProfileSummary(profile = uiState.profile)

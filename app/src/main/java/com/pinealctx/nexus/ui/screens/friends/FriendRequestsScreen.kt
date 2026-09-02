@@ -9,9 +9,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.pinealctx.nexus.core.PendingRequestData
+import com.pinealctx.nexus.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -24,10 +26,10 @@ fun FriendRequestsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Friend Requests") },
+                title = { Text(stringResource(R.string.friend_requests_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
             )
@@ -49,7 +51,7 @@ fun FriendRequestsScreen(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             TextButton(onClick = { viewModel.loadRequests() }) {
-                                Text("Retry")
+                                Text(stringResource(R.string.friend_requests_retry))
                             }
                         }
                     }
@@ -57,7 +59,7 @@ fun FriendRequestsScreen(
                 uiState.requests.isEmpty() -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(
-                            text = "No pending requests",
+                            text = stringResource(R.string.friend_requests_empty),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -110,7 +112,7 @@ private fun FriendRequestItem(
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "User #${request.fromUserId}",
+                text = stringResource(R.string.friend_request_user, request.fromUserId),
                 style = MaterialTheme.typography.bodyLarge
             )
             if (!request.message.isNullOrBlank()) {
@@ -129,7 +131,7 @@ private fun FriendRequestItem(
             modifier = Modifier.height(36.dp),
             contentPadding = PaddingValues(horizontal = 12.dp)
         ) {
-            Text("Accept")
+            Text(stringResource(R.string.friend_requests_accept))
         }
 
         Spacer(modifier = Modifier.width(4.dp))
@@ -139,7 +141,7 @@ private fun FriendRequestItem(
             modifier = Modifier.height(36.dp),
             contentPadding = PaddingValues(horizontal = 12.dp)
         ) {
-            Text("Reject")
+            Text(stringResource(R.string.friend_requests_reject))
         }
     }
 }

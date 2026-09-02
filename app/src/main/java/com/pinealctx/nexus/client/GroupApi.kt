@@ -57,7 +57,7 @@ class GroupApi @Inject constructor(
             val user = users[member.userId]
             GroupMemberData(
                 userId = member.userId,
-                role = member.role.number,
+                role = member.role,
                 joinedAt = member.joinedAt,
                 displayName = user?.nickname?.takeIf { it.isNotBlank() } ?: user?.username ?: "user_${member.userId}"
             )

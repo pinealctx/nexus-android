@@ -102,7 +102,7 @@ class MiniAppActivity : ComponentActivity() {
     }
 }
 
-@SuppressLint("SetJavaScriptEnabled")
+@SuppressLint("JavascriptInterface", "SetJavaScriptEnabled")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MiniAppScreen(
@@ -153,7 +153,7 @@ private fun MiniAppScreen(
             getThemeJson = { MiniAppTheme.getThemeParams(colorScheme) },
             getUserInfoJson = {
                 try {
-                    val profile = userManager.getMyProfile()
+                    val profile = userManager.getCachedMyProfile()
                     if (profile != null) {
                         JSONObject().apply {
                             put("user_id", profile.userId)
@@ -224,7 +224,7 @@ private fun MiniAppScreen(
                         IconButton(onClick = {
                             bridge.dispatchEvent("back_button_pressed")
                         }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                         }
                     }
                 },

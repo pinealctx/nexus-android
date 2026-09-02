@@ -11,6 +11,7 @@ import com.pinealctx.nexus.core.SecureStorage
 import com.pinealctx.nexus.core.managers.ContactManager
 import com.pinealctx.nexus.core.managers.GroupManager
 import com.pinealctx.nexus.core.managers.MediaManager
+import com.pinealctx.nexus.core.managers.UserManager
 import com.shared.v1.MediaPurpose
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -23,6 +24,7 @@ import javax.inject.Inject
 data class GroupDetailUiState(
     val group: GroupData? = null,
     val members: List<GroupMemberData> = emptyList(),
+    val memberProfiles: Map<Int, ContactData> = emptyMap(),
     val contacts: List<ContactData> = emptyList(),
     val currentUserId: Int = 0,
     val isLoading: Boolean = false,
@@ -41,6 +43,7 @@ class GroupDetailViewModel @Inject constructor(
     private val groupManager: GroupManager,
     private val contactManager: ContactManager,
     private val mediaManager: MediaManager,
+    private val userManager: UserManager,
     private val secureStorage: SecureStorage,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
@@ -62,6 +65,7 @@ class GroupDetailViewModel @Inject constructor(
             try {
                 val group = groupManager.getGroupInfo(groupId)
                 val members = groupManager.getGroupMembers(groupId)
+                val memberProfiles = resolveMemberProfiles(members)
                 val contacts = if (GroupDetailActionPolicy.canInviteMembers(group, _uiState.value.currentUserId)) {
                     contactManager.getContacts()
                 } else {
@@ -70,6 +74,7 @@ class GroupDetailViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     group = group,
                     members = members,
+                    memberProfiles = memberProfiles,
                     contacts = contacts,
                     isLoading = false,
                     error = null
@@ -89,8 +94,10 @@ class GroupDetailViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isInviting = true, error = null)
             try {
                 groupManager.inviteMembers(groupId, uniqueMemberIds)
+                val members = groupManager.getGroupMembers(groupId)
                 _uiState.value = _uiState.value.copy(
-                    members = groupManager.getGroupMembers(groupId),
+                    members = members,
+                    memberProfiles = resolveMemberProfiles(members),
                     isInviting = false,
                     error = null
                 )
@@ -113,6 +120,7 @@ class GroupDetailViewModel @Inject constructor(
                 groupManager.removeMember(groupId, member.userId)
                 _uiState.value = _uiState.value.copy(
                     members = _uiState.value.members.filterNot { it.userId == member.userId },
+                    memberProfiles = _uiState.value.memberProfiles - member.userId,
                     removingMemberIds = _uiState.value.removingMemberIds - member.userId,
                     error = null
                 )
@@ -204,12 +212,19 @@ class GroupDetailViewModel @Inject constructor(
         }
     }
 
-    private fun uploadGroupAvatar(data: ByteArray, fileName: String, contentType: String): MediaFileData {
+    private suspend fun uploadGroupAvatar(data: ByteArray, fileName: String, contentType: String): MediaFileData {
         return mediaManager.uploadFile(
             data = data,
             fileName = fileName,
             contentType = contentType,
-            purpose = MediaPurpose.MEDIA_PURPOSE_GROUP_AVATAR.number
+            purpose = MediaPurpose.MEDIA_PURPOSE_GROUP_AVATAR
         )
+    }
+
+    private suspend fun resolveMemberProfiles(members: List<GroupMemberData>): Map<Int, ContactData> {
+        if (members.isEmpty()) return emptyMap()
+        return runCatching { userManager.batchGetUserInfo(members.map { it.userId }.distinct()) }
+            .getOrDefault(emptyList())
+            .associateBy { it.userId }
     }
 }

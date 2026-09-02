@@ -8,19 +8,21 @@ import com.pinealctx.nexus.BuildConfig
 import com.pinealctx.nexus.core.SecureStorage
 import kotlinx.coroutines.Dispatchers
 import okhttp3.OkHttpClient
-import java.time.Duration
+import java.time.Duration as JavaDuration
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 @Singleton
 class ApiClientFactory @Inject constructor(
     private val secureStorage: SecureStorage
 ) {
     private val okHttpClient: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(Duration.ofSeconds(15))
-        .readTimeout(Duration.ofSeconds(60))
-        .writeTimeout(Duration.ofSeconds(60))
-        .callTimeout(Duration.ofSeconds(90))
+        .connectTimeout(JavaDuration.ofSeconds(15))
+        .readTimeout(JavaDuration.ofSeconds(120))
+        .writeTimeout(JavaDuration.ofSeconds(120))
+        .callTimeout(JavaDuration.ofSeconds(150))
         .build()
 
     fun currentConfig(): EndpointConfig {
@@ -38,9 +40,16 @@ class ApiClientFactory @Inject constructor(
             config = ProtocolClientConfig(
                 host = config.apiBaseUrl,
                 serializationStrategy = GoogleJavaLiteProtobufStrategy(),
-                ioCoroutineContext = Dispatchers.IO
+                ioCoroutineContext = Dispatchers.IO,
+                timeoutOracle = { method -> rpcTimeoutForPath(method.path) }
             )
         )
         return ApiClients(protocolClient)
     }
 }
+
+internal fun rpcTimeoutForPath(path: String): Duration =
+    if (path.contains("MediaService")) MEDIA_RPC_TIMEOUT else DEFAULT_RPC_TIMEOUT
+
+private val DEFAULT_RPC_TIMEOUT = 30.seconds
+private val MEDIA_RPC_TIMEOUT = 120.seconds

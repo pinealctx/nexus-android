@@ -4,7 +4,7 @@ import com.pinealctx.nexus.client.ConversationApi
 import com.pinealctx.nexus.core.ConversationData
 import com.pinealctx.nexus.local.LocalDataStore
 import com.shared.v1.ConversationActionType
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -13,38 +13,56 @@ class ConversationManager @Inject constructor(
     private val conversationApi: ConversationApi,
     private val localDataStore: LocalDataStore
 ) {
-    fun getConversations(limit: Int = 50, beforeTime: Long? = null): List<ConversationData> {
+    fun observeConversations(
+        limit: Int = 50,
+        beforeTime: Long? = null
+    ): Flow<List<ConversationData>> = localDataStore.observeConversations(limit, beforeTime)
+
+    suspend fun getConversations(limit: Int = 50, beforeTime: Long? = null): List<ConversationData> {
         val cached = localDataStore.listConversations(limit, beforeTime)
         if (cached.isNotEmpty()) return cached
 
-        return runBlocking {
-            conversationApi.listConversations(limit, beforeTime)
-                .also { localDataStore.upsertConversations(it) }
-        }
+        return conversationApi.listConversations(limit, beforeTime)
+            .also { localDataStore.upsertConversations(it) }
     }
 
-    fun fetchConversations(limit: Int = 50, beforeTime: Long? = null): List<ConversationData> {
-        return runBlocking {
-            conversationApi.listConversations(limit, beforeTime)
-                .also { localDataStore.upsertConversations(it) }
+    suspend fun fetchConversations(limit: Int = 50, beforeTime: Long? = null): List<ConversationData> =
+        conversationApi.listConversations(limit, beforeTime)
+            .also { localDataStore.upsertConversations(it) }
+
+    suspend fun fetchAllConversations(pageSize: Int = 100): List<ConversationData> {
+        val conversations = mutableListOf<ConversationData>()
+        var beforeTime: Long? = null
+
+        while (true) {
+            val page = conversationApi.listConversationPage(pageSize, beforeTime)
+            if (page.conversations.isEmpty()) break
+
+            localDataStore.upsertConversations(page.conversations)
+            conversations += page.conversations
+            if (!page.hasMore) break
+
+            val nextBeforeTime = page.conversations.last().lastMessageTime
+            if (nextBeforeTime <= 0L || nextBeforeTime == beforeTime) break
+            beforeTime = nextBeforeTime
         }
+
+        return conversations.distinctBy { it.conversationId }
     }
 
-    fun getConversation(conversationId: Long): ConversationData? {
+    suspend fun getConversation(conversationId: Long): ConversationData? {
         return localDataStore.getConversation(conversationId)
-            ?: runBlocking {
-                conversationApi.getConversation(conversationId)
-                    ?.also { localDataStore.upsertConversation(it) }
-            }
+            ?: conversationApi.getConversation(conversationId)
+                ?.also { localDataStore.upsertConversation(it) }
     }
 
-    fun markAsRead(conversationId: Long, upToMessageId: Long) {
-        runBlocking { conversationApi.markAsRead(conversationId, upToMessageId) }
+    suspend fun markAsRead(conversationId: Long, upToMessageId: Long) {
+        conversationApi.markAsRead(conversationId, upToMessageId)
         localDataStore.markConversationRead(conversationId, upToMessageId)
     }
 
-    fun muteConversation(conversationId: Long) {
-        runBlocking { conversationApi.muteConversation(conversationId) }
+    suspend fun muteConversation(conversationId: Long) {
+        conversationApi.muteConversation(conversationId)
         localDataStore.applyConversationAction(
             conversationId = conversationId,
             action = ConversationActionType.CONVERSATION_ACTION_TYPE_MUTE,
@@ -52,8 +70,8 @@ class ConversationManager @Inject constructor(
         )
     }
 
-    fun unmuteConversation(conversationId: Long) {
-        runBlocking { conversationApi.unmuteConversation(conversationId) }
+    suspend fun unmuteConversation(conversationId: Long) {
+        conversationApi.unmuteConversation(conversationId)
         localDataStore.applyConversationAction(
             conversationId = conversationId,
             action = ConversationActionType.CONVERSATION_ACTION_TYPE_UNMUTE,
@@ -61,8 +79,8 @@ class ConversationManager @Inject constructor(
         )
     }
 
-    fun deleteConversation(conversationId: Long, clearMessages: Boolean) {
-        runBlocking { conversationApi.deleteConversation(conversationId, clearMessages) }
+    suspend fun deleteConversation(conversationId: Long, clearMessages: Boolean) {
+        conversationApi.deleteConversation(conversationId, clearMessages)
         localDataStore.applyConversationAction(
             conversationId = conversationId,
             action = ConversationActionType.CONVERSATION_ACTION_TYPE_DELETE,

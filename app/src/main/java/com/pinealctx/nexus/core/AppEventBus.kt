@@ -33,6 +33,14 @@ sealed class AppEvent {
     object AgentsUpdated : AppEvent()
     data class ForceLogout(val reason: String) : AppEvent()
     object ColdStartRequired : AppEvent()
+    object ColdStartCompleted : AppEvent()
+    data class CardActionAnswered(
+        val conversationId: Long,
+        val messageId: Long,
+        val agentUserId: Int,
+        val text: String,
+        val showAlert: Boolean
+    ) : AppEvent()
     data class TokenRefreshed(
         val accessToken: String,
         val refreshToken: String,
@@ -59,6 +67,8 @@ class AppEventBus @Inject constructor() {
     fun tokenRefreshed(): Flow<AppEvent.TokenRefreshed> = on()
     fun forceLogout(): Flow<AppEvent.ForceLogout> = on()
     fun coldStartRequired(): Flow<AppEvent.ColdStartRequired> = on()
+    fun coldStartCompleted(): Flow<AppEvent.ColdStartCompleted> = on()
+    fun cardActionAnswered(): Flow<AppEvent.CardActionAnswered> = on()
 
     fun emitForceLogout(reason: String) {
         _events.tryEmit(AppEvent.ForceLogout(reason))
@@ -66,6 +76,10 @@ class AppEventBus @Inject constructor() {
 
     fun emitColdStartRequired() {
         _events.tryEmit(AppEvent.ColdStartRequired)
+    }
+
+    fun emitColdStartCompleted() {
+        _events.tryEmit(AppEvent.ColdStartCompleted)
     }
 
     fun emitConversationsUpdated() {
@@ -82,6 +96,24 @@ class AppEventBus @Inject constructor() {
 
     fun emitAgentsUpdated() {
         _events.tryEmit(AppEvent.AgentsUpdated)
+    }
+
+    fun emitCardActionAnswered(
+        conversationId: Long,
+        messageId: Long,
+        agentUserId: Int,
+        text: String,
+        showAlert: Boolean
+    ) {
+        _events.tryEmit(
+            AppEvent.CardActionAnswered(
+                conversationId = conversationId,
+                messageId = messageId,
+                agentUserId = agentUserId,
+                text = text,
+                showAlert = showAlert
+            )
+        )
     }
 
     fun emitConnected() {

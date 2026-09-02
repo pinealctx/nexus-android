@@ -8,6 +8,7 @@ import com.api.v1.RecallMessageRequest
 import com.api.v1.SendMessageRequest
 import com.api.v1.SubmitCardActionRequest
 import com.pinealctx.nexus.core.MessageData
+import com.pinealctx.nexus.core.MessagePageData
 import com.shared.v1.AudioContent
 import com.shared.v1.CardContent
 import com.shared.v1.FileContent
@@ -31,6 +32,14 @@ class MessageApi @Inject constructor(
     fun nextClientMessageId(): Long = clientMessageIds.incrementAndGet()
 
     suspend fun getMessages(conversationId: Long, limit: Int = 50, beforeId: Long? = null): List<MessageData> {
+        return getMessagePage(conversationId, limit, beforeId).messages
+    }
+
+    suspend fun getMessagePage(
+        conversationId: Long,
+        limit: Int = 50,
+        beforeId: Long? = null
+    ): MessagePageData {
         val request = GetMessageHistoryRequest.newBuilder()
             .setConversationId(conversationId)
             .setLimit(limit)
@@ -39,12 +48,16 @@ class MessageApi @Inject constructor(
             }
             .build()
 
-        return apiClientFactory.createClients()
+        val response = apiClientFactory.createClients()
             .messages
             .getMessageHistory(request, headers.current())
             .requireMessage()
-            .messagesList
-            .map { it.toMessageData() }
+
+        return MessagePageData(
+            messages = response.messagesList.map { it.toMessageData() },
+            relatedUsers = response.relatedUsersList.map { it.toRelatedContactData() },
+            hasMore = response.hasMore
+        )
     }
 
     suspend fun sendMessage(
@@ -90,9 +103,10 @@ class MessageApi @Inject constructor(
         conversationId: Long,
         fileId: String,
         durationMs: Int,
+        sizeBytes: Long = 0,
         clientMessageId: Long = nextClientMessageId()
     ): Long =
-        send(conversationId, audioBody(fileId, durationMs), clientMessageId = clientMessageId)
+        send(conversationId, audioBody(fileId, durationMs, sizeBytes), clientMessageId = clientMessageId)
 
     suspend fun sendVideoMessage(
         conversationId: Long,
@@ -100,9 +114,15 @@ class MessageApi @Inject constructor(
         width: Int,
         height: Int,
         durationMs: Int,
+        thumbnailFileId: String = "",
+        sizeBytes: Long = 0,
         clientMessageId: Long = nextClientMessageId()
     ): Long =
-        send(conversationId, videoBody(fileId, width, height, durationMs), clientMessageId = clientMessageId)
+        send(
+            conversationId,
+            videoBody(fileId, width, height, durationMs, thumbnailFileId, sizeBytes),
+            clientMessageId = clientMessageId
+        )
 
     suspend fun sendMarkdownMessage(
         conversationId: Long,
@@ -248,17 +268,25 @@ private fun fileBody(fileId: String, name: String, size: Long): MessageBody =
         )
         .build()
 
-private fun audioBody(fileId: String, durationMs: Int): MessageBody =
+private fun audioBody(fileId: String, durationMs: Int, sizeBytes: Long): MessageBody =
     MessageBody.newBuilder()
         .setType(MessageType.MESSAGE_TYPE_AUDIO)
         .setAudio(
             AudioContent.newBuilder()
                 .setFileId(fileId)
                 .setDurationMs(durationMs)
+                .setSizeBytes(sizeBytes)
         )
         .build()
 
-private fun videoBody(fileId: String, width: Int, height: Int, durationMs: Int): MessageBody =
+private fun videoBody(
+    fileId: String,
+    width: Int,
+    height: Int,
+    durationMs: Int,
+    thumbnailFileId: String,
+    sizeBytes: Long
+): MessageBody =
     MessageBody.newBuilder()
         .setType(MessageType.MESSAGE_TYPE_VIDEO)
         .setVideo(
@@ -267,6 +295,8 @@ private fun videoBody(fileId: String, width: Int, height: Int, durationMs: Int):
                 .setWidth(width)
                 .setHeight(height)
                 .setDurationMs(durationMs)
+                .setThumbnailFileId(thumbnailFileId)
+                .setSizeBytes(sizeBytes)
         )
         .build()
 

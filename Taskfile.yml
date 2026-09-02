@@ -7,6 +7,11 @@ tasks:
     cmds:
       - ./gradlew generateProtocol
 
+  doctor:
+    desc: Check the local Android build environment
+    cmds:
+      - bash scripts/check-env.sh
+
   build:
     desc: Build debug APK
     cmds:
@@ -27,6 +32,11 @@ tasks:
     cmds:
       - ./gradlew lint
 
+  verify:
+    desc: Run protocol generation, tests, lint, and debug/release builds
+    cmds:
+      - ./gradlew generateProtocol test lint assembleDebug bundleRelease
+
   clean:
     desc: Clean build artifacts
     cmds:
@@ -40,9 +50,15 @@ tasks:
   run-debug:
     desc: Build, install, and launch debug APK on local emulator
     cmds:
-      - powershell -ExecutionPolicy Bypass -File scripts/run-debug.ps1
+      - cmd: powershell -ExecutionPolicy Bypass -File scripts/run-debug.ps1
+        platforms: [windows]
+      - cmd: ./scripts/run-debug.sh
+        platforms: [darwin, linux]
 
   run-debug-fast:
     desc: Install and launch existing debug APK on local emulator
     cmds:
-      - powershell -ExecutionPolicy Bypass -File scripts/run-debug.ps1 -SkipBuild
+      - cmd: powershell -ExecutionPolicy Bypass -File scripts/run-debug.ps1 -SkipBuild
+        platforms: [windows]
+      - cmd: ./scripts/run-debug.sh --skip-build
+        platforms: [darwin, linux]

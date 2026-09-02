@@ -6,15 +6,13 @@ import com.pinealctx.nexus.core.MessageSearchResultData
 import com.pinealctx.nexus.local.LocalDataStore
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.runBlocking
 
 @Singleton
 class SearchManager @Inject constructor(
     private val contactApi: ContactApi,
     private val localDataStore: LocalDataStore
 ) {
-    fun searchUsers(query: String): List<ContactData> =
-        runBlocking { contactApi.searchUsers(query) }
+    suspend fun searchUsers(query: String): List<ContactData> = contactApi.searchUsers(query)
 
     fun searchMessages(
         query: String,

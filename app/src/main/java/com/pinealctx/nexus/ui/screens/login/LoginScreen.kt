@@ -60,10 +60,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.pinealctx.nexus.R
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -110,6 +111,7 @@ fun LoginScreen(
             LoginPanel(
                 uiState = uiState,
                 onRequestCode = { viewModel.requestCode(it) },
+                onPasswordLogin = viewModel::loginWithPassword,
                 onToggleMethod = { viewModel.toggleLoginMethod() },
                 onVerify = { viewModel.verifyCode(it) },
                 onBack = { viewModel.goBack() },
@@ -169,6 +171,7 @@ private fun LoginHeader(onLogoClick: () -> Unit) {
 private fun LoginPanel(
     uiState: LoginUiState,
     onRequestCode: (String) -> Unit,
+    onPasswordLogin: (String, String) -> Unit,
     onToggleMethod: () -> Unit,
     onVerify: (String) -> Unit,
     onBack: () -> Unit,
@@ -184,6 +187,7 @@ private fun LoginPanel(
             uiState.step == LoginStep.INPUT_IDENTITY -> IdentityInputStep(
                 uiState = uiState,
                 onRequestCode = onRequestCode,
+                onPasswordLogin = onPasswordLogin,
                 onToggleMethod = onToggleMethod
             )
             uiState.step == LoginStep.INPUT_CODE -> CodeInputStep(
@@ -218,11 +222,13 @@ private fun LoginPanel(
 private fun IdentityInputStep(
     uiState: LoginUiState,
     onRequestCode: (String) -> Unit,
+    onPasswordLogin: (String, String) -> Unit,
     onToggleMethod: () -> Unit
 ) {
     var phone by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var countryCode by remember { mutableStateOf("+86") }
+    var password by remember { mutableStateOf("") }
 
     val useEmail = uiState.emailEnabled && (uiState.useEmail || !uiState.phoneEnabled)
     val title = if (useEmail) stringResource(R.string.login_email_login) else stringResource(R.string.login_phone_login)
@@ -282,6 +288,38 @@ private fun IdentityInputStep(
     }
 
     Spacer(modifier = Modifier.height(18.dp))
+
+    OutlinedTextField(
+        value = password,
+        onValueChange = { password = it },
+        label = { Text(stringResource(R.string.login_password)) },
+        modifier = Modifier.fillMaxWidth(),
+        enabled = !uiState.isLoading,
+        visualTransformation = PasswordVisualTransformation(),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+        singleLine = true
+    )
+
+    Spacer(modifier = Modifier.height(10.dp))
+
+    Button(
+        onClick = { onPasswordLogin(identityValue, password) },
+        modifier = Modifier.fillMaxWidth().height(50.dp),
+        shape = RoundedCornerShape(8.dp),
+        enabled = !uiState.isLoading && inputReady && password.isNotBlank()
+    ) {
+        Text(stringResource(R.string.login_with_password))
+    }
+
+    Spacer(modifier = Modifier.height(10.dp))
+
+    Text(
+        text = stringResource(R.string.login_or_code),
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+
+    Spacer(modifier = Modifier.height(10.dp))
 
     Button(
         onClick = { onRequestCode(identityValue) },

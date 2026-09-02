@@ -34,6 +34,7 @@ object Routes {
     const val SETTINGS = "settings"
     const val EDIT_PROFILE = "edit_profile"
     const val DEVICES = "devices"
+    const val ACCOUNT_SECURITY = "settings/account"
     const val NOTIFICATION_SETTINGS = "settings/notifications"
     const val BLOCKED_USERS = "settings/blocked"
     const val LANGUAGE_SETTINGS = "settings/language"
@@ -45,7 +46,10 @@ object Routes {
 }
 
 @Composable
-fun NexusNavGraph(navController: NavHostController) {
+fun NexusNavGraph(
+    navController: NavHostController,
+    onAuthenticated: () -> Unit = {}
+) {
     val context = LocalContext.current
     val startDestination = remember(context) {
         val secureStorage = SecureStorage(context)
@@ -63,6 +67,7 @@ fun NexusNavGraph(navController: NavHostController) {
         composable(Routes.LOGIN) {
             LoginScreen(
                 onLoginSuccess = {
+                    onAuthenticated()
                     navController.navigate(Routes.MAIN) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
                     }
@@ -89,6 +94,9 @@ fun NexusNavGraph(navController: NavHostController) {
                 },
                 onEditProfileClick = {
                     navController.navigate(Routes.EDIT_PROFILE)
+                },
+                onAccountSecurityClick = {
+                    navController.navigate(Routes.ACCOUNT_SECURITY)
                 },
                 onDevicesClick = {
                     navController.navigate(Routes.DEVICES)
@@ -120,7 +128,10 @@ fun NexusNavGraph(navController: NavHostController) {
             val conversationId = backStackEntry.arguments?.getString("conversationId") ?: ""
             ChatScreen(
                 conversationId = conversationId,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onGroupDetails = { groupId ->
+                    navController.navigate(Routes.groupDetailRoute(groupId))
+                }
             )
         }
 
@@ -195,6 +206,9 @@ fun NexusNavGraph(navController: NavHostController) {
                 },
                 onNavigateToDevices = {
                     navController.navigate(Routes.DEVICES)
+                },
+                onNavigateToAccountSecurity = {
+                    navController.navigate(Routes.ACCOUNT_SECURITY)
                 }
             )
         }
@@ -242,6 +256,17 @@ fun NexusNavGraph(navController: NavHostController) {
         composable(Routes.DEVICES) {
             com.pinealctx.nexus.ui.screens.settings.DevicesScreen(
                 onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.ACCOUNT_SECURITY) {
+            com.pinealctx.nexus.ui.screens.settings.AccountSecurityScreen(
+                onBack = { navController.popBackStack() },
+                onLoggedOut = {
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
             )
         }
     }

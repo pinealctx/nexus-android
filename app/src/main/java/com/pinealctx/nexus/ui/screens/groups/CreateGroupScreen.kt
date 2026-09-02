@@ -11,10 +11,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pinealctx.nexus.R
 import com.pinealctx.nexus.core.ContactData
 import com.pinealctx.nexus.core.managers.ContactManager
 import com.pinealctx.nexus.core.managers.GroupManager
@@ -100,10 +102,10 @@ fun CreateGroupScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Create Group") },
+                title = { Text(stringResource(R.string.create_group_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
@@ -111,7 +113,7 @@ fun CreateGroupScreen(
                         onClick = { viewModel.createGroup() },
                         enabled = uiState.groupName.isNotBlank() && uiState.selectedIds.size >= 2 && !uiState.isCreating
                     ) {
-                        Icon(Icons.Filled.Check, contentDescription = "Create")
+                        Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.create_group_action))
                     }
                 }
             )
@@ -128,12 +130,12 @@ fun CreateGroupScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                label = { Text("Group Name") },
+                label = { Text(stringResource(R.string.create_group_name)) },
                 singleLine = true
             )
 
             Text(
-                text = "Select members (${uiState.selectedIds.size} selected, min 2)",
+                text = stringResource(R.string.create_group_members, uiState.selectedIds.size),
                 style = MaterialTheme.typography.labelMedium,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant

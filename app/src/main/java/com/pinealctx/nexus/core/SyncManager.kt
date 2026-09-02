@@ -23,9 +23,12 @@ class SyncManager @Inject constructor(
 
     fun initialize() = syncCoordinator.initialize()
 
-    fun tryRestoreSession(): Boolean = sessionManager.tryRestoreSession()
+    suspend fun tryRestoreSession(): Boolean = sessionManager.tryRestoreSession()
 
     fun startSession() = syncCoordinator.startSession()
+
+    fun saveTokens(accessToken: String, refreshToken: String, expiresIn: Int, userId: Int) =
+        sessionManager.saveTokens(accessToken, refreshToken, expiresIn, userId)
 
     fun stopSession() = syncCoordinator.stopSession()
 

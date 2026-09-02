@@ -1,7 +1,13 @@
-.PHONY: generate build build-release test lint clean install run-debug run-debug-fast
+.PHONY: generate doctor verify build build-release test lint clean install run-debug run-debug-fast
 
 generate:
 	./gradlew generateProtocol
+
+doctor:
+	./scripts/check-env.sh
+
+verify:
+	./gradlew generateProtocol test lint assembleDebug bundleRelease
 
 build:
 	./gradlew assembleDebug
@@ -22,7 +28,7 @@ install:
 	./gradlew installDebug
 
 run-debug:
-	powershell -ExecutionPolicy Bypass -File scripts/run-debug.ps1
+	./scripts/run-debug.sh
 
 run-debug-fast:
-	powershell -ExecutionPolicy Bypass -File scripts/run-debug.ps1 -SkipBuild
+	./scripts/run-debug.sh --skip-build

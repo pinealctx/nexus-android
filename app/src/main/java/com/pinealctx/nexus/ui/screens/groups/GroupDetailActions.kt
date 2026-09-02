@@ -2,6 +2,7 @@ package com.pinealctx.nexus.ui.screens.groups
 
 import com.pinealctx.nexus.core.GroupData
 import com.pinealctx.nexus.core.GroupMemberData
+import com.shared.v1.MemberRole
 
 enum class GroupExitAction {
     LEAVE,
@@ -28,12 +29,10 @@ object GroupDetailActionPolicy {
     fun canRemoveMember(group: GroupData?, currentUserId: Int, member: GroupMemberData): Boolean {
         return isOwner(group, currentUserId) &&
             member.userId != currentUserId &&
-            member.role != GroupMemberRoleOwner
+            member.role != MemberRole.MEMBER_ROLE_OWNER
     }
 
     private fun isOwner(group: GroupData?, currentUserId: Int): Boolean {
         return group != null && currentUserId > 0 && group.ownerId == currentUserId
     }
-
-    private const val GroupMemberRoleOwner = 1
 }

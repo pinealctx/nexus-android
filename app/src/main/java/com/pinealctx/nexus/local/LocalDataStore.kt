@@ -4,7 +4,8 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
-import android.database.sqlite.SQLiteOpenHelper
+import androidx.room.Room
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.pinealctx.nexus.core.AgentCommandData
 import com.pinealctx.nexus.core.AgentInfoData
 import com.pinealctx.nexus.core.ConversationData
@@ -22,7 +23,11 @@ import com.pinealctx.nexus.core.ProfileData
 import com.pinealctx.nexus.core.MessageSendState
 import com.pinealctx.nexus.core.previewText
 import com.shared.v1.ConversationActionType
+import com.shared.v1.ConversationType
+import com.shared.v1.MemberRole
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import org.json.JSONArray
 import org.json.JSONObject
 import javax.inject.Inject
@@ -31,225 +36,51 @@ import javax.inject.Singleton
 @Singleton
 class LocalDataStore @Inject constructor(
     @ApplicationContext context: Context
-) : SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
+) {
+    private val database = Room.databaseBuilder(context, NexusDatabase::class.java, DATABASE_NAME)
+        .addMigrations(NexusDatabase.MIGRATION_7_8)
+        .allowMainThreadQueries()
+        .build()
 
-    override fun onCreate(db: SQLiteDatabase) {
-        db.execSQL(
-            """
-            CREATE TABLE conversations (
-                conversation_id TEXT PRIMARY KEY,
-                conversation_type INTEGER NOT NULL,
-                peer_id INTEGER NOT NULL,
-                display_name TEXT,
-                avatar_url TEXT,
-                last_message_id INTEGER NOT NULL,
-                last_message_time INTEGER NOT NULL,
-                last_message_content TEXT,
-                is_muted INTEGER NOT NULL,
-                last_read_message_id INTEGER NOT NULL,
-                deleted INTEGER NOT NULL DEFAULT 0,
-                updated_at INTEGER NOT NULL
-            )
-            """.trimIndent()
-        )
-        db.execSQL(
-            """
-            CREATE TABLE messages (
-                conversation_id TEXT NOT NULL,
-                message_id INTEGER NOT NULL,
-                sender_id INTEGER NOT NULL,
-                content_kind TEXT NOT NULL,
-                text TEXT,
-                file_id TEXT,
-                file_name TEXT,
-                file_size INTEGER,
-                mime_type TEXT,
-                width INTEGER,
-                height INTEGER,
-                duration INTEGER,
-                card_json TEXT,
-                fallback_text TEXT,
-                reply_to_message_id INTEGER,
-                reply_sender_id INTEGER,
-                reply_sender_nickname TEXT,
-                reply_content_preview TEXT,
-                created_at INTEGER NOT NULL,
-                edited INTEGER NOT NULL,
-                recalled INTEGER NOT NULL,
-                PRIMARY KEY (conversation_id, message_id)
-            )
-            """.trimIndent()
-        )
-        db.execSQL(
-            """
-            CREATE TABLE local_messages (
-                client_message_id INTEGER PRIMARY KEY,
-                conversation_id TEXT NOT NULL,
-                server_message_id INTEGER,
-                sender_id INTEGER NOT NULL,
-                content_kind TEXT NOT NULL,
-                text TEXT,
-                file_id TEXT,
-                file_name TEXT,
-                file_size INTEGER,
-                mime_type TEXT,
-                width INTEGER,
-                height INTEGER,
-                duration INTEGER,
-                card_json TEXT,
-                fallback_text TEXT,
-                reply_to_message_id INTEGER,
-                created_at INTEGER NOT NULL,
-                send_state INTEGER NOT NULL
-            )
-            """.trimIndent()
-        )
-        db.execSQL(
-            """
-            CREATE TABLE contacts (
-                user_id INTEGER PRIMARY KEY,
-                username TEXT NOT NULL,
-                nickname TEXT NOT NULL,
-                avatar_url TEXT NOT NULL,
-                alias TEXT,
-                updated_at INTEGER NOT NULL
-            )
-            """.trimIndent()
-        )
-        db.execSQL(
-            """
-            CREATE TABLE my_profile (
-                user_id INTEGER PRIMARY KEY,
-                username TEXT NOT NULL,
-                nickname TEXT NOT NULL,
-                avatar_url TEXT NOT NULL,
-                signature TEXT NOT NULL,
-                phone TEXT,
-                email TEXT,
-                updated_at INTEGER NOT NULL
-            )
-            """.trimIndent()
-        )
-        db.execSQL(
-            """
-            CREATE TABLE users_cache (
-                user_id INTEGER PRIMARY KEY,
-                username TEXT NOT NULL,
-                nickname TEXT NOT NULL,
-                avatar_url TEXT NOT NULL,
-                signature TEXT NOT NULL,
-                updated_at INTEGER NOT NULL
-            )
-            """.trimIndent()
-        )
-        db.execSQL(
-            """
-            CREATE TABLE pending_requests (
-                request_id INTEGER PRIMARY KEY,
-                from_user_id INTEGER NOT NULL,
-                to_user_id INTEGER NOT NULL,
-                message TEXT,
-                status INTEGER NOT NULL,
-                created_at INTEGER NOT NULL
-            )
-            """.trimIndent()
-        )
-        db.execSQL(
-            """
-            CREATE TABLE agents_cache (
-                user_id INTEGER PRIMARY KEY,
-                username TEXT NOT NULL,
-                nickname TEXT NOT NULL,
-                avatar_url TEXT NOT NULL,
-                signature TEXT NOT NULL,
-                is_system_agent INTEGER NOT NULL,
-                mini_app_enabled INTEGER NOT NULL,
-                mini_app_url TEXT NOT NULL,
-                mini_app_permissions INTEGER NOT NULL,
-                commands TEXT NOT NULL,
-                created_at INTEGER NOT NULL,
-                status INTEGER NOT NULL,
-                is_featured INTEGER NOT NULL DEFAULT 0,
-                is_mine INTEGER NOT NULL DEFAULT 0,
-                updated_at INTEGER NOT NULL
-            )
-            """.trimIndent()
-        )
-        db.execSQL(
-            """
-            CREATE TABLE blocked_users (
-                user_id INTEGER PRIMARY KEY
-            )
-            """.trimIndent()
-        )
-        db.execSQL(
-            """
-            CREATE TABLE groups (
-                group_id INTEGER PRIMARY KEY,
-                name TEXT NOT NULL,
-                avatar_url TEXT NOT NULL,
-                description TEXT NOT NULL,
-                owner_id INTEGER NOT NULL,
-                status INTEGER NOT NULL,
-                updated_at INTEGER NOT NULL
-            )
-            """.trimIndent()
-        )
-        db.execSQL(
-            """
-            CREATE TABLE group_members (
-                group_id INTEGER NOT NULL,
-                user_id INTEGER NOT NULL,
-                role INTEGER NOT NULL,
-                joined_at INTEGER NOT NULL,
-                display_name TEXT NOT NULL,
-                PRIMARY KEY (group_id, user_id)
-            )
-            """.trimIndent()
-        )
-        db.execSQL(
-            """
-            CREATE TABLE media_files (
-                file_id TEXT PRIMARY KEY,
-                file_name TEXT NOT NULL,
-                content_type TEXT NOT NULL,
-                size INTEGER NOT NULL,
-                width INTEGER NOT NULL,
-                height INTEGER NOT NULL,
-                duration_ms INTEGER NOT NULL,
-                thumbnail_file_id TEXT NOT NULL,
-                public_url TEXT NOT NULL,
-                updated_at INTEGER NOT NULL
-            )
-            """.trimIndent()
-        )
-        db.execSQL("CREATE INDEX idx_conversations_sort ON conversations(deleted, last_message_time DESC, last_message_id DESC)")
-        db.execSQL("CREATE INDEX idx_messages_sort ON messages(conversation_id, message_id DESC)")
-        db.execSQL("CREATE INDEX idx_messages_search ON messages(conversation_id, content_kind, text)")
-        db.execSQL("CREATE INDEX idx_local_messages_sort ON local_messages(conversation_id, created_at DESC, client_message_id DESC)")
-        db.execSQL("CREATE INDEX idx_local_messages_server_id ON local_messages(conversation_id, server_message_id)")
-        db.execSQL("CREATE INDEX idx_users_cache_username ON users_cache(username)")
-        db.execSQL("CREATE INDEX idx_agents_featured ON agents_cache(is_featured, nickname COLLATE NOCASE)")
-        db.execSQL("CREATE INDEX idx_agents_mine ON agents_cache(is_mine, nickname COLLATE NOCASE)")
-        db.execSQL("CREATE INDEX idx_pending_requests_sort ON pending_requests(created_at DESC)")
-        db.execSQL("CREATE INDEX idx_group_members_group ON group_members(group_id, role, display_name)")
+    private val readableDatabase: SupportSQLiteDatabase
+        get() = database.openHelper.readableDatabase
+
+    private val writableDatabase: SupportSQLiteDatabase
+        get() = database.openHelper.writableDatabase
+
+    fun close() {
+        database.close()
     }
 
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        db.execSQL("DROP TABLE IF EXISTS media_files")
-        db.execSQL("DROP TABLE IF EXISTS group_members")
-        db.execSQL("DROP TABLE IF EXISTS groups")
-        db.execSQL("DROP TABLE IF EXISTS agents_cache")
-        db.execSQL("DROP TABLE IF EXISTS blocked_users")
-        db.execSQL("DROP TABLE IF EXISTS pending_requests")
-        db.execSQL("DROP TABLE IF EXISTS users_cache")
-        db.execSQL("DROP TABLE IF EXISTS my_profile")
-        db.execSQL("DROP TABLE IF EXISTS contacts")
-        db.execSQL("DROP TABLE IF EXISTS local_messages")
-        db.execSQL("DROP TABLE IF EXISTS messages")
-        db.execSQL("DROP TABLE IF EXISTS conversations")
-        onCreate(db)
-    }
+    fun observeConversations(limit: Int = 50, beforeTime: Long? = null): Flow<List<ConversationData>> =
+        database.cacheDao()
+            .observeConversations(limit.coerceAtLeast(1), beforeTime)
+            .map { rows -> rows.map { it.toConversationData() } }
+
+    fun observeMessages(conversationId: String, limit: Int = 50): Flow<List<MessageData>> =
+        database.cacheDao()
+            .observeMessages(conversationId, limit.coerceAtLeast(1))
+            .map { rows -> rows.map { it.toMessageData() } }
+
+    fun observeLocalMessages(conversationId: String): Flow<List<LocalMessageData>> =
+        database.cacheDao()
+            .observeLocalMessages(conversationId)
+            .map { rows -> rows.map { it.toLocalMessageData() } }
+
+    fun observeContacts(): Flow<List<ContactData>> =
+        database.cacheDao()
+            .observeContacts()
+            .map { rows -> rows.map { it.toContactData() } }
+
+    fun observeGroups(): Flow<List<GroupData>> =
+        database.cacheDao()
+            .observeGroups()
+            .map { rows -> rows.map { it.toGroupData() } }
+
+    fun observePendingRequests(): Flow<List<PendingRequestData>> =
+        database.cacheDao()
+            .observePendingRequests()
+            .map { rows -> rows.map { it.toPendingRequestData() } }
 
     fun upsertConversations(conversations: List<ConversationData>) {
         if (conversations.isEmpty()) return
@@ -517,7 +348,7 @@ class LocalDataStore @Inject constructor(
         agent: AgentInfoData,
         featured: Boolean?,
         mine: Boolean?,
-        db: SQLiteDatabase
+        db: SupportSQLiteDatabase
     ) {
         val existing = db.rawQuery(
             "SELECT is_featured, is_mine FROM agents_cache WHERE user_id = ?",
@@ -598,8 +429,6 @@ class LocalDataStore @Inject constructor(
 
     fun replaceBlockedUsers(userIds: List<Int>) {
         writableDatabase.transaction {
-            delete("group_members", null, null)
-            delete("groups", null, null)
             delete("blocked_users", null, null)
             userIds.forEach { userId ->
                 insertWithOnConflict(
@@ -859,6 +688,17 @@ class LocalDataStore @Inject constructor(
         }
     }
 
+    fun listPendingLocalMessageIds(): List<Long> {
+        return readableDatabase.rawQuery(
+            "SELECT client_message_id FROM local_messages WHERE send_state != ? ORDER BY created_at",
+            arrayOf(MessageSendState.SENT.code.toString())
+        ).use { cursor ->
+            buildList {
+                while (cursor.moveToNext()) add(cursor.getLong(0))
+            }
+        }
+    }
+
     fun markLocalMessageSending(clientMessageId: Long) {
         val values = ContentValues().apply {
             putNull("server_message_id")
@@ -1065,10 +905,25 @@ class LocalDataStore @Inject constructor(
         }
     }
 
-    private fun upsertConversation(conversation: ConversationData, db: SQLiteDatabase) {
+    fun clearSyncedData() {
+        writableDatabase.transaction {
+            delete("group_members", null, null)
+            delete("groups", null, null)
+            delete("agents_cache", null, null)
+            delete("blocked_users", null, null)
+            delete("pending_requests", null, null)
+            delete("users_cache", null, null)
+            delete("my_profile", null, null)
+            delete("contacts", null, null)
+            delete("messages", null, null)
+            delete("conversations", null, null)
+        }
+    }
+
+    private fun upsertConversation(conversation: ConversationData, db: SupportSQLiteDatabase) {
         val values = ContentValues().apply {
             put("conversation_id", conversation.conversationId)
-            put("conversation_type", conversation.conversationType)
+            put("conversation_type", conversation.conversationType.number)
             put("peer_id", conversation.peerId)
             putNullable("display_name", conversation.displayName)
             putNullable("avatar_url", conversation.avatarUrl)
@@ -1083,7 +938,7 @@ class LocalDataStore @Inject constructor(
         db.insertWithOnConflict("conversations", null, values, SQLiteDatabase.CONFLICT_REPLACE)
     }
 
-    private fun upsertMessage(message: MessageData, db: SQLiteDatabase) {
+    private fun upsertMessage(message: MessageData, db: SupportSQLiteDatabase) {
         db.insertWithOnConflict("messages", null, message.toContentValues(), SQLiteDatabase.CONFLICT_REPLACE)
         db.delete(
             "local_messages",
@@ -1113,7 +968,7 @@ class LocalDataStore @Inject constructor(
         }
     }
 
-    private fun insertStubConversation(message: MessageData, db: SQLiteDatabase) {
+    private fun insertStubConversation(message: MessageData, db: SupportSQLiteDatabase) {
         val values = ContentValues().apply {
             put("conversation_id", message.conversationId)
             put("conversation_type", 0)
@@ -1131,7 +986,7 @@ class LocalDataStore @Inject constructor(
         db.insertWithOnConflict("conversations", null, values, SQLiteDatabase.CONFLICT_IGNORE)
     }
 
-    private fun ensureConversation(conversationId: String, db: SQLiteDatabase) {
+    private fun ensureConversation(conversationId: String, db: SupportSQLiteDatabase) {
         val exists = db.rawQuery(
             "SELECT 1 FROM conversations WHERE conversation_id = ?",
             arrayOf(conversationId)
@@ -1159,7 +1014,7 @@ class LocalDataStore @Inject constructor(
         conversationId: Long,
         isMuted: Boolean? = null,
         deleted: Boolean? = null,
-        db: SQLiteDatabase
+        db: SupportSQLiteDatabase
     ) {
         val values = ContentValues().apply {
             isMuted?.let { put("is_muted", it.toInt()) }
@@ -1169,7 +1024,7 @@ class LocalDataStore @Inject constructor(
         db.update("conversations", values, "conversation_id = ?", arrayOf(conversationId.toString()))
     }
 
-    private fun refreshConversationPreview(conversationId: String, db: SQLiteDatabase) {
+    private fun refreshConversationPreview(conversationId: String, db: SupportSQLiteDatabase) {
         val latest = db.rawQuery(
             """
             SELECT * FROM messages
@@ -1199,6 +1054,8 @@ class LocalDataStore @Inject constructor(
             put("content_kind", content.kind)
             putNullable("text", content.textValue)
             putNullable("file_id", content.fileIdValue)
+            putNullable("thumbnail_file_id", content.thumbnailFileIdValue)
+            putNullable("transcript", content.transcriptValue)
             putNullable("file_name", content.fileNameValue)
             putNullable("file_size", content.fileSizeValue)
             putNullable("mime_type", content.mimeTypeValue)
@@ -1226,6 +1083,8 @@ class LocalDataStore @Inject constructor(
             put("content_kind", content.kind)
             putNullable("text", content.textValue)
             putNullable("file_id", content.fileIdValue)
+            putNullable("thumbnail_file_id", content.thumbnailFileIdValue)
+            putNullable("transcript", content.transcriptValue)
             putNullable("file_name", content.fileNameValue)
             putNullable("file_size", content.fileSizeValue)
             putNullable("mime_type", content.mimeTypeValue)
@@ -1245,6 +1104,8 @@ class LocalDataStore @Inject constructor(
             put("content_kind", contentKind)
             putNull("text")
             putNull("file_id")
+            putNull("thumbnail_file_id")
+            putNull("transcript")
             putNull("file_name")
             putNull("file_size")
             putNull("mime_type")
@@ -1349,7 +1210,7 @@ class LocalDataStore @Inject constructor(
         return ContentValues().apply {
             put("group_id", groupId)
             put("user_id", userId)
-            put("role", role)
+            put("role", role.number)
             put("joined_at", joinedAt)
             put("display_name", displayName)
         }
@@ -1381,7 +1242,9 @@ class LocalDataStore @Inject constructor(
     private fun Cursor.toConversationData(): ConversationData {
         return ConversationData(
             conversationId = getString(getColumnIndexOrThrow("conversation_id")),
-            conversationType = getInt(getColumnIndexOrThrow("conversation_type")),
+            conversationType = ConversationType.forNumber(
+                getInt(getColumnIndexOrThrow("conversation_type"))
+            ) ?: ConversationType.CONVERSATION_TYPE_UNSPECIFIED,
             peerId = getInt(getColumnIndexOrThrow("peer_id")),
             displayName = stringOrNull("display_name"),
             avatarUrl = stringOrNull("avatar_url"),
@@ -1393,6 +1256,20 @@ class LocalDataStore @Inject constructor(
         )
     }
 
+    private fun ConversationEntity.toConversationData(): ConversationData = ConversationData(
+        conversationId = conversationId,
+        conversationType = ConversationType.forNumber(conversationType)
+            ?: ConversationType.CONVERSATION_TYPE_UNSPECIFIED,
+        peerId = peerId,
+        displayName = displayName,
+        avatarUrl = avatarUrl,
+        lastMessageId = lastMessageId,
+        lastMessageTime = lastMessageTime,
+        lastMessageContent = lastMessageContent,
+        isMuted = isMuted == 1,
+        lastReadMessageId = lastReadMessageId
+    )
+
     private fun Cursor.toContactData(): ContactData {
         return ContactData(
             userId = getInt(getColumnIndexOrThrow("user_id")),
@@ -1402,6 +1279,14 @@ class LocalDataStore @Inject constructor(
             alias = stringOrNull("alias")
         )
     }
+
+    private fun ContactEntity.toContactData(): ContactData = ContactData(
+        userId = userId,
+        username = username,
+        nickname = nickname,
+        avatarUrl = avatarUrl,
+        alias = alias
+    )
 
     private fun Cursor.toProfileData(): ProfileData {
         return ProfileData(
@@ -1453,6 +1338,15 @@ class LocalDataStore @Inject constructor(
         )
     }
 
+    private fun PendingRequestEntity.toPendingRequestData(): PendingRequestData = PendingRequestData(
+        requestId = requestId,
+        fromUserId = fromUserId,
+        toUserId = toUserId,
+        message = message,
+        status = status,
+        createdAt = createdAt
+    )
+
     private fun Cursor.toGroupData(): GroupData {
         return GroupData(
             groupId = getInt(getColumnIndexOrThrow("group_id")),
@@ -1464,10 +1358,20 @@ class LocalDataStore @Inject constructor(
         )
     }
 
+    private fun GroupEntity.toGroupData(): GroupData = GroupData(
+        groupId = groupId,
+        name = name,
+        avatarUrl = avatarUrl,
+        description = description,
+        ownerId = ownerId,
+        status = status
+    )
+
     private fun Cursor.toGroupMemberData(): GroupMemberData {
         return GroupMemberData(
             userId = getInt(getColumnIndexOrThrow("user_id")),
-            role = getInt(getColumnIndexOrThrow("role")),
+            role = MemberRole.forNumber(getInt(getColumnIndexOrThrow("role")))
+                ?: MemberRole.MEMBER_ROLE_UNSPECIFIED,
             joinedAt = getLong(getColumnIndexOrThrow("joined_at")),
             displayName = getString(getColumnIndexOrThrow("display_name"))
         )
@@ -1501,6 +1405,25 @@ class LocalDataStore @Inject constructor(
         )
     }
 
+    private fun MessageEntity.toMessageData(): MessageData = MessageData(
+        conversationId = conversationId,
+        messageId = messageId,
+        senderId = senderId,
+        content = toMessageContent(),
+        replyToMessageId = replyToMessageId,
+        replyContext = replyToMessageId?.let {
+            MessageReplyContextData(
+                messageId = it,
+                senderId = replySenderId ?: 0,
+                senderNickname = replySenderNickname.orEmpty(),
+                contentPreview = replyContentPreview.orEmpty()
+            )
+        },
+        createdAt = createdAt,
+        edited = edited == 1,
+        recalled = recalled == 1
+    )
+
     private fun Cursor.toMessageReplyContextData(): MessageReplyContextData? {
         val messageId = longOrNull("reply_to_message_id") ?: return null
         return MessageReplyContextData(
@@ -1524,6 +1447,83 @@ class LocalDataStore @Inject constructor(
         )
     }
 
+    private fun LocalMessageEntity.toLocalMessageData(): LocalMessageData = LocalMessageData(
+        clientMessageId = clientMessageId,
+        conversationId = conversationId,
+        serverMessageId = serverMessageId,
+        senderId = senderId,
+        content = toMessageContent(),
+        replyToMessageId = replyToMessageId,
+        createdAt = createdAt,
+        sendState = MessageSendState.fromCode(sendState)
+    )
+
+    private fun MessageEntity.toMessageContent(): MessageContent = messageContent(
+        contentKind = contentKind,
+        text = text,
+        fileId = fileId,
+        thumbnailFileId = thumbnailFileId,
+        transcript = transcript,
+        fileName = fileName,
+        fileSize = fileSize,
+        mimeType = mimeType,
+        width = width,
+        height = height,
+        duration = duration,
+        cardJson = cardJson,
+        fallbackText = fallbackText
+    )
+
+    private fun LocalMessageEntity.toMessageContent(): MessageContent = messageContent(
+        contentKind = contentKind,
+        text = text,
+        fileId = fileId,
+        thumbnailFileId = thumbnailFileId,
+        transcript = transcript,
+        fileName = fileName,
+        fileSize = fileSize,
+        mimeType = mimeType,
+        width = width,
+        height = height,
+        duration = duration,
+        cardJson = cardJson,
+        fallbackText = fallbackText
+    )
+
+    private fun messageContent(
+        contentKind: String,
+        text: String?,
+        fileId: String?,
+        thumbnailFileId: String?,
+        transcript: String?,
+        fileName: String?,
+        fileSize: Long?,
+        mimeType: String?,
+        width: Int?,
+        height: Int?,
+        duration: Int?,
+        cardJson: String?,
+        fallbackText: String?
+    ): MessageContent = when (contentKind) {
+        "text" -> MessageContent.Text(text.orEmpty())
+        "image" -> MessageContent.Image(fileId.orEmpty(), width ?: 0, height ?: 0)
+        "audio" -> MessageContent.Audio(fileId.orEmpty(), duration ?: 0, fileSize ?: 0L, transcript)
+        "video" -> MessageContent.Video(
+            fileId.orEmpty(),
+            duration ?: 0,
+            width ?: 0,
+            height ?: 0,
+            thumbnailFileId.orEmpty(),
+            fileSize ?: 0L
+        )
+        "file" -> MessageContent.File(fileId.orEmpty(), fileName.orEmpty(), fileSize ?: 0L, mimeType.orEmpty())
+        "markdown" -> MessageContent.Markdown(text.orEmpty())
+        "card" -> MessageContent.Card(cardJson.orEmpty(), fallbackText.orEmpty())
+        "group_event" -> text.toGroupEvent()
+        "recalled" -> MessageContent.Recalled
+        else -> MessageContent.Unknown
+    }
+
     private fun Cursor.toMessageContent(): MessageContent {
         return when (stringOrNull("content_kind")) {
             "text" -> MessageContent.Text(stringOrNull("text").orEmpty())
@@ -1534,13 +1534,17 @@ class LocalDataStore @Inject constructor(
             )
             "audio" -> MessageContent.Audio(
                 fileId = stringOrNull("file_id").orEmpty(),
-                duration = intOrNull("duration") ?: 0
+                durationMs = intOrNull("duration") ?: 0,
+                sizeBytes = longOrNull("file_size") ?: 0L,
+                transcript = stringOrNull("transcript")
             )
             "video" -> MessageContent.Video(
                 fileId = stringOrNull("file_id").orEmpty(),
-                duration = intOrNull("duration") ?: 0,
+                durationMs = intOrNull("duration") ?: 0,
                 width = intOrNull("width") ?: 0,
-                height = intOrNull("height") ?: 0
+                height = intOrNull("height") ?: 0,
+                thumbnailFileId = stringOrNull("thumbnail_file_id").orEmpty(),
+                sizeBytes = longOrNull("file_size") ?: 0L
             )
             "file" -> MessageContent.File(
                 fileId = stringOrNull("file_id").orEmpty(),
@@ -1553,6 +1557,7 @@ class LocalDataStore @Inject constructor(
                 json = stringOrNull("card_json").orEmpty(),
                 fallbackText = stringOrNull("fallback_text").orEmpty()
             )
+            "group_event" -> stringOrNull("text").toGroupEvent()
             "recalled" -> MessageContent.Recalled
             else -> MessageContent.Unknown
         }
@@ -1567,6 +1572,7 @@ class LocalDataStore @Inject constructor(
             is MessageContent.File -> "file"
             is MessageContent.Markdown -> "markdown"
             is MessageContent.Card -> "card"
+            is MessageContent.GroupEvent -> "group_event"
             MessageContent.Recalled -> "recalled"
             MessageContent.Unknown -> "unknown"
         }
@@ -1575,6 +1581,7 @@ class LocalDataStore @Inject constructor(
         get() = when (this) {
             is MessageContent.Text -> text
             is MessageContent.Markdown -> text
+            is MessageContent.GroupEvent -> toStorageJson()
             else -> null
         }
 
@@ -1591,7 +1598,18 @@ class LocalDataStore @Inject constructor(
         get() = if (this is MessageContent.File) name else null
 
     private val MessageContent.fileSizeValue: Long?
-        get() = if (this is MessageContent.File) size else null
+        get() = when (this) {
+            is MessageContent.File -> size
+            is MessageContent.Audio -> sizeBytes
+            is MessageContent.Video -> sizeBytes
+            else -> null
+        }
+
+    private val MessageContent.thumbnailFileIdValue: String?
+        get() = (this as? MessageContent.Video)?.thumbnailFileId
+
+    private val MessageContent.transcriptValue: String?
+        get() = (this as? MessageContent.Audio)?.transcript
 
     private val MessageContent.mimeTypeValue: String?
         get() = if (this is MessageContent.File) mimeType else null
@@ -1612,10 +1630,40 @@ class LocalDataStore @Inject constructor(
 
     private val MessageContent.durationValue: Int?
         get() = when (this) {
-            is MessageContent.Audio -> duration
-            is MessageContent.Video -> duration
+            is MessageContent.Audio -> durationMs
+            is MessageContent.Video -> durationMs
             else -> null
         }
+
+    private fun MessageContent.GroupEvent.toStorageJson(): String = JSONObject().apply {
+        put("group_id", groupId)
+        put("type", type.name)
+        put("member_ids", JSONArray(memberIds))
+        inviterId?.let { put("inviter_id", it) }
+        operatorId?.let { put("operator_id", it) }
+        changedField?.let { put("changed_field", it) }
+    }.toString()
+
+    private fun String?.toGroupEvent(): MessageContent.GroupEvent = runCatching {
+        val json = JSONObject(this.orEmpty())
+        val members = json.optJSONArray("member_ids")
+        MessageContent.GroupEvent(
+            groupId = json.optInt("group_id"),
+            type = runCatching {
+                com.pinealctx.nexus.core.GroupEventType.valueOf(json.optString("type"))
+            }.getOrDefault(com.pinealctx.nexus.core.GroupEventType.UNKNOWN),
+            memberIds = buildList {
+                if (members != null) {
+                    for (index in 0 until members.length()) add(members.optInt(index))
+                }
+            },
+            inviterId = json.optInt("inviter_id").takeIf { json.has("inviter_id") },
+            operatorId = json.optInt("operator_id").takeIf { json.has("operator_id") },
+            changedField = json.optString("changed_field").takeIf { it.isNotBlank() }
+        )
+    }.getOrElse {
+        MessageContent.GroupEvent(0, com.pinealctx.nexus.core.GroupEventType.UNKNOWN)
+    }
 
     private val MessageContent.cardJsonValue: String?
         get() = if (this is MessageContent.Card) json else null
@@ -1684,18 +1732,37 @@ class LocalDataStore @Inject constructor(
         if (value == null) putNull(name) else put(name, value)
     }
 
-    private inline fun SQLiteDatabase.transaction(block: SQLiteDatabase.() -> Unit) {
-        beginTransaction()
-        try {
-            block()
-            setTransactionSuccessful()
-        } finally {
-            endTransaction()
+    private fun SupportSQLiteDatabase.rawQuery(sql: String, args: Array<String>): Cursor =
+        query(sql, args)
+
+    private fun SupportSQLiteDatabase.insertWithOnConflict(
+        table: String,
+        nullColumnHack: String?,
+        values: ContentValues,
+        conflictAlgorithm: Int
+    ): Long = insert(table, conflictAlgorithm, values)
+
+    private fun SupportSQLiteDatabase.insert(
+        table: String,
+        nullColumnHack: String?,
+        values: ContentValues
+    ): Long = insert(table, SQLiteDatabase.CONFLICT_NONE, values)
+
+    private fun SupportSQLiteDatabase.update(
+        table: String,
+        values: ContentValues,
+        whereClause: String?,
+        whereArgs: Array<String>?
+    ): Int = update(table, SQLiteDatabase.CONFLICT_NONE, values, whereClause, whereArgs)
+
+    private fun SupportSQLiteDatabase.transaction(block: SupportSQLiteDatabase.() -> Unit) {
+        val supportDatabase = this
+        database.runInTransaction {
+            supportDatabase.block()
         }
     }
 
     private companion object {
         const val DATABASE_NAME = "nexus.db"
-        const val DATABASE_VERSION = 7
     }
 }

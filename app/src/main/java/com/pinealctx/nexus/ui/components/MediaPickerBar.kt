@@ -14,15 +14,22 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
+import com.pinealctx.nexus.R
+import java.io.File
 
 @Composable
 fun MediaPickerBar(
     onImageSelected: (Uri) -> Unit,
     onFileSelected: (Uri) -> Unit,
-    onCameraCapture: (Uri) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
+
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri -> uri?.let { onImageSelected(it) } }
@@ -30,6 +37,13 @@ fun MediaPickerBar(
     val filePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri -> uri?.let { onFileSelected(it) } }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) pendingCameraUri?.let(onImageSelected)
+        pendingCameraUri = null
+    }
 
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -42,8 +56,23 @@ fun MediaPickerBar(
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             MediaPickerButton(
+                icon = Icons.Filled.CameraAlt,
+                label = stringResource(R.string.media_camera),
+                onClick = {
+                    val cameraDirectory = File(context.cacheDir, "camera").apply { mkdirs() }
+                    val output = File(cameraDirectory, "photo_${System.currentTimeMillis()}.jpg")
+                    val uri = FileProvider.getUriForFile(
+                        context,
+                        "${context.packageName}.fileprovider",
+                        output
+                    )
+                    pendingCameraUri = uri
+                    cameraLauncher.launch(uri)
+                }
+            )
+            MediaPickerButton(
                 icon = Icons.Filled.Image,
-                label = "Gallery",
+                label = stringResource(R.string.media_gallery),
                 onClick = {
                     imagePicker.launch(
                         PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)
@@ -52,7 +81,7 @@ fun MediaPickerBar(
             )
             MediaPickerButton(
                 icon = Icons.Filled.AttachFile,
-                label = "File",
+                label = stringResource(R.string.media_file),
                 onClick = { filePicker.launch("*/*") }
             )
         }

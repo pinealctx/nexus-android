@@ -1,31 +1,22 @@
 package com.pinealctx.nexus.data.repository
 
-import com.pinealctx.nexus.core.AppEvent
-import com.pinealctx.nexus.core.AppEventBus
 import com.pinealctx.nexus.core.ContactData
 import com.pinealctx.nexus.core.PendingRequestData
 import com.pinealctx.nexus.core.managers.ContactManager
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onStart
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class ContactRepository @Inject constructor(
-    private val contactManager: ContactManager,
-    private val appEventBus: AppEventBus
+    private val contactManager: ContactManager
 ) {
-    fun observeContacts(): Flow<List<ContactData>> {
-        return appEventBus.contactsUpdated()
-            .onStart { emit(AppEvent.ContactsUpdated) }
-            .map { contactManager.getContacts() }
-            .flowOn(Dispatchers.IO)
-    }
+    fun observeContacts(): Flow<List<ContactData>> = contactManager.observeContacts()
 
-    fun getContacts(): List<ContactData> = contactManager.getContacts()
+    fun observePendingRequests(): Flow<List<PendingRequestData>> =
+        contactManager.observePendingRequests()
+
+    suspend fun getContacts(): List<ContactData> = contactManager.getContacts()
 
     suspend fun fetchFromRemote() {
         contactManager.fetchContacts()
@@ -47,9 +38,9 @@ class ContactRepository @Inject constructor(
         contactManager.deleteContact(userId)
     }
 
-    fun getPendingRequests(): List<PendingRequestData> = contactManager.getPendingRequests()
+    suspend fun getPendingRequests(): List<PendingRequestData> = contactManager.getPendingRequests()
 
-    fun searchUsers(query: String): List<ContactData> = contactManager.searchUsers(query)
+    suspend fun searchUsers(query: String): List<ContactData> = contactManager.searchUsers(query)
 
     suspend fun blockUser(userId: Int) {
         contactManager.blockUser(userId)
@@ -59,5 +50,5 @@ class ContactRepository @Inject constructor(
         contactManager.unblockUser(userId)
     }
 
-    fun getBlockedUsers(): List<Int> = contactManager.getBlockedUsers()
+    suspend fun getBlockedUsers(): List<Int> = contactManager.getBlockedUsers()
 }

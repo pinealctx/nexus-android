@@ -38,12 +38,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.pinealctx.nexus.R
 import com.pinealctx.nexus.core.ConversationData
 import com.pinealctx.nexus.ui.components.NexusMainHeader
 import com.pinealctx.nexus.ui.components.NexusAvatar
 import com.pinealctx.nexus.ui.components.NexusAvatarBadge
+import com.shared.v1.ConversationType
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -78,7 +79,7 @@ fun ConversationListScreen(
                     CircularProgressIndicator()
                 }
             }
-            uiState.error != null -> {
+            uiState.error != null && uiState.conversations.isEmpty() -> {
                 EmptyConversationState(
                     modifier = Modifier
                         .fillMaxSize()
@@ -318,7 +319,7 @@ private fun ConversationData.avatarBadge(): NexusAvatarBadge? {
 }
 
 private fun ConversationData.isGroupConversation(): Boolean {
-    return conversationType > 1
+    return conversationType == ConversationType.CONVERSATION_TYPE_GROUP
 }
 
 private fun formatUnread(unread: Long): String {

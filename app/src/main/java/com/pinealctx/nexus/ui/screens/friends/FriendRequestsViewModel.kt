@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.pinealctx.nexus.core.AppEventBus
 import com.pinealctx.nexus.core.PendingRequestData
 import com.pinealctx.nexus.core.managers.ContactManager
+import com.pinealctx.nexus.data.repository.ContactRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,6 +25,7 @@ data class FriendRequestsUiState(
 @HiltViewModel
 class FriendRequestsViewModel @Inject constructor(
     private val contactManager: ContactManager,
+    private val contactRepository: ContactRepository,
     private val appEventBus: AppEventBus
 ) : ViewModel() {
 
@@ -31,6 +33,11 @@ class FriendRequestsViewModel @Inject constructor(
     val uiState: StateFlow<FriendRequestsUiState> = _uiState.asStateFlow()
 
     init {
+        contactRepository.observePendingRequests()
+            .onEach { requests ->
+                _uiState.value = FriendRequestsUiState(requests = requests)
+            }
+            .launchIn(viewModelScope)
         loadRequests()
         observeUpdates()
     }

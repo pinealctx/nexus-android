@@ -1,5 +1,6 @@
 package com.pinealctx.nexus.local
 
+import android.app.Application
 import android.content.Context
 import com.pinealctx.nexus.core.AgentCommandData
 import com.pinealctx.nexus.core.AgentInfoData
@@ -15,6 +16,7 @@ import com.pinealctx.nexus.core.MessageSendState
 import com.pinealctx.nexus.core.PendingRequestData
 import com.pinealctx.nexus.core.ProfileData
 import com.shared.v1.ConversationActionType
+import com.shared.v1.MemberRole
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -24,8 +26,13 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import org.robolectric.annotation.Config
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+import kotlin.system.measureTimeMillis
 
 @RunWith(RobolectricTestRunner::class)
+@Config(application = Application::class)
 class LocalDataStoreTest {
     private lateinit var context: Context
     private lateinit var store: LocalDataStore
@@ -213,13 +220,25 @@ class LocalDataStoreTest {
         store.upsertLocalMessage(
             localMessage(
                 clientMessageId = 303L,
-                content = MessageContent.Audio(fileId = "audio-1", duration = 1200)
+                content = MessageContent.Audio(
+                    fileId = "audio-1",
+                    durationMs = 1200,
+                    sizeBytes = 321,
+                    transcript = "hello"
+                )
             )
         )
         store.upsertLocalMessage(
             localMessage(
                 clientMessageId = 304L,
-                content = MessageContent.Video(fileId = "video-1", duration = 2400, width = 640, height = 360)
+                content = MessageContent.Video(
+                    fileId = "video-1",
+                    durationMs = 2400,
+                    width = 640,
+                    height = 360,
+                    thumbnailFileId = "thumb-1",
+                    sizeBytes = 1234
+                )
             )
         )
         store.upsertLocalMessage(
@@ -238,8 +257,8 @@ class LocalDataStoreTest {
         val localMessages = store.listLocalMessages(100L)
         assertEquals(MessageContent.Card("""{"type":"AdaptiveCard"}""", "card"), localMessages[0].content)
         assertEquals(MessageContent.Markdown("# hello"), localMessages[1].content)
-        assertEquals(MessageContent.Video("video-1", 2400, 640, 360), localMessages[2].content)
-        assertEquals(MessageContent.Audio("audio-1", 1200), localMessages[3].content)
+        assertEquals(MessageContent.Video("video-1", 2400, 640, 360, "thumb-1", 1234), localMessages[2].content)
+        assertEquals(MessageContent.Audio("audio-1", 1200, 321, "hello"), localMessages[3].content)
     }
 
     @Test
@@ -305,6 +324,20 @@ class LocalDataStoreTest {
         store.setBlockedUser(5, true)
         store.setBlockedUser(3, false)
         assertEquals(listOf(5, 7), store.listBlockedUsers())
+    }
+
+    @Test
+    fun `replacing blocked users preserves group cache`() {
+        store.upsertGroups(listOf(GroupData(20, "Design", "", "", 1, 1)))
+        store.replaceGroupMembers(
+            20,
+            listOf(GroupMemberData(2, MemberRole.MEMBER_ROLE_MEMBER, 100L, "Bob"))
+        )
+
+        store.replaceBlockedUsers(listOf(7))
+
+        assertEquals(20, store.listGroups().single().groupId)
+        assertEquals(2, store.listGroupMembers(20).single().userId)
     }
 
     @Test
@@ -385,8 +418,18 @@ class LocalDataStoreTest {
         store.replaceGroupMembers(
             20,
             listOf(
-                GroupMemberData(userId = 2, role = 2, joinedAt = 200L, displayName = "Bob"),
-                GroupMemberData(userId = 1, role = 1, joinedAt = 100L, displayName = "Alice")
+                GroupMemberData(
+                    userId = 2,
+                    role = MemberRole.MEMBER_ROLE_MEMBER,
+                    joinedAt = 200L,
+                    displayName = "Bob"
+                ),
+                GroupMemberData(
+                    userId = 1,
+                    role = MemberRole.MEMBER_ROLE_OWNER,
+                    joinedAt = 100L,
+                    displayName = "Alice"
+                )
             )
         )
 
@@ -446,6 +489,58 @@ class LocalDataStoreTest {
         assertEquals(listOf(1L), store.searchMessages("world", null, 10, 0).map { it.messageId })
         assertEquals(listOf(2L), store.searchMessages("approval", "100", 10, 0).map { it.messageId })
         assertEquals(listOf(3L), store.searchMessages("roadmap", null, 10, 0).map { it.messageId })
+    }
+
+    @Test
+    fun `room flows expose persisted conversations messages and contacts`() = runBlocking {
+        store.upsertMessage(message(id = 10L, text = "flow message"))
+        store.upsertContacts(
+            listOf(ContactData(userId = 7, username = "alice", nickname = "Alice", avatarUrl = "", alias = null))
+        )
+
+        assertEquals(10L, store.observeConversations().first().single().lastMessageId)
+        assertEquals("flow message", store.observeMessages("100").first().single().content.let {
+            (it as MessageContent.Text).text
+        })
+        assertEquals(7, store.observeContacts().first().single().userId)
+    }
+
+    @Test
+    fun `pending message ids survive restart and sent messages are excluded`() {
+        store.upsertLocalMessage(localMessage(clientMessageId = 401L))
+        store.upsertLocalMessage(localMessage(clientMessageId = 402L))
+        store.markLocalMessageSent(402L, 9002L)
+
+        store.close()
+        store = LocalDataStore(context)
+
+        assertEquals(listOf(401L), store.listPendingLocalMessageIds())
+    }
+
+    @Test
+    fun `sync reset preserves pending messages and uploaded media`() {
+        store.upsertMessage(message(id = 10L, text = "remote"))
+        store.upsertLocalMessage(localMessage(clientMessageId = 501L, text = "pending"))
+        store.upsertMediaFile(MediaFileData("file-1", "photo.jpg", "image/jpeg", 10L, 1, 1, 0L, "", ""))
+
+        store.clearSyncedData()
+
+        assertEquals(emptyList<MessageData>(), store.listMessages(100L))
+        assertEquals(listOf(501L), store.listPendingLocalMessageIds())
+        assertEquals("file-1", store.getMediaFile("file-1")?.fileId)
+    }
+
+    @Test
+    fun `message cache handles one thousand message cold load`() {
+        val messages = (1L..1_000L).map { id ->
+            message(id = id, text = "message-$id", createdAt = id)
+        }
+
+        val elapsedMs = measureTimeMillis { store.upsertMessages(messages) }
+
+        assertEquals(1_000, store.listMessages(100L, limit = 1_000).size)
+        assertEquals(1_000L, store.getConversation(100L)?.lastMessageId)
+        assertTrue("Cache stress write took ${elapsedMs}ms", elapsedMs < 30_000)
     }
 
     private fun message(

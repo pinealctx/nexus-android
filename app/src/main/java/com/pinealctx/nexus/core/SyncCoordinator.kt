@@ -1,10 +1,8 @@
 package com.pinealctx.nexus.core
 
-import android.content.Context
-import android.content.Intent
+import android.util.Log
 import com.pinealctx.nexus.core.managers.SyncBridge
 import com.pinealctx.nexus.util.NotificationHelper
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -16,11 +14,14 @@ import javax.inject.Singleton
 
 @Singleton
 class SyncCoordinator @Inject constructor(
-    @ApplicationContext private val context: Context,
     private val syncBridge: SyncBridge,
     private val sessionManager: SessionManager,
     private val appEventBus: AppEventBus,
-    private val notificationHelper: NotificationHelper
+    private val notificationHelper: NotificationHelper,
+    private val syncScheduler: SyncScheduler,
+    private val messageSendScheduler: MessageSendScheduler,
+    private val pushTokenRegistrar: PushTokenRegistrar,
+    private val sessionBootstrapper: SessionBootstrapper
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -38,16 +39,19 @@ class SyncCoordinator @Inject constructor(
         scope.launch {
             val localSn = syncBridge.getLocalSn()
             if (localSn == 0L) {
-                syncBridge.coldStart()
+                runColdStart()
             }
             syncBridge.startSync()
-            startForegroundService()
+            syncScheduler.schedulePeriodicSync()
+            messageSendScheduler.reschedulePending()
+            pushTokenRegistrar.registerCurrentTokenIfAvailable()
         }
     }
 
     fun stopSession() {
         syncBridge.stopSync()
-        stopForegroundService()
+        syncScheduler.cancelAll()
+        messageSendScheduler.cancelAll()
         sessionManager.clearSession()
         syncBridge.clearLocalData()
     }
@@ -69,7 +73,8 @@ class SyncCoordinator @Inject constructor(
         appEventBus.forceLogout()
             .onEach {
                 syncBridge.stopSync()
-                stopForegroundService()
+                syncScheduler.cancelAll()
+                messageSendScheduler.cancelAll()
                 sessionManager.clearSession()
                 syncBridge.clearLocalData()
                 onForceLogout?.invoke()
@@ -80,8 +85,13 @@ class SyncCoordinator @Inject constructor(
     private fun observeColdStartRequired() {
         appEventBus.coldStartRequired()
             .onEach {
-                syncBridge.clearLocalData()
-                syncBridge.coldStart()
+                try {
+                    syncBridge.resetSyncedData()
+                    runColdStart()
+                } catch (error: Exception) {
+                    Log.w("NexusSync", "Cold-start recovery failed", error)
+                    syncScheduler.enqueueImmediateSync()
+                }
             }
             .launchIn(scope)
     }
@@ -89,10 +99,12 @@ class SyncCoordinator @Inject constructor(
     private fun observeMessagesForNotification() {
         appEventBus.messagesUpdated()
             .onEach { event ->
-                if (event.conversationId != activeConversationId) {
+                if (event.conversationId != activeConversationId &&
+                    !notificationHelper.shouldSuppressSyncedMessage(event.conversationId)
+                ) {
                     notificationHelper.showMessageNotification(
-                        senderName = "New Message",
-                        messageText = "You have a new message",
+                        senderName = notificationHelper.newMessageTitle(),
+                        messageText = notificationHelper.newMessageBody(),
                         conversationId = event.conversationId
                     )
                 }
@@ -100,13 +112,10 @@ class SyncCoordinator @Inject constructor(
             .launchIn(scope)
     }
 
-    private fun startForegroundService() {
-        val intent = Intent(context, com.pinealctx.nexus.service.NexusForegroundService::class.java)
-        context.startForegroundService(intent)
+    private suspend fun runColdStart() {
+        syncBridge.coldStart()
+        sessionBootstrapper.hydrate()
+        appEventBus.emitColdStartCompleted()
     }
 
-    private fun stopForegroundService() {
-        val intent = Intent(context, com.pinealctx.nexus.service.NexusForegroundService::class.java)
-        context.stopService(intent)
-    }
 }

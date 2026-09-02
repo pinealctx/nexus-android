@@ -1,37 +1,62 @@
 package com.pinealctx.nexus.ui.screens.chat
 
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.media.MediaMetadataRetriever
+import android.net.Uri
+import android.os.SystemClock
+import android.provider.OpenableColumns
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pinealctx.nexus.core.AppEventBus
 import com.pinealctx.nexus.core.MessageData
+import com.pinealctx.nexus.core.AppEventBus
+import com.pinealctx.nexus.core.MessageSendScheduler
 import com.pinealctx.nexus.core.MessageSearchResultData
 import com.pinealctx.nexus.core.SyncManager
 import com.pinealctx.nexus.core.managers.ConversationManager
 import com.pinealctx.nexus.core.managers.MediaManager
 import com.pinealctx.nexus.core.managers.MessageManager
 import com.pinealctx.nexus.core.managers.SearchManager
+import com.pinealctx.nexus.core.managers.UserManager
+import com.pinealctx.nexus.data.repository.MessageRepository
+import com.shared.v1.MediaPurpose
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import com.shared.v1.ConversationType
+import java.io.ByteArrayOutputStream
 import javax.inject.Inject
 
 data class ChatUiState(
     val messages: List<ChatMessageItem> = emptyList(),
     val currentUserId: Int = 0,
+    val conversationTitle: String = "",
+    val conversationPeerId: Int = 0,
+    val conversationAvatarUrl: String? = null,
+    val isGroupConversation: Boolean = false,
+    val senderNames: Map<Int, String> = emptyMap(),
+    val senderAvatarUrls: Map<Int, String> = emptyMap(),
     val isLoading: Boolean = false,
+    val isLoadingMore: Boolean = false,
+    val hasMore: Boolean = true,
     val isSending: Boolean = false,
+    val mediaUploadName: String? = null,
     val isLocatingMessage: Boolean = false,
     val scrollToMessageId: Long? = null,
     val pendingMessageActionId: Long? = null,
+    val mediaUrls: Map<String, String> = emptyMap(),
     val error: String? = null
 )
 
@@ -41,8 +66,12 @@ class ChatViewModel @Inject constructor(
     private val messageManager: MessageManager,
     private val mediaManager: MediaManager,
     private val searchManager: SearchManager,
-    private val appEventBus: AppEventBus,
+    private val userManager: UserManager,
+    private val messageRepository: MessageRepository,
+    private val messageSendScheduler: MessageSendScheduler,
     private val syncManager: SyncManager,
+    private val appEventBus: AppEventBus,
+    @ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -51,11 +80,17 @@ class ChatViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(ChatUiState())
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
+    private var markReadJob: Job? = null
+    private var senderResolutionJob: Job? = null
 
     init {
         syncManager.activeConversationId = conversationId
-        loadMessages()
         observeUpdates()
+        loadConversation()
+        loadMessages()
+        appEventBus.coldStartCompleted()
+            .onEach { loadMessages() }
+            .launchIn(viewModelScope)
     }
 
     override fun onCleared() {
@@ -70,30 +105,126 @@ class ChatViewModel @Inject constructor(
     }
 
     private fun observeUpdates() {
-        appEventBus.messagesUpdated()
-            .filter { it.conversationId == conversationId }
-            .onEach { loadMessages() }
+        combine(
+            messageRepository.observeMessages(conversationId),
+            messageRepository.observeLocalMessages(conversationId)
+        ) { remoteMessages, localMessages -> remoteMessages to localMessages }
+            .onEach { (remoteMessages, localMessages) ->
+                val merged = ChatMessageMerger.merge(remoteMessages, localMessages)
+                _uiState.value = _uiState.value.copy(
+                    messages = merged,
+                    currentUserId = messageManager.currentUserId(),
+                    isLoading = if (merged.isNotEmpty()) false else _uiState.value.isLoading
+                )
+                scheduleMarkRead(remoteMessages)
+                resolveSenderNames(remoteMessages)
+            }
             .launchIn(viewModelScope)
     }
 
     private fun loadMessages() {
         viewModelScope.launch(Dispatchers.IO) {
-            _uiState.value = _uiState.value.copy(isLoading = true)
+            val startedAt = SystemClock.elapsedRealtime()
+            _uiState.value = _uiState.value.copy(
+                isLoading = _uiState.value.messages.isEmpty(),
+                error = null
+            )
             try {
-                val messages = messageManager.getMessages(conversationId)
-                val localMessages = messageManager.getLocalMessages(conversationId)
-                markCurrentConversationRead(messages)
-                _uiState.value = ChatUiState(
-                    messages = ChatMessageMerger.merge(messages, localMessages),
-                    currentUserId = messageManager.currentUserId()
+                val page = messageManager.fetchMessagePage(conversationId)
+                _uiState.value = _uiState.value.copy(
+                    currentUserId = messageManager.currentUserId(),
+                    isLoading = false,
+                    hasMore = page.hasMore,
+                    error = null
+                )
+                Log.i(
+                    "NexusChat",
+                    "History refreshed: conversation=$conversationId messages=${page.messages.size} " +
+                        "hasMore=${page.hasMore} durationMs=${SystemClock.elapsedRealtime() - startedAt}"
                 )
             } catch (e: Exception) {
+                Log.w("NexusChat", "History refresh failed: conversation=$conversationId", e)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     pendingMessageActionId = null,
                     error = e.message
                 )
             }
+        }
+    }
+
+    fun retryLoad() {
+        loadMessages()
+    }
+
+    fun clearError() {
+        _uiState.value = _uiState.value.copy(error = null)
+    }
+
+    private fun loadConversation() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val convId = conversationId.toLongOrNull() ?: return@launch
+            runCatching { conversationManager.getConversation(convId) }
+                .onSuccess { conversation ->
+                    conversation ?: return@onSuccess
+                    _uiState.value = _uiState.value.copy(
+                        conversationTitle = conversation.displayName
+                            ?.takeIf { it.isNotBlank() }
+                            ?: if (conversation.peerId > 0) {
+                                "User ${conversation.peerId}"
+                            } else {
+                                "Conversation ${conversation.conversationId.takeLast(6)}"
+                            },
+                        conversationPeerId = conversation.peerId,
+                        conversationAvatarUrl = conversation.avatarUrl,
+                        isGroupConversation = conversation.conversationType ==
+                            ConversationType.CONVERSATION_TYPE_GROUP
+                    )
+                }
+        }
+    }
+
+    private fun scheduleMarkRead(messages: List<MessageData>) {
+        if (messages.isEmpty()) return
+        markReadJob?.cancel()
+        markReadJob = viewModelScope.launch(Dispatchers.IO) {
+            runCatching { markCurrentConversationRead(messages) }
+        }
+    }
+
+    private fun resolveSenderNames(messages: List<MessageData>) {
+        val known = _uiState.value.senderNames.keys intersect _uiState.value.senderAvatarUrls.keys
+        val missingUserIds = buildSet {
+            messages.forEach { message ->
+                if (message.senderId > 0 && message.senderId !in known) add(message.senderId)
+                (message.content as? com.pinealctx.nexus.core.MessageContent.GroupEvent)?.let { event ->
+                    event.memberIds.filterTo(this) { it > 0 && it !in known }
+                    event.inviterId?.takeIf { it > 0 && it !in known }?.let(::add)
+                    event.operatorId?.takeIf { it > 0 && it !in known }?.let(::add)
+                }
+                message.replyContext?.senderId
+                    ?.takeIf { it > 0 && it !in known }
+                    ?.let(::add)
+            }
+        }
+        if (missingUserIds.isEmpty()) return
+
+        senderResolutionJob?.cancel()
+        senderResolutionJob = viewModelScope.launch(Dispatchers.IO) {
+            runCatching { userManager.batchGetUserInfo(missingUserIds.toList()) }
+                .onSuccess { users ->
+                    val resolved = users.associate { user ->
+                        user.userId to (user.alias?.takeIf { it.isNotBlank() }
+                            ?: user.nickname.takeIf { it.isNotBlank() }
+                            ?: user.username.takeIf { it.isNotBlank() }
+                            ?: "User ${user.userId}")
+                    }
+                    val avatars = users.associate { user -> user.userId to user.avatarUrl }
+                    _uiState.value = _uiState.value.copy(
+                        senderNames = _uiState.value.senderNames + resolved,
+                        senderAvatarUrls = _uiState.value.senderAvatarUrls + avatars
+                    )
+                }
         }
     }
 
@@ -109,7 +240,7 @@ class ChatViewModel @Inject constructor(
         )
     }
 
-    private fun markCurrentConversationRead(messages: List<MessageData>) {
+    private suspend fun markCurrentConversationRead(messages: List<MessageData>) {
         val convId = conversationId.toLongOrNull() ?: return
         val conversation = conversationManager
             .getConversations()
@@ -136,7 +267,7 @@ class ChatViewModel @Inject constructor(
             val localMessage = messageManager.enqueueTextMessage(convId, text, replyToMessageId)
             refreshLocalMessages(isSending = true, error = null)
             try {
-                messageManager.sendQueuedMessage(localMessage)
+                messageSendScheduler.enqueue(localMessage.clientMessageId)
                 refreshLocalMessages(isSending = false, error = null)
             } catch (e: Exception) {
                 refreshLocalMessages(isSending = false, error = e.message)
@@ -148,12 +279,23 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             messageManager.markLocalMessageSending(clientMessageId)
             refreshLocalMessages(isSending = true, error = null)
+            messageSendScheduler.enqueue(clientMessageId)
+            refreshLocalMessages(isSending = false, error = null)
+        }
+    }
+
+    fun submitCardAction(messageId: Long, actionType: String, actionData: String) {
+        val convId = conversationId.toLongOrNull() ?: return
+        viewModelScope.launch(Dispatchers.IO) {
             runCatching {
-                messageManager.retryLocalMessage(clientMessageId)
-            }.onSuccess {
-                refreshLocalMessages(isSending = false, error = null)
+                messageManager.submitCardAction(
+                    conversationId = convId,
+                    messageId = messageId,
+                    actionData = actionData,
+                    verb = actionType
+                )
             }.onFailure { error ->
-                refreshLocalMessages(isSending = false, error = error.message)
+                _uiState.value = _uiState.value.copy(error = error.message)
             }
         }
     }
@@ -225,45 +367,286 @@ class ChatViewModel @Inject constructor(
     }
 
     fun loadMore() {
+        val state = _uiState.value
+        if (state.isLoadingMore || !state.hasMore) return
         val oldest = _uiState.value.messages
             .filterIsInstance<ChatMessageItem.Remote>()
             .lastOrNull()
             ?: return
         viewModelScope.launch(Dispatchers.IO) {
+            _uiState.value = _uiState.value.copy(isLoadingMore = true)
             try {
-                val older = messageManager.getMessages(conversationId, beforeId = oldest.data.messageId)
-                val remoteMessages = _uiState.value.messages
-                    .filterIsInstance<ChatMessageItem.Remote>()
-                    .map { it.data }
-                val localMessages = messageManager.getLocalMessages(conversationId)
-                _uiState.value = _uiState.value.copy(
-                    messages = ChatMessageMerger.merge(remoteMessages + older, localMessages)
+                val page = messageManager.fetchMessagePage(
+                    conversationId = conversationId,
+                    beforeId = oldest.data.messageId
                 )
-            } catch (_: Exception) {}
+                _uiState.value = _uiState.value.copy(
+                    isLoadingMore = false,
+                    hasMore = page.hasMore,
+                    error = null
+                )
+            } catch (error: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isLoadingMore = false,
+                    error = error.message
+                )
+            }
         }
     }
 
-    fun sendImageMessage(data: ByteArray, fileName: String, width: Int, height: Int) {
+    fun resolveMediaUrl(fileId: String) {
+        if (fileId.isBlank() || _uiState.value.mediaUrls.containsKey(fileId)) return
+        mediaManager.getCachedMediaUrl(fileId)?.let { cachedUrl ->
+            _uiState.value = _uiState.value.copy(
+                mediaUrls = _uiState.value.mediaUrls + (fileId to cachedUrl)
+            )
+            return
+        }
         viewModelScope.launch(Dispatchers.IO) {
-            _uiState.value = _uiState.value.copy(isSending = true)
+            runCatching { mediaManager.getDownloadUrl(fileId) }
+                .onSuccess { url ->
+                    _uiState.value = _uiState.value.copy(
+                        mediaUrls = _uiState.value.mediaUrls + (fileId to url)
+                    )
+                }
+        }
+    }
+
+    fun sendVisualMedia(uri: Uri) {
+        sendMedia(uri, visualOnly = true)
+    }
+
+    fun sendFile(uri: Uri) {
+        sendMedia(uri, visualOnly = false)
+    }
+
+    fun sendVoiceRecording(recording: VoiceRecording) {
+        viewModelScope.launch(Dispatchers.IO) {
             val convId = conversationId.toLongOrNull()
             if (convId == null) {
-                _uiState.value = _uiState.value.copy(isSending = false)
+                recording.file.delete()
                 return@launch
             }
+            val fileName = "voice-${System.currentTimeMillis()}.m4a"
+            _uiState.value = _uiState.value.copy(
+                isSending = true,
+                mediaUploadName = context.getString(com.pinealctx.nexus.R.string.voice_message),
+                error = null
+            )
             try {
-                val file = mediaManager.uploadFile(data, fileName, "image/jpeg", 3)
-                val localMessage = messageManager.enqueueImageMessage(convId, file.fileId, width, height)
+                val uploaded = recording.file.inputStream().use { input ->
+                    mediaManager.uploadStream(
+                        input = input,
+                        fileName = fileName,
+                        contentType = "audio/mp4",
+                        size = recording.file.length(),
+                        purpose = MediaPurpose.MEDIA_PURPOSE_MESSAGE
+                    )
+                }
+                val localMessage = messageManager.enqueueAudioMessage(
+                    conversationId = convId,
+                    fileId = uploaded.fileId,
+                    durationMs = uploaded.durationMs.toInt().takeIf { it > 0 }
+                        ?: recording.durationMs,
+                    sizeBytes = uploaded.size
+                )
                 refreshLocalMessages(isSending = true, error = null)
-                messageManager.sendQueuedMessage(localMessage)
+                messageSendScheduler.enqueue(localMessage.clientMessageId)
                 refreshLocalMessages(isSending = false, error = null)
-            } catch (e: Exception) {
-                refreshLocalMessages(isSending = false, error = e.message)
+                _uiState.value = _uiState.value.copy(mediaUploadName = null)
+            } catch (error: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isSending = false,
+                    mediaUploadName = null,
+                    error = context.getString(
+                        com.pinealctx.nexus.R.string.media_send_failed,
+                        error.message?.takeIf { it.isNotBlank() } ?: error.javaClass.simpleName
+                    )
+                )
+            } finally {
+                recording.file.delete()
             }
         }
     }
 
-    private fun loadUntilMessage(messageId: Long, maxPages: Int = 20): Boolean {
+    private fun sendMedia(uri: Uri, visualOnly: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val convId = conversationId.toLongOrNull() ?: return@launch
+            _uiState.value = _uiState.value.copy(isSending = true, error = null)
+            try {
+                val metadata = readMediaMetadata(uri)
+                _uiState.value = _uiState.value.copy(mediaUploadName = metadata.fileName)
+                Log.i(
+                    "NexusMedia",
+                    "Selected media prepared: type=${metadata.contentType} size=${metadata.size} " +
+                        "dimensions=${metadata.width}x${metadata.height}"
+                )
+                if (visualOnly && !metadata.contentType.startsWith("image/") &&
+                    !metadata.contentType.startsWith("video/")) {
+                    throw IllegalArgumentException("Selected item is not an image or video")
+                }
+                val uploaded = context.contentResolver.openInputStream(uri)?.use { input ->
+                    mediaManager.uploadStream(
+                        input = input,
+                        fileName = metadata.fileName,
+                        contentType = metadata.contentType,
+                        size = metadata.size,
+                        purpose = MediaPurpose.MEDIA_PURPOSE_MESSAGE
+                    )
+                } ?: throw IllegalStateException("Unable to open selected file")
+                Log.i("NexusMedia", "Selected media uploaded: size=${uploaded.size}")
+
+                val thumbnailFileId = if (
+                    metadata.contentType.startsWith("video/") && uploaded.thumbnailFileId.isBlank()
+                ) {
+                    runCatching {
+                        val thumbnail = createVideoThumbnail(uri) ?: return@runCatching ""
+                        mediaManager.uploadFile(
+                            data = thumbnail,
+                            fileName = "${metadata.fileName.substringBeforeLast('.')}-thumbnail.jpg",
+                            contentType = "image/jpeg",
+                            purpose = MediaPurpose.MEDIA_PURPOSE_MESSAGE
+                        ).fileId
+                    }.onFailure { error ->
+                        Log.w("NexusMedia", "Video thumbnail generation failed", error)
+                    }.getOrDefault("")
+                } else {
+                    uploaded.thumbnailFileId
+                }
+
+                val localMessage = when {
+                    metadata.contentType.startsWith("image/") -> messageManager.enqueueImageMessage(
+                        convId,
+                        uploaded.fileId,
+                        metadata.width,
+                        metadata.height
+                    )
+                    metadata.contentType.startsWith("video/") -> messageManager.enqueueVideoMessage(
+                        convId,
+                        uploaded.fileId,
+                        uploaded.width.takeIf { it > 0 } ?: metadata.width,
+                        uploaded.height.takeIf { it > 0 } ?: metadata.height,
+                        uploaded.durationMs.toInt().takeIf { it > 0 } ?: metadata.durationMs,
+                        thumbnailFileId,
+                        uploaded.size
+                    )
+                    metadata.contentType.startsWith("audio/") -> messageManager.enqueueAudioMessage(
+                        convId,
+                        uploaded.fileId,
+                        uploaded.durationMs.toInt().takeIf { it > 0 } ?: metadata.durationMs,
+                        uploaded.size
+                    )
+                    else -> messageManager.enqueueFileMessage(
+                        conversationId = convId,
+                        fileId = uploaded.fileId,
+                        name = metadata.fileName,
+                        size = uploaded.size,
+                        mimeType = metadata.contentType
+                    )
+                }
+                refreshLocalMessages(isSending = true, error = null)
+                Log.i("NexusMedia", "Media message queued: clientMessageId=${localMessage.clientMessageId}")
+                messageSendScheduler.enqueue(localMessage.clientMessageId)
+                refreshLocalMessages(isSending = false, error = null)
+                _uiState.value = _uiState.value.copy(mediaUploadName = null)
+            } catch (error: Exception) {
+                Log.e("NexusMedia", "Selected media send failed", error)
+                _uiState.value = _uiState.value.copy(
+                    isSending = false,
+                    mediaUploadName = null,
+                    error = context.getString(
+                        com.pinealctx.nexus.R.string.media_send_failed,
+                        error.message?.takeIf { it.isNotBlank() } ?: error.javaClass.simpleName
+                    )
+                )
+            }
+        }
+    }
+
+    private fun createVideoThumbnail(uri: Uri): ByteArray? {
+        val retriever = MediaMetadataRetriever()
+        return try {
+            retriever.setDataSource(context, uri)
+            val frame = retriever.getFrameAtTime(0L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                ?: return null
+            val largestSide = maxOf(frame.width, frame.height)
+            val scaled = if (largestSide > VIDEO_THUMBNAIL_MAX_PX) {
+                val scale = VIDEO_THUMBNAIL_MAX_PX.toFloat() / largestSide
+                Bitmap.createScaledBitmap(
+                    frame,
+                    (frame.width * scale).toInt().coerceAtLeast(1),
+                    (frame.height * scale).toInt().coerceAtLeast(1),
+                    true
+                )
+            } else {
+                frame
+            }
+            try {
+                ByteArrayOutputStream().use { output ->
+                    check(scaled.compress(Bitmap.CompressFormat.JPEG, VIDEO_THUMBNAIL_QUALITY, output)) {
+                        "Unable to encode the video thumbnail"
+                    }
+                    output.toByteArray()
+                }
+            } finally {
+                if (scaled !== frame) scaled.recycle()
+                frame.recycle()
+            }
+        } finally {
+            retriever.release()
+        }
+    }
+
+    private fun readMediaMetadata(uri: Uri): PickedMediaMetadata {
+        val resolver = context.contentResolver
+        var fileName = uri.lastPathSegment ?: "attachment"
+        var size = -1L
+        resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE), null, null, null)
+            ?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
+                    if (nameIndex >= 0 && !cursor.isNull(nameIndex)) fileName = cursor.getString(nameIndex)
+                    if (sizeIndex >= 0 && !cursor.isNull(sizeIndex)) size = cursor.getLong(sizeIndex)
+                }
+            }
+        if (size < 0) size = resolver.openAssetFileDescriptor(uri, "r")?.use { it.length } ?: -1L
+        require(size >= 0) { "Unable to determine selected file size" }
+
+        val contentType = resolver.getType(uri) ?: "application/octet-stream"
+        var width = 0
+        var height = 0
+        var durationMs = 0
+        if (contentType.startsWith("image/")) {
+            val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, options) }
+            width = options.outWidth.coerceAtLeast(0)
+            height = options.outHeight.coerceAtLeast(0)
+        } else if (contentType.startsWith("video/") || contentType.startsWith("audio/")) {
+            val retriever = MediaMetadataRetriever()
+            try {
+                retriever.setDataSource(context, uri)
+                durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                    ?.toLongOrNull()?.coerceAtMost(Int.MAX_VALUE.toLong())?.toInt() ?: 0
+                width = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
+                    ?.toIntOrNull() ?: 0
+                height = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
+                    ?.toIntOrNull() ?: 0
+                val rotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)
+                    ?.toIntOrNull() ?: 0
+                if (rotation == 90 || rotation == 270) {
+                    val unrotatedWidth = width
+                    width = height
+                    height = unrotatedWidth
+                }
+            } finally {
+                retriever.release()
+            }
+        }
+        return PickedMediaMetadata(fileName, contentType, size, width, height, durationMs)
+    }
+
+    private suspend fun loadUntilMessage(messageId: Long, maxPages: Int = 20): Boolean {
         var remoteMessages = _uiState.value.messages
             .filterIsInstance<ChatMessageItem.Remote>()
             .map { it.data }
@@ -271,7 +654,8 @@ class ChatViewModel @Inject constructor(
 
         repeat(maxPages) {
             val oldest = remoteMessages.minByOrNull { it.messageId } ?: return false
-            val older = messageManager.getMessages(conversationId, beforeId = oldest.messageId)
+            val page = messageManager.fetchMessagePage(conversationId, beforeId = oldest.messageId)
+            val older = page.messages
             if (older.isEmpty()) return false
 
             remoteMessages = mergeRemoteMessages(remoteMessages, older)
@@ -281,6 +665,7 @@ class ChatViewModel @Inject constructor(
                 currentUserId = messageManager.currentUserId()
             )
             if (remoteMessages.any { it.messageId == messageId }) return true
+            if (!page.hasMore) return false
         }
         return false
     }
@@ -292,45 +677,6 @@ class ChatViewModel @Inject constructor(
         return (current + incoming)
             .distinctBy { it.messageId }
             .sortedByDescending { it.messageId }
-    }
-
-    fun sendFileMessage(data: ByteArray, fileName: String, contentType: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            _uiState.value = _uiState.value.copy(isSending = true)
-            val convId = conversationId.toLongOrNull()
-            if (convId == null) {
-                _uiState.value = _uiState.value.copy(isSending = false)
-                return@launch
-            }
-            try {
-                val file = if (data.size <= 5 * 1024 * 1024) {
-                    mediaManager.uploadFile(data, fileName, contentType, 3)
-                } else {
-                    val session = mediaManager.initUpload(fileName, contentType, data.size.toLong())
-                    val chunkSize = 5 * 1024 * 1024
-                    var offset = session.uploaded.toInt()
-                    while (offset < data.size) {
-                        val end = minOf(offset + chunkSize, data.size)
-                        val chunk = data.copyOfRange(offset, end)
-                        mediaManager.uploadChunk(session.sessionId, chunk, offset.toLong())
-                        offset = end
-                    }
-                    mediaManager.completeUpload(session.sessionId)
-                }
-                val localMessage = messageManager.enqueueFileMessage(
-                    conversationId = convId,
-                    fileId = file.fileId,
-                    name = fileName,
-                    size = file.size,
-                    mimeType = contentType
-                )
-                refreshLocalMessages(isSending = true, error = null)
-                messageManager.sendQueuedMessage(localMessage)
-                refreshLocalMessages(isSending = false, error = null)
-            } catch (e: Exception) {
-                refreshLocalMessages(isSending = false, error = e.message)
-            }
-        }
     }
 
     private var searchJob: Job? = null
@@ -355,3 +701,15 @@ class ChatViewModel @Inject constructor(
         }
     }
 }
+
+private data class PickedMediaMetadata(
+    val fileName: String,
+    val contentType: String,
+    val size: Long,
+    val width: Int,
+    val height: Int,
+    val durationMs: Int
+)
+
+private const val VIDEO_THUMBNAIL_MAX_PX = 640
+private const val VIDEO_THUMBNAIL_QUALITY = 82

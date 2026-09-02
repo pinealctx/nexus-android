@@ -8,10 +8,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pinealctx.nexus.R
 import com.pinealctx.nexus.core.managers.UserManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -89,10 +91,10 @@ fun EditProfileScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Edit Profile") },
+                title = { Text(stringResource(R.string.edit_profile_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
@@ -100,7 +102,7 @@ fun EditProfileScreen(
                         onClick = { viewModel.save() },
                         enabled = !uiState.isSaving
                     ) {
-                        Icon(Icons.Filled.Check, contentDescription = "Save")
+                        Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.save))
                     }
                 }
             )
@@ -117,7 +119,7 @@ fun EditProfileScreen(
                 value = uiState.nickname,
                 onValueChange = { viewModel.setNickname(it) },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Nickname") },
+                label = { Text(stringResource(R.string.edit_profile_nickname)) },
                 singleLine = true
             )
 
@@ -125,7 +127,7 @@ fun EditProfileScreen(
                 value = uiState.signature,
                 onValueChange = { viewModel.setSignature(it) },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Signature") },
+                label = { Text(stringResource(R.string.edit_profile_signature)) },
                 maxLines = 3
             )
 
@@ -133,11 +135,11 @@ fun EditProfileScreen(
                 value = uiState.username,
                 onValueChange = { viewModel.setUsername(it) },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Username") },
+                label = { Text(stringResource(R.string.edit_profile_username)) },
                 singleLine = true,
                 enabled = uiState.canChangeUsername,
                 supportingText = {
-                    if (!uiState.canChangeUsername) Text("Username cannot be changed")
+                    if (!uiState.canChangeUsername) Text(stringResource(R.string.edit_profile_username_locked))
                 }
             )
 

@@ -11,6 +11,7 @@ internal fun MessageContent.previewText(): String {
         is MessageContent.File -> "[File] $name"
         is MessageContent.Markdown -> text
         is MessageContent.Card -> fallbackText.ifBlank { "[Card]" }
+        is MessageContent.GroupEvent -> "[Group update]"
         MessageContent.Recalled -> "[Message recalled]"
         MessageContent.Unknown -> "[Message]"
     }

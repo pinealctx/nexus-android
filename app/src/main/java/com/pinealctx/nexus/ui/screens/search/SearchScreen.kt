@@ -20,7 +20,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.pinealctx.nexus.R
 import com.pinealctx.nexus.core.ContactData
 import com.pinealctx.nexus.core.MessageSearchResultData
@@ -90,7 +90,7 @@ fun SearchScreen(
             )
 
             // Tab row
-            TabRow(
+            PrimaryTabRow(
                 selectedTabIndex = uiState.activeTab.ordinal
             ) {
                 Tab(
@@ -184,9 +184,12 @@ private fun MessageSearchResults(
     }
 
     val listState = rememberLazyListState()
+    val lastVisibleItemIndex by remember {
+        derivedStateOf { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
+    }
 
-    LaunchedEffect(listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index) {
-        val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: return@LaunchedEffect
+    LaunchedEffect(lastVisibleItemIndex, results.size, hasMore) {
+        val lastVisible = lastVisibleItemIndex ?: return@LaunchedEffect
         if (lastVisible >= results.size - 5 && hasMore) {
             onLoadMore()
         }

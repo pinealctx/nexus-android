@@ -12,7 +12,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
@@ -22,12 +21,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.pinealctx.nexus.R
 import com.pinealctx.nexus.core.GroupMemberData
 import com.pinealctx.nexus.ui.components.InviteMembersDialog
 import com.pinealctx.nexus.ui.components.NexusAvatar
 import com.pinealctx.nexus.ui.components.NexusAvatarBadge
+import com.pinealctx.nexus.ui.components.NexusAvatarIndicator
+import com.shared.v1.MemberRole
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -245,6 +246,7 @@ fun GroupDetailScreen(
                     items(uiState.members) { member ->
                         MemberItem(
                             member = member,
+                            avatarUrl = uiState.memberProfiles[member.userId]?.avatarUrl,
                             canRemove = GroupDetailActionPolicy.canRemoveMember(
                                 group = uiState.group,
                                 currentUserId = uiState.currentUserId,
@@ -458,6 +460,7 @@ private fun groupAvatarFileName(contentType: String): String {
 @Composable
 private fun MemberItem(
     member: GroupMemberData,
+    avatarUrl: String?,
     canRemove: Boolean,
     isRemoving: Boolean,
     onRemove: () -> Unit
@@ -468,31 +471,31 @@ private fun MemberItem(
         },
         supportingContent = {
             val roleText = when (member.role) {
-                1 -> stringResource(R.string.group_role_owner)
-                2 -> stringResource(R.string.group_role_admin)
+                MemberRole.MEMBER_ROLE_OWNER -> stringResource(R.string.group_role_owner)
                 else -> stringResource(R.string.group_role_member)
             }
             Text(roleText)
         },
         leadingContent = {
-            Surface(
-                modifier = Modifier.size(40.dp),
-                shape = MaterialTheme.shapes.small,
-                color = MaterialTheme.colorScheme.secondaryContainer
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(Icons.Filled.Person, contentDescription = null)
+            NexusAvatar(
+                id = member.userId,
+                name = member.displayName,
+                avatarUrl = avatarUrl,
+                size = 40.dp,
+                indicator = if (member.role == MemberRole.MEMBER_ROLE_OWNER) {
+                    NexusAvatarIndicator.Owner
+                } else {
+                    null
                 }
-            }
+            )
         },
         trailingContent = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (member.role == 1 || member.role == 2) {
+                if (member.role == MemberRole.MEMBER_ROLE_OWNER) {
                     Icon(
                         Icons.Filled.Star,
-                        contentDescription = stringResource(R.string.group_role_admin),
-                        tint = if (member.role == 1) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.tertiary,
+                        contentDescription = stringResource(R.string.group_role_owner),
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)
                     )
                 }

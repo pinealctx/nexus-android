@@ -92,39 +92,68 @@ class SyncEngine @Inject constructor(
         localDataStore.clearAll()
     }
 
+    fun resetSyncedData() {
+        stateStore.clearCurrentUser()
+        localDataStore.clearSyncedData()
+    }
+
     private suspend fun processSnUpdate(update: SnUpdate, isPush: Boolean) {
         val currentSn = stateStore.getLocalSn()
-        if (update.sn <= currentSn) return
-
+        when (applySequencedUpdate(
+            currentSn = currentSn,
+            incomingSn = update.sn,
+            allowGap = true,
+            apply = { dispatchSnUpdate(update) },
+            commitSn = stateStore::setLocalSn
+        )) {
+            SyncSequenceDecision.IGNORE -> return
+            SyncSequenceDecision.APPLY -> {
+                Log.i("NexusSync", "Applied sn=${update.sn} kind=${update.updateCase} push=$isPush")
+                return
+            }
+            SyncSequenceDecision.FETCH_GAP -> Unit
+        }
         if (update.sn > currentSn + 1) {
             Log.w("NexusSync", "Gap detected: local_sn=$currentSn received=${update.sn}")
             fetchDifference()
-            return
         }
-
-        applySnUpdate(update, isPush = isPush, allowGapFetch = true)
     }
 
     private suspend fun applySnUpdate(update: SnUpdate, isPush: Boolean, allowGapFetch: Boolean) {
-        val currentSn = stateStore.getLocalSn()
-        if (update.sn <= currentSn) return
-        if (allowGapFetch && update.sn > currentSn + 1) {
-            fetchDifference()
-            return
+        when (applySequencedUpdate(
+            currentSn = stateStore.getLocalSn(),
+            incomingSn = update.sn,
+            allowGap = allowGapFetch,
+            apply = { dispatchSnUpdate(update) },
+            commitSn = stateStore::setLocalSn
+        )) {
+            SyncSequenceDecision.IGNORE -> return
+            SyncSequenceDecision.FETCH_GAP -> {
+                fetchDifference()
+                return
+            }
+            SyncSequenceDecision.APPLY ->
+                Log.i("NexusSync", "Applied sn=${update.sn} kind=${update.updateCase} push=$isPush")
         }
-
-        dispatchSnUpdate(update)
-        stateStore.setLocalSn(update.sn)
-        Log.i("NexusSync", "Applied sn=${update.sn} kind=${update.updateCase} push=$isPush")
     }
 
     private fun applyNonSnUpdate(update: NonSnUpdate) {
         when (update.updateCase) {
             NonSnUpdate.UpdateCase.MESSAGE_ENVELOPE ->
                 appEventBus.emitMessagesUpdated(update.messageEnvelope.conversationId.toString())
-            NonSnUpdate.UpdateCase.CARD_ACTION_ANSWER,
-            NonSnUpdate.UpdateCase.CARD_ACTION ->
-                appEventBus.emitConversationsUpdated()
+            NonSnUpdate.UpdateCase.CARD_ACTION_ANSWER -> {
+                val answer = update.cardActionAnswer
+                if (answer.text.isNotBlank()) {
+                    appEventBus.emitCardActionAnswered(
+                        conversationId = answer.conversationId,
+                        messageId = answer.messageId,
+                        agentUserId = answer.agentUserId,
+                        text = answer.text,
+                        showAlert = answer.showAlert
+                    )
+                }
+            }
+            NonSnUpdate.UpdateCase.CARD_ACTION -> Unit
             NonSnUpdate.UpdateCase.UPDATE_NOT_SET -> Unit
         }
     }

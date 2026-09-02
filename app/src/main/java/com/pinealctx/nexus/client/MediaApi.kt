@@ -31,14 +31,19 @@ class MediaApi @Inject constructor(
             .url
     }
 
-    suspend fun uploadFile(data: ByteArray, fileName: String, contentType: String, purpose: Int): MediaFileData {
+    suspend fun uploadFile(
+        data: ByteArray,
+        fileName: String,
+        contentType: String,
+        purpose: MediaPurpose
+    ): MediaFileData {
         return apiClientFactory.createClients()
             .media
             .uploadFile(
                 request = UploadFileRequest.newBuilder()
                     .setFileName(fileName)
                     .setContentType(contentType)
-                    .setPurpose(purpose.toMediaPurpose())
+                    .setPurpose(purpose)
                     .setData(ByteString.copyFrom(data))
                     .build(),
                 headers = headers.current()
@@ -92,14 +97,6 @@ class MediaApi @Inject constructor(
             .toData()
     }
 }
-
-private fun Int.toMediaPurpose(): MediaPurpose =
-    when (this) {
-        MediaPurpose.MEDIA_PURPOSE_AVATAR.number -> MediaPurpose.MEDIA_PURPOSE_AVATAR
-        MediaPurpose.MEDIA_PURPOSE_GROUP_AVATAR.number -> MediaPurpose.MEDIA_PURPOSE_GROUP_AVATAR
-        MediaPurpose.MEDIA_PURPOSE_MESSAGE.number -> MediaPurpose.MEDIA_PURPOSE_MESSAGE
-        else -> MediaPurpose.MEDIA_PURPOSE_UNSPECIFIED
-    }
 
 private fun MediaFileInfo.toData(): MediaFileData =
     MediaFileData(

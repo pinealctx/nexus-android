@@ -1,28 +1,40 @@
 package com.pinealctx.nexus.util
 
-import android.content.Context
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
-import dagger.hilt.android.qualifiers.ApplicationContext
+import com.pinealctx.nexus.core.AppPreferences
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Singleton
 class LocaleManager @Inject constructor(
-    @ApplicationContext private val context: Context
+    private val appPreferences: AppPreferences
 ) {
     companion object {
         const val SYSTEM = "system"
-        private const val PREF_NAME = "nexus_settings"
-        private const val PREF_KEY = "app_locale"
     }
 
-    private val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    fun getSelectedLocale(): String = prefs.getString(PREF_KEY, SYSTEM) ?: SYSTEM
+    val selectedLocale: Flow<String> = appPreferences.settings
+        .map { it.localeTag }
+        .distinctUntilChanged()
 
-    fun setLocale(localeTag: String) {
-        prefs.edit().putString(PREF_KEY, localeTag).apply()
+    suspend fun setLocale(localeTag: String) {
+        appPreferences.setLocale(localeTag)
+        applyLocale(localeTag)
+    }
+
+    private suspend fun applyLocale(localeTag: String) = withContext(Dispatchers.Main.immediate) {
         val appLocale = if (localeTag == SYSTEM) {
             LocaleListCompat.getEmptyLocaleList()
         } else {
@@ -32,11 +44,11 @@ class LocaleManager @Inject constructor(
     }
 
     fun restoreLocale() {
-        val saved = getSelectedLocale()
-        if (saved != SYSTEM) {
-            AppCompatDelegate.setApplicationLocales(
-                LocaleListCompat.forLanguageTags(saved)
-            )
+        scope.launch {
+            val saved = selectedLocale.first()
+            if (saved != SYSTEM) {
+                applyLocale(saved)
+            }
         }
     }
 }

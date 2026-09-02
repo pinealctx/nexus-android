@@ -5,6 +5,7 @@ import com.api.v1.ListConversationsRequest
 import com.api.v1.MarkAsReadRequest
 import com.api.v1.UpdateConversationActionRequest
 import com.pinealctx.nexus.core.ConversationData
+import com.pinealctx.nexus.core.ConversationPageData
 import com.shared.v1.ConversationActionType
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -15,6 +16,13 @@ class ConversationApi @Inject constructor(
     private val headers: RpcHeaders
 ) {
     suspend fun listConversations(limit: Int = 50, beforeTime: Long? = null): List<ConversationData> {
+        return listConversationPage(limit, beforeTime).conversations
+    }
+
+    suspend fun listConversationPage(
+        limit: Int = 50,
+        beforeTime: Long? = null
+    ): ConversationPageData {
         val request = ListConversationsRequest.newBuilder()
             .setLimit(limit)
             .apply {
@@ -31,13 +39,16 @@ class ConversationApi @Inject constructor(
         val groups = response.relatedGroupsList.associateBy { it.groupId }
         val messages = response.messagesList.associateBy { it.conversationId }
 
-        return response.conversationsList.map { conversation ->
-            conversation.toConversationData(
-                user = users[conversation.peerId],
-                group = groups[conversation.peerId],
-                lastMessage = messages[conversation.conversationId]
-            )
-        }
+        return ConversationPageData(
+            conversations = response.conversationsList.map { conversation ->
+                conversation.toConversationData(
+                    user = users[conversation.peerId],
+                    group = groups[conversation.peerId],
+                    lastMessage = messages[conversation.conversationId]
+                )
+            },
+            hasMore = response.hasMore
+        )
     }
 
     suspend fun getConversation(conversationId: Long): ConversationData? {

@@ -1,35 +1,26 @@
 package com.pinealctx.nexus.data.repository
 
-import com.pinealctx.nexus.core.AppEvent
-import com.pinealctx.nexus.core.AppEventBus
+import com.pinealctx.nexus.core.LocalMessageData
 import com.pinealctx.nexus.core.MessageData
 import com.pinealctx.nexus.core.MessageSearchResultData
 import com.pinealctx.nexus.core.managers.MessageManager
 import com.pinealctx.nexus.core.managers.SearchManager
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onStart
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class MessageRepository @Inject constructor(
     private val messageManager: MessageManager,
-    private val searchManager: SearchManager,
-    private val appEventBus: AppEventBus
+    private val searchManager: SearchManager
 ) {
-    fun observeMessages(conversationId: String, limit: Int = 50): Flow<List<MessageData>> {
-        return appEventBus.messagesUpdated()
-            .filter { it.conversationId == conversationId }
-            .onStart { emit(AppEvent.MessagesUpdated(conversationId)) }
-            .map { messageManager.getMessages(conversationId, limit) }
-            .flowOn(Dispatchers.IO)
-    }
+    fun observeMessages(conversationId: String, limit: Int = 50): Flow<List<MessageData>> =
+        messageManager.observeMessages(conversationId, limit)
 
-    fun getMessages(conversationId: String, limit: Int = 50, beforeId: Long? = null): List<MessageData> {
+    fun observeLocalMessages(conversationId: String): Flow<List<LocalMessageData>> =
+        messageManager.observeLocalMessages(conversationId)
+
+    suspend fun getMessages(conversationId: String, limit: Int = 50, beforeId: Long? = null): List<MessageData> {
         return messageManager.getMessages(conversationId, limit, beforeId)
     }
 

@@ -160,15 +160,7 @@ class LoginViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
                 val result = authManager.verifyCode(verifyToken, code)
-                secureStorage.saveTokens(result.accessToken, result.refreshToken, result.expiresIn, result.userId)
-                authManager.reopenForUser(result.userId)
-                authManager.restoreSession(
-                    result.accessToken,
-                    result.refreshToken,
-                    result.expiresIn,
-                    result.userId
-                )
-                syncManager.startSession()
+                activateSession(result)
                 _uiState.value = _uiState.value.copy(isLoading = false, isLoggedIn = true)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
@@ -177,6 +169,40 @@ class LoginViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    fun loginWithPassword(identityValue: String, password: String) {
+        val state = _uiState.value
+        val identityType = if (state.useEmail) 1 else 2
+        if (identityValue.isBlank() || password.isBlank()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            runCatching { authManager.loginPassword(identityType, identityValue, password) }
+                .onSuccess { result ->
+                    activateSession(result)
+                    _uiState.value = _uiState.value.copy(isLoading = false, isLoggedIn = true)
+                }
+                .onFailure { error ->
+                    _uiState.value = _uiState.value.copy(isLoading = false, error = error.message)
+                }
+        }
+    }
+
+    private fun activateSession(result: com.pinealctx.nexus.core.LoginResult) {
+        syncManager.saveTokens(
+            result.accessToken,
+            result.refreshToken,
+            result.expiresIn,
+            result.userId
+        )
+        authManager.reopenForUser(result.userId)
+        authManager.restoreSession(
+            result.accessToken,
+            result.refreshToken,
+            result.expiresIn,
+            result.userId
+        )
+        syncManager.startSession()
     }
 
     fun goBack() {

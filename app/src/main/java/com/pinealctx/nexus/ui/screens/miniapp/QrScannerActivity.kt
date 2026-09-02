@@ -8,6 +8,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -51,6 +52,7 @@ class QrScannerActivity : ComponentActivity() {
         }
     }
 
+    @ExperimentalGetImage
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -81,6 +83,7 @@ class QrScannerActivity : ComponentActivity() {
 }
 
 @Composable
+@ExperimentalGetImage
 private fun QrScannerScreen(
     hasPermission: Boolean,
     onResult: (String) -> Unit,
@@ -109,7 +112,6 @@ private fun QrScannerScreen(
                             .build()
                             .also { imageAnalysis ->
                                 imageAnalysis.setAnalyzer(executor) { imageProxy ->
-                                    @androidx.camera.core.ExperimentalGetImage
                                     val mediaImage = imageProxy.image
                                     if (mediaImage != null && !scanned) {
                                         val image = InputImage.fromMediaImage(

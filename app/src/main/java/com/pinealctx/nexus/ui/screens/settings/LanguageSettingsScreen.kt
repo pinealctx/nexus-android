@@ -8,14 +8,16 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import com.pinealctx.nexus.R
 import com.pinealctx.nexus.util.LocaleManager
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
@@ -23,12 +25,14 @@ class LanguageSettingsViewModel @Inject constructor(
     private val localeManager: LocaleManager
 ) : ViewModel() {
 
-    private val _selectedLocale = MutableStateFlow(localeManager.getSelectedLocale())
-    val selectedLocale: StateFlow<String> = _selectedLocale.asStateFlow()
+    val selectedLocale: StateFlow<String> = localeManager.selectedLocale.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = LocaleManager.SYSTEM
+    )
 
     fun setLocale(tag: String) {
-        _selectedLocale.value = tag
-        localeManager.setLocale(tag)
+        viewModelScope.launch { localeManager.setLocale(tag) }
     }
 }
 

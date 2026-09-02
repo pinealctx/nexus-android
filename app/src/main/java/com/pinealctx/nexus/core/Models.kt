@@ -1,5 +1,8 @@
 package com.pinealctx.nexus.core
 
+import com.shared.v1.ConversationType
+import com.shared.v1.MemberRole
+
 // Auth
 data class LoginResult(
     val userId: Int,
@@ -23,7 +26,7 @@ data class VerifyCodeData(
 // Conversations
 data class ConversationData(
     val conversationId: String,
-    val conversationType: Int,
+    val conversationType: ConversationType,
     val peerId: Int,
     val displayName: String?,
     val avatarUrl: String?,
@@ -36,17 +39,50 @@ data class ConversationData(
     val unreadCount: Long get() = (lastMessageId - lastReadMessageId).coerceAtLeast(0)
 }
 
+data class ConversationPageData(
+    val conversations: List<ConversationData>,
+    val hasMore: Boolean
+)
+
 // Messages
 sealed interface MessageContent {
     data class Text(val text: String) : MessageContent
     data class Image(val fileId: String, val width: Int, val height: Int) : MessageContent
-    data class Audio(val fileId: String, val duration: Int) : MessageContent
-    data class Video(val fileId: String, val duration: Int, val width: Int = 0, val height: Int = 0) : MessageContent
+    data class Audio(
+        val fileId: String,
+        val durationMs: Int,
+        val sizeBytes: Long = 0,
+        val transcript: String? = null
+    ) : MessageContent
+    data class Video(
+        val fileId: String,
+        val durationMs: Int,
+        val width: Int = 0,
+        val height: Int = 0,
+        val thumbnailFileId: String = "",
+        val sizeBytes: Long = 0
+    ) : MessageContent
     data class File(val fileId: String, val name: String, val size: Long, val mimeType: String = "") : MessageContent
     data class Markdown(val text: String) : MessageContent
     data class Card(val json: String, val fallbackText: String = "") : MessageContent
+    data class GroupEvent(
+        val groupId: Int,
+        val type: GroupEventType,
+        val memberIds: List<Int> = emptyList(),
+        val inviterId: Int? = null,
+        val operatorId: Int? = null,
+        val changedField: String? = null
+    ) : MessageContent
     data object Recalled : MessageContent
     data object Unknown : MessageContent
+}
+
+enum class GroupEventType {
+    MEMBER_JOINED,
+    MEMBER_LEFT,
+    MEMBER_REMOVED,
+    GROUP_INFO_CHANGED,
+    UNKNOWN
 }
 
 data class MessageData(
@@ -59,6 +95,12 @@ data class MessageData(
     val createdAt: Long,
     val edited: Boolean,
     val recalled: Boolean
+)
+
+data class MessagePageData(
+    val messages: List<MessageData>,
+    val relatedUsers: List<ContactData>,
+    val hasMore: Boolean
 )
 
 data class MessageReplyContextData(
@@ -128,7 +170,7 @@ data class GroupData(
 
 data class GroupMemberData(
     val userId: Int,
-    val role: Int,
+    val role: MemberRole,
     val joinedAt: Long,
     val displayName: String
 )

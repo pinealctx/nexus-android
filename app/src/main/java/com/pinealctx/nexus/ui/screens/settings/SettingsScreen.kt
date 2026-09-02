@@ -12,7 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.pinealctx.nexus.R
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -25,6 +25,7 @@ fun SettingsScreen(
     onNavigateToLanguage: () -> Unit = {},
     onNavigateToAbout: () -> Unit = {},
     onNavigateToDevices: () -> Unit = {},
+    onNavigateToAccountSecurity: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -126,7 +127,7 @@ fun SettingsScreen(
                 leadingContent = {
                     Icon(Icons.Filled.AccountCircle, contentDescription = null)
                 },
-                modifier = Modifier.clickable { onNavigateToDevices() }
+                modifier = Modifier.clickable { onNavigateToAccountSecurity() }
             )
             HorizontalDivider()
 

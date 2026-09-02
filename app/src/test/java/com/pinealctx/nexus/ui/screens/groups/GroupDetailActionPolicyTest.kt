@@ -2,6 +2,7 @@ package com.pinealctx.nexus.ui.screens.groups
 
 import com.pinealctx.nexus.core.GroupData
 import com.pinealctx.nexus.core.GroupMemberData
+import com.shared.v1.MemberRole
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -126,7 +127,7 @@ class GroupDetailActionPolicyTest {
     private fun member(userId: Int, role: Int): GroupMemberData {
         return GroupMemberData(
             userId = userId,
-            role = role,
+            role = MemberRole.forNumber(role) ?: MemberRole.MEMBER_ROLE_UNSPECIFIED,
             joinedAt = 1_700_000_000_000,
             displayName = "User $userId"
         )

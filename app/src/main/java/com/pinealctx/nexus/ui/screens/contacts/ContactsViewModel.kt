@@ -9,9 +9,11 @@ import com.pinealctx.nexus.core.GroupData
 import com.pinealctx.nexus.core.NexusError
 import com.pinealctx.nexus.core.managers.ContactManager
 import com.pinealctx.nexus.core.managers.GroupManager
+import com.pinealctx.nexus.data.repository.ContactRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,6 +34,7 @@ data class ContactsUiState(
 class ContactsViewModel @Inject constructor(
     private val contactManager: ContactManager,
     private val groupManager: GroupManager,
+    private val contactRepository: ContactRepository,
     private val appEventBus: AppEventBus
 ) : ViewModel() {
 
@@ -39,19 +42,28 @@ class ContactsViewModel @Inject constructor(
     val uiState: StateFlow<ContactsUiState> = _uiState.asStateFlow()
 
     init {
+        observeCache()
         loadDirectory(fetchIfEmpty = true)
         observeUpdates()
     }
 
+    private fun observeCache() {
+        combine(
+            contactRepository.observeContacts(),
+            groupManager.observeGroups()
+        ) { contacts, groups -> contacts to groups }
+            .onEach { (contacts, groups) ->
+                _uiState.value = ContactsUiState(contacts = contacts, groups = groups)
+            }
+            .launchIn(viewModelScope)
+    }
+
     private fun observeUpdates() {
-        appEventBus.contactsUpdated()
-            .onEach { loadDirectory() }
-            .launchIn(viewModelScope)
-        appEventBus.conversationsUpdated()
-            .onEach { loadDirectory() }
-            .launchIn(viewModelScope)
         appEventBus.connectionStatus
             .filter { it == ConnectionStatus.CONNECTED }
+            .onEach { loadDirectory(fetchIfEmpty = true) }
+            .launchIn(viewModelScope)
+        appEventBus.coldStartCompleted()
             .onEach { loadDirectory(fetchIfEmpty = true) }
             .launchIn(viewModelScope)
     }
@@ -79,7 +91,7 @@ class ContactsViewModel @Inject constructor(
                         Log.w("Contacts", "Remote directory fetch failed", e)
                     }
                 }
-                _uiState.value = ContactsUiState(contacts = contacts, groups = groups)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = null)
             } catch (e: Exception) {
                 if (e.requiresRelogin()) return@launch
                 _uiState.value = ContactsUiState(error = e.message)

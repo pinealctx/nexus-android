@@ -1,27 +1,51 @@
 package com.pinealctx.nexus.ui.screens.settings
 
-import android.content.Context
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.pinealctx.nexus.R
+import com.pinealctx.nexus.core.AppPreferences
+import com.pinealctx.nexus.core.AppSettings
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
-private const val PREF_NAME = "nexus_settings"
-private const val KEY_ALERTS = "notification_alerts"
-private const val KEY_SOUND = "notification_sound"
+@HiltViewModel
+class NotificationSettingsViewModel @Inject constructor(
+    private val appPreferences: AppPreferences
+) : ViewModel() {
+    val settings: StateFlow<AppSettings> = appPreferences.settings.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = AppSettings()
+    )
+
+    fun setAlertsEnabled(enabled: Boolean) {
+        viewModelScope.launch { appPreferences.setNotificationAlerts(enabled) }
+    }
+
+    fun setSoundEnabled(enabled: Boolean) {
+        viewModelScope.launch { appPreferences.setNotificationSound(enabled) }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NotificationSettingsScreen(onBack: () -> Unit) {
-    val context = LocalContext.current
-    val prefs = remember { context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE) }
-    var alertsEnabled by remember { mutableStateOf(prefs.getBoolean(KEY_ALERTS, true)) }
-    var soundEnabled by remember { mutableStateOf(prefs.getBoolean(KEY_SOUND, true)) }
+fun NotificationSettingsScreen(
+    onBack: () -> Unit,
+    viewModel: NotificationSettingsViewModel = hiltViewModel()
+) {
+    val settings by viewModel.settings.collectAsState()
 
     Scaffold(
         topBar = {
@@ -41,11 +65,8 @@ fun NotificationSettingsScreen(onBack: () -> Unit) {
                 supportingContent = { Text(stringResource(R.string.notification_settings_alerts_desc)) },
                 trailingContent = {
                     Switch(
-                        checked = alertsEnabled,
-                        onCheckedChange = {
-                            alertsEnabled = it
-                            prefs.edit().putBoolean(KEY_ALERTS, it).apply()
-                        }
+                        checked = settings.notificationAlerts,
+                        onCheckedChange = viewModel::setAlertsEnabled
                     )
                 }
             )
@@ -55,11 +76,8 @@ fun NotificationSettingsScreen(onBack: () -> Unit) {
                 supportingContent = { Text(stringResource(R.string.notification_settings_sound_desc)) },
                 trailingContent = {
                     Switch(
-                        checked = soundEnabled,
-                        onCheckedChange = {
-                            soundEnabled = it
-                            prefs.edit().putBoolean(KEY_SOUND, it).apply()
-                        }
+                        checked = settings.notificationSound,
+                        onCheckedChange = viewModel::setSoundEnabled
                     )
                 }
             )

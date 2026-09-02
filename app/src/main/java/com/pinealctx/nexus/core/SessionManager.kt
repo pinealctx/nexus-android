@@ -2,16 +2,21 @@ package com.pinealctx.nexus.core
 
 import android.util.Log
 import com.pinealctx.nexus.core.managers.AuthManager
+import com.pinealctx.nexus.local.LocalDataStore
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class SessionManager @Inject constructor(
     private val authManager: AuthManager,
-    private val secureStorage: SecureStorage
+    private val secureStorage: SecureStorage,
+    private val localDataStore: LocalDataStore
 ) {
-    fun tryRestoreSession(): Boolean {
-        if (!secureStorage.hasTokens()) return false
+    suspend fun tryRestoreSession(): Boolean {
+        if (!secureStorage.hasTokens()) {
+            clearOrphanedCache()
+            return false
+        }
         val accessToken = secureStorage.getAccessToken() ?: return false
         val refreshToken = secureStorage.getRefreshToken() ?: return false
         val expiresIn = secureStorage.getRemainingExpiresIn()
@@ -23,6 +28,8 @@ class SessionManager @Inject constructor(
         } catch (e: Exception) {
             Log.w("NexusCore", "Failed to restore saved session", e)
             clearSession()
+            localDataStore.clearAll()
+            secureStorage.clearCacheOwner()
             return false
         }
         try {
@@ -37,7 +44,12 @@ class SessionManager @Inject constructor(
     }
 
     fun saveTokens(accessToken: String, refreshToken: String, expiresIn: Int, userId: Int) {
+        val previousUserId = secureStorage.getCacheOwnerUserId()
+        if (previousUserId > 0 && previousUserId != userId) {
+            localDataStore.clearAll()
+        }
         secureStorage.saveTokens(accessToken, refreshToken, expiresIn, userId)
+        secureStorage.setCacheOwnerUserId(userId)
     }
 
     fun clearSession() {
@@ -45,4 +57,10 @@ class SessionManager @Inject constructor(
     }
 
     fun getUserId(): Int = secureStorage.getUserId()
+
+    private fun clearOrphanedCache() {
+        if (secureStorage.getCacheOwnerUserId() <= 0) return
+        localDataStore.clearAll()
+        secureStorage.clearCacheOwner()
+    }
 }

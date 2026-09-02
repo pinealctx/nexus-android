@@ -4,95 +4,90 @@ import com.pinealctx.nexus.client.ContactApi
 import com.pinealctx.nexus.core.ContactData
 import com.pinealctx.nexus.core.PendingRequestData
 import com.pinealctx.nexus.local.LocalDataStore
+import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.runBlocking
 
 @Singleton
 class ContactManager @Inject constructor(
     private val contactApi: ContactApi,
     private val localDataStore: LocalDataStore
 ) {
-    fun getContacts(): List<ContactData> {
+    fun observeContacts(): Flow<List<ContactData>> = localDataStore.observeContacts()
+
+    fun observePendingRequests(): Flow<List<PendingRequestData>> =
+        localDataStore.observePendingRequests()
+
+    suspend fun getContacts(): List<ContactData> {
         val cached = localDataStore.listContacts()
         if (cached.isNotEmpty()) return cached
 
-        return runBlocking {
-            contactApi.listContacts()
-                .also { localDataStore.upsertContacts(it) }
-        }
+        return contactApi.listContacts()
+            .also { localDataStore.upsertContacts(it) }
     }
 
-    fun fetchContacts() {
-        runBlocking {
-            contactApi.listContacts()
-                .also { localDataStore.upsertContacts(it) }
-        }
+    suspend fun fetchContacts() {
+        contactApi.listContacts().also { localDataStore.upsertContacts(it) }
     }
 
-    fun deleteContact(userId: Int) {
-        runBlocking { contactApi.deleteContact(userId) }
+    suspend fun deleteContact(userId: Int) {
+        contactApi.deleteContact(userId)
         localDataStore.deleteContact(userId)
     }
 
-    fun addContact(targetUserId: Int) {
-        runBlocking { contactApi.addContact(targetUserId) }
+    suspend fun addContact(targetUserId: Int) {
+        contactApi.addContact(targetUserId)
         fetchContacts()
     }
 
-    fun updateContactAlias(contactUserId: Int, alias: String?) {
-        runBlocking { contactApi.updateContactAlias(contactUserId, alias) }
+    suspend fun updateContactAlias(contactUserId: Int, alias: String?) {
+        contactApi.updateContactAlias(contactUserId, alias)
         localDataStore.updateContactAlias(contactUserId, alias)
     }
 
-    fun searchUsers(query: String): List<ContactData> =
-        runBlocking { contactApi.searchUsers(query) }
+    suspend fun searchUsers(query: String): List<ContactData> = contactApi.searchUsers(query)
 
-    fun sendFriendRequest(targetUserId: Int, message: String) {
-        runBlocking { contactApi.sendFriendRequest(targetUserId, message) }
+    suspend fun sendFriendRequest(targetUserId: Int, message: String) {
+        contactApi.sendFriendRequest(targetUserId, message)
     }
 
-    fun acceptFriendRequest(requestId: Long) {
-        runBlocking { contactApi.acceptFriendRequest(requestId) }
+    suspend fun acceptFriendRequest(requestId: Long) {
+        contactApi.acceptFriendRequest(requestId)
         localDataStore.removePendingRequest(requestId)
         fetchContacts()
     }
 
-    fun rejectFriendRequest(requestId: Long) {
-        runBlocking { contactApi.rejectFriendRequest(requestId) }
+    suspend fun rejectFriendRequest(requestId: Long) {
+        contactApi.rejectFriendRequest(requestId)
         localDataStore.removePendingRequest(requestId)
     }
 
-    fun getPendingRequests(): List<PendingRequestData> =
+    suspend fun getPendingRequests(): List<PendingRequestData> =
         listPendingRequests()
 
-    fun listPendingRequests(beforeTime: Long? = null, limit: Int = 20): List<PendingRequestData> {
+    suspend fun listPendingRequests(beforeTime: Long? = null, limit: Int = 20): List<PendingRequestData> {
         val cached = localDataStore.listPendingRequests(beforeTime, limit)
         if (cached.isNotEmpty()) return cached
 
-        return runBlocking {
-            contactApi.listPendingRequests(beforeTime, limit)
-                .also { localDataStore.upsertPendingRequests(it) }
-        }
+        return contactApi.listPendingRequests(beforeTime, limit)
+            .also { localDataStore.upsertPendingRequests(it) }
     }
 
-    fun blockUser(userId: Int) {
-        runBlocking { contactApi.blockUser(userId) }
+    suspend fun blockUser(userId: Int) {
+        contactApi.blockUser(userId)
         localDataStore.setBlockedUser(userId, true)
     }
 
-    fun unblockUser(userId: Int) {
-        runBlocking { contactApi.unblockUser(userId) }
+    suspend fun unblockUser(userId: Int) {
+        contactApi.unblockUser(userId)
         localDataStore.setBlockedUser(userId, false)
     }
 
-    fun getBlockedUsers(): List<Int> {
+    suspend fun getBlockedUsers(): List<Int> {
         val cached = localDataStore.listBlockedUsers()
         if (cached.isNotEmpty()) return cached
 
-        return runBlocking {
-            contactApi.listBlockedUsers()
-                .also { localDataStore.replaceBlockedUsers(it) }
-        }
+        return contactApi.listBlockedUsers()
+            .also { localDataStore.replaceBlockedUsers(it) }
     }
 }

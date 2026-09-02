@@ -8,7 +8,6 @@ import com.pinealctx.nexus.core.SecureStorage
 import com.pinealctx.nexus.core.ServerConfigData
 import com.pinealctx.nexus.core.VerifyCodeData
 import com.pinealctx.nexus.client.AuthApi
-import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -17,25 +16,18 @@ class AuthManager @Inject constructor(
     private val authApi: AuthApi,
     private val secureStorage: SecureStorage
 ) {
-    fun getClientConfig(): ClientConfigData {
-        return runBlocking { authApi.getClientConfig() }
-    }
+    suspend fun getClientConfig(): ClientConfigData = authApi.getClientConfig()
 
-    fun requestVerifyCode(identityType: Int, identityValue: String): VerifyCodeData {
-        return runBlocking { authApi.requestVerifyCode(identityType, identityValue) }
-    }
+    suspend fun requestVerifyCode(identityType: Int, identityValue: String): VerifyCodeData =
+        authApi.requestVerifyCode(identityType, identityValue)
 
-    fun verifyCode(verifyToken: String, code: String): LoginResult {
-        return runBlocking { authApi.verifyCode(verifyToken, code) }
-    }
+    suspend fun verifyCode(verifyToken: String, code: String): LoginResult =
+        authApi.verifyCode(verifyToken, code)
 
-    fun loginPassword(identityType: Int, identityValue: String, password: String): LoginResult {
-        return runBlocking { authApi.loginPassword(identityType, identityValue, password) }
-    }
+    suspend fun loginPassword(identityType: Int, identityValue: String, password: String): LoginResult =
+        authApi.loginPassword(identityType, identityValue, password)
 
-    fun refreshAccessToken(): Boolean {
-        return runBlocking { authApi.refreshAccessToken() }
-    }
+    suspend fun refreshAccessToken(): Boolean = authApi.refreshAccessToken()
 
     fun restoreSession(accessToken: String, refreshToken: String, expiresIn: Int, userId: Int) {
         secureStorage.saveTokens(accessToken, refreshToken, expiresIn, userId)
@@ -81,13 +73,12 @@ class AuthManager @Inject constructor(
 
     fun isAuthenticated(): Boolean = secureStorage.hasTokens() && secureStorage.getUserId() > 0
 
-    fun logout() { runBlocking { authApi.logout() } }
+    suspend fun logout() = authApi.logout()
 
-    fun logoutAll() { runBlocking { authApi.logoutAll() } }
+    suspend fun logoutAll() = authApi.logoutAll()
 
-    fun setupPassword(password: String) { runBlocking { authApi.setupPassword(password) } }
+    suspend fun setupPassword(password: String) = authApi.setupPassword(password)
 
-    fun changePassword(oldPassword: String, newPassword: String) {
-        runBlocking { authApi.changePassword(oldPassword, newPassword) }
-    }
+    suspend fun changePassword(oldPassword: String, newPassword: String) =
+        authApi.changePassword(oldPassword, newPassword)
 }

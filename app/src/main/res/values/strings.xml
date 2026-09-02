@@ -21,6 +21,9 @@
     <string name="chat_emoji">Emoji</string>
     <string name="chat_search">Search in chat</string>
     <string name="chat_close_search">Close search</string>
+    <string name="chat_load_failed">Couldn\'t load messages</string>
+    <string name="chat_empty">No messages yet</string>
+    <string name="chat_user_fallback">User %1$d</string>
     <string name="chat_send_state_sending">Sending…</string>
     <string name="chat_send_state_failed">Failed to send</string>
     <string name="chat_send_retry">Retry</string>
@@ -44,6 +47,23 @@
     <string name="message_recalled">Message recalled</string>
     <string name="message_edited">(edited)</string>
     <string name="message_unsupported">[Unsupported message type]</string>
+    <string name="message_group_update">Group information updated</string>
+    <string name="group_event_joined">%1$s joined the group</string>
+    <string name="group_event_invited">%1$s invited %2$s</string>
+    <string name="group_event_left">%1$s left the group</string>
+    <string name="group_event_removed">%1$s was removed from the group</string>
+    <string name="group_event_removed_by">%1$s removed %2$s from the group</string>
+    <string name="group_event_changed">Group %1$s was updated</string>
+    <string name="group_event_changed_by">%1$s updated the group %2$s</string>
+    <string name="group_event_field_name">name</string>
+    <string name="group_event_field_avatar">avatar</string>
+    <string name="group_event_field_description">description</string>
+    <string name="group_event_field_information">information</string>
+    <string name="voice_record">Record voice message</string>
+    <string name="voice_cancel">Cancel recording</string>
+    <string name="voice_send">Send voice message</string>
+    <string name="voice_message">Voice message</string>
+    <string name="voice_permission_denied">Microphone permission is required to record a voice message.</string>
 
     <!-- Conversations -->
     <string name="conversations_empty">No conversations yet</string>
@@ -78,6 +98,21 @@
     <string name="friend_requests_accept">Accept</string>
     <string name="friend_requests_reject">Reject</string>
     <string name="friend_requests_retry">Retry</string>
+    <string name="friend_request_user">User #%1$d</string>
+    <string name="media_camera">Camera</string>
+    <string name="media_gallery">Gallery</string>
+    <string name="media_file">File</string>
+    <string name="media_uploading">Uploading %1$s…</string>
+    <string name="media_send_failed">Couldn\'t send media: %1$s</string>
+    <string name="create_group_title">Create Group</string>
+    <string name="create_group_action">Create</string>
+    <string name="create_group_name">Group Name</string>
+    <string name="create_group_members">Select members (%1$d selected, min 2)</string>
+    <string name="edit_profile_title">Edit Profile</string>
+    <string name="edit_profile_nickname">Nickname</string>
+    <string name="edit_profile_signature">Signature</string>
+    <string name="edit_profile_username">Username</string>
+    <string name="edit_profile_username_locked">Username cannot be changed</string>
 
     <!-- Search -->
     <string name="search_title">Search</string>
@@ -100,6 +135,7 @@
     <string name="group_edit_info">Edit group info</string>
     <string name="group_update_avatar">Update group avatar</string>
     <string name="group_members">Members (%d)</string>
+    <string name="group_details">Group details</string>
     <string name="group_leave">Leave Group</string>
     <string name="group_leave_confirm_title">Leave Group</string>
     <string name="group_leave_confirm_message">Are you sure you want to leave this group?</string>
@@ -135,6 +171,13 @@
     <string name="settings_logout">Logout</string>
     <string name="settings_logout_title">Logout</string>
     <string name="settings_logout_message">Are you sure you want to logout?</string>
+    <string name="account_security_title">Account security</string>
+    <string name="account_current_password">Current password</string>
+    <string name="account_new_password">New password</string>
+    <string name="account_confirm_password">Confirm new password</string>
+    <string name="account_change_password">Change password</string>
+    <string name="account_setup_password">Set password for the first time</string>
+    <string name="account_logout_all">Log out all devices</string>
 
     <!-- Devices -->
     <string name="devices_title">Devices</string>
@@ -187,6 +230,9 @@
     <string name="login_country_code">Code</string>
     <string name="login_phone">Phone</string>
     <string name="login_email">Email</string>
+    <string name="login_password">Password</string>
+    <string name="login_with_password">Log in with password</string>
+    <string name="login_or_code">or use a verification code</string>
     <string name="login_loading_config">Loading login config</string>
     <string name="login_no_method">No login method is available</string>
     <string name="login_send_code">Send Code</string>
@@ -214,8 +260,16 @@
     <string name="notification_channel_messages">Messages</string>
     <string name="notification_channel_messages_desc">New message notifications</string>
     <string name="notification_channel_friend_requests">Friend Requests</string>
+    <string name="notification_channel_friend_requests_desc">Friend request notifications</string>
+    <string name="notification_friend_request_title">Friend Request</string>
+    <string name="notification_friend_request_body">%1$s wants to be your friend</string>
     <string name="notification_new_message">New Message</string>
     <string name="notification_new_message_body">You have a new message</string>
+    <string name="notification_message_image">[Image]</string>
+    <string name="notification_message_audio">[Voice message]</string>
+    <string name="notification_message_video">[Video]</string>
+    <string name="notification_message_file">[File]</string>
+    <string name="notification_message_card">[Card]</string>
 
     <!-- Profile -->
     <string name="profile_message">Message</string>
@@ -254,4 +308,6 @@
     <string name="about_title">About</string>
     <string name="about_version">Version %s</string>
     <string name="about_copyright">Copyright 2024-2025 PinealCtx. All rights reserved.</string>
+    <string name="miniapp_agent_not_found">Agent not found</string>
+    <string name="miniapp_open_failed">Failed to open Mini App</string>
 </resources>
