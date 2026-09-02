@@ -11,7 +11,7 @@
     <!-- Connection Status -->
     <string name="status_connecting">Connecting…</string>
     <string name="status_reconnecting">Reconnecting…</string>
-    <string name="status_disconnected">Disconnected</string>
+    <string name="status_disconnected">Offline — showing saved data</string>
     <string name="status_connected">Connected</string>
 
     <!-- Chat -->
@@ -69,6 +69,25 @@
     <string name="conversations_empty">No conversations yet</string>
     <string name="conversations_empty_desc">Search for people or agents to start a conversation.</string>
     <string name="conversations_load_failed">Failed to load conversations</string>
+    <string name="conversations_load_failed_desc">We couldn\'t sync your conversations. Check your connection and try again.</string>
+    <string name="conversations_refresh_failed">Couldn\'t refresh</string>
+    <string name="conversations_refresh_failed_desc">Showing conversations saved on this device.</string>
+    <string name="conversations_refresh">Refresh conversations</string>
+    <string name="conversations_retry">Try again</string>
+    <string name="conversations_start_chat">Start a chat</string>
+    <string name="conversations_yesterday">Yesterday</string>
+    <string name="conversations_muted">Notifications muted</string>
+    <string name="conversations_user_fallback">User #%1$d</string>
+    <string name="conversations_group_fallback">Group #%1$s</string>
+    <string name="conversations_unknown_fallback">Conversation #%1$s</string>
+    <string name="conversations_preview_image">[Image]</string>
+    <string name="conversations_preview_audio">[Voice message]</string>
+    <string name="conversations_preview_video">[Video]</string>
+    <string name="conversations_preview_file">[File] %1$s</string>
+    <string name="conversations_preview_card">[Card]</string>
+    <string name="conversations_preview_group_update">[Group update]</string>
+    <string name="conversations_preview_recalled">[Message recalled]</string>
+    <string name="conversations_preview_message">[Message]</string>
     <string name="conversations_no_preview">No messages yet</string>
     <string name="conversations_search_placeholder">Search chats, contacts, or agents</string>
     <string name="conversations_title">Nexus</string>

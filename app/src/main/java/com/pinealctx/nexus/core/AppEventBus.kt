@@ -53,7 +53,7 @@ class AppEventBus @Inject constructor() {
 
     private val _events = MutableSharedFlow<AppEvent>(extraBufferCapacity = 64)
     val events: SharedFlow<AppEvent> = _events.asSharedFlow()
-    private val _connectionStatus = MutableStateFlow(ConnectionStatus.DISCONNECTED)
+    private val _connectionStatus = MutableStateFlow(ConnectionStatus.CONNECTING)
     val connectionStatus: StateFlow<ConnectionStatus> = _connectionStatus.asStateFlow()
 
     inline fun <reified T : AppEvent> on(): Flow<T> = events.filterIsInstance()

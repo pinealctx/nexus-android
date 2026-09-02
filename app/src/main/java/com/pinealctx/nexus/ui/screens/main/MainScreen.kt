@@ -11,7 +11,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -153,7 +152,7 @@ fun ConnectionStatusBar(status: ConnectionStatus) {
         ConnectionStatus.CONNECTING,
         ConnectionStatus.RECONNECTING -> {
             Surface(
-                color = Color(0xFFFFF3D6),
+                color = MaterialTheme.colorScheme.secondaryContainer,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -163,7 +162,7 @@ fun ConnectionStatusBar(status: ConnectionStatus) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(12.dp),
                         strokeWidth = 2.dp,
-                        color = Color(0xFFB45309)
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
@@ -173,7 +172,7 @@ fun ConnectionStatusBar(status: ConnectionStatus) {
                             stringResource(R.string.status_reconnecting)
                         },
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFF92400E)
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 }
             }
@@ -183,12 +182,23 @@ fun ConnectionStatusBar(status: ConnectionStatus) {
                 color = MaterialTheme.colorScheme.errorContainer,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    text = stringResource(R.string.status_disconnected),
+                Row(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onErrorContainer
-                )
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Outlined.CloudOff,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = stringResource(R.string.status_disconnected),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
             }
         }
         ConnectionStatus.CONNECTED -> {}
