@@ -27,6 +27,7 @@ data class LoginUiState(
     val isLoggedIn: Boolean = false,
     val countdown: Int = 0,
     val useEmail: Boolean = false,
+    val codeDestination: String = "",
     val serverApiBaseUrl: String = "",
     val defaultServerApiBaseUrl: String = "",
     val isCustomServer: Boolean = false,
@@ -121,7 +122,8 @@ class LoginViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     step = LoginStep.INPUT_CODE,
                     isLoading = false,
-                    countdown = result.expiresIn.coerceAtMost(60)
+                    countdown = result.expiresIn.coerceAtMost(60),
+                    codeDestination = maskLoginDestination(identityValue, state.useEmail)
                 )
                 startCountdown()
             } catch (e: Exception) {
@@ -206,7 +208,11 @@ class LoginViewModel @Inject constructor(
     }
 
     fun goBack() {
-        _uiState.value = _uiState.value.copy(step = LoginStep.INPUT_IDENTITY, error = null)
+        _uiState.value = _uiState.value.copy(
+            step = LoginStep.INPUT_IDENTITY,
+            error = null,
+            codeDestination = ""
+        )
     }
 
     fun showServerConfig() {
