@@ -45,6 +45,7 @@ fun MessageBubble(
     groupMemberNames: Map<Int, String> = emptyMap(),
     showSenderName: Boolean = false,
     showSenderAvatar: Boolean = false,
+    reserveSenderAvatarSpace: Boolean = false,
     pendingActionMessageId: Long? = null,
     onReply: (ChatMessageItem.Remote) -> Unit = {},
     onEdit: (ChatMessageItem.Remote) -> Unit = {},
@@ -81,14 +82,18 @@ fun MessageBubble(
     ) {
         Row(verticalAlignment = Alignment.Top) {
             val resolvedSenderName = senderName ?: stringResource(R.string.chat_user_fallback, message.senderId)
-            if (showSenderAvatar && !isSelf) {
-                NexusAvatar(
-                    id = message.senderId,
-                    name = resolvedSenderName,
-                    avatarUrl = senderAvatarUrl,
-                    size = 32.dp,
-                    modifier = Modifier.padding(top = if (showSenderName) 18.dp else 0.dp)
-                )
+            if ((showSenderAvatar || reserveSenderAvatarSpace) && !isSelf) {
+                if (showSenderAvatar) {
+                    NexusAvatar(
+                        id = message.senderId,
+                        name = resolvedSenderName,
+                        avatarUrl = senderAvatarUrl,
+                        size = 32.dp,
+                        modifier = Modifier.padding(top = if (showSenderName) 18.dp else 0.dp)
+                    )
+                } else {
+                    Spacer(modifier = Modifier.width(32.dp))
+                }
                 Spacer(modifier = Modifier.width(7.dp))
             }
             Column(horizontalAlignment = if (isSelf) Alignment.End else Alignment.Start) {

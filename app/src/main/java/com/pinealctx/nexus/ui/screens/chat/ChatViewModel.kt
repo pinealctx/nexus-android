@@ -48,7 +48,9 @@ data class ChatUiState(
     val isGroupConversation: Boolean = false,
     val senderNames: Map<Int, String> = emptyMap(),
     val senderAvatarUrls: Map<Int, String> = emptyMap(),
-    val isLoading: Boolean = false,
+    val isLoading: Boolean = true,
+    val isRefreshing: Boolean = false,
+    val hasCompletedInitialLoad: Boolean = false,
     val isLoadingMore: Boolean = false,
     val hasMore: Boolean = true,
     val isSending: Boolean = false,
@@ -80,6 +82,8 @@ class ChatViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(ChatUiState())
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
+    private var historyRefreshJob: Job? = null
+    private var pendingHistoryRefresh = false
     private var markReadJob: Job? = null
     private var senderResolutionJob: Job? = null
 
@@ -114,7 +118,9 @@ class ChatViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     messages = merged,
                     currentUserId = messageManager.currentUserId(),
-                    isLoading = if (merged.isNotEmpty()) false else _uiState.value.isLoading
+                    isLoading = if (merged.isNotEmpty()) false else _uiState.value.isLoading,
+                    hasCompletedInitialLoad = merged.isNotEmpty() ||
+                        _uiState.value.hasCompletedInitialLoad
                 )
                 scheduleMarkRead(remoteMessages)
                 resolveSenderNames(remoteMessages)
@@ -123,10 +129,17 @@ class ChatViewModel @Inject constructor(
     }
 
     private fun loadMessages() {
-        viewModelScope.launch(Dispatchers.IO) {
+        if (historyRefreshJob?.isActive == true) {
+            pendingHistoryRefresh = true
+            return
+        }
+
+        historyRefreshJob = viewModelScope.launch(Dispatchers.IO) {
             val startedAt = SystemClock.elapsedRealtime()
+            val hasCachedMessages = _uiState.value.messages.isNotEmpty()
             _uiState.value = _uiState.value.copy(
-                isLoading = _uiState.value.messages.isEmpty(),
+                isLoading = !hasCachedMessages && !_uiState.value.hasCompletedInitialLoad,
+                isRefreshing = hasCachedMessages,
                 error = null
             )
             try {
@@ -134,6 +147,8 @@ class ChatViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     currentUserId = messageManager.currentUserId(),
                     isLoading = false,
+                    isRefreshing = false,
+                    hasCompletedInitialLoad = true,
                     hasMore = page.hasMore,
                     error = null
                 )
@@ -146,9 +161,16 @@ class ChatViewModel @Inject constructor(
                 Log.w("NexusChat", "History refresh failed: conversation=$conversationId", e)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
+                    isRefreshing = false,
+                    hasCompletedInitialLoad = true,
                     pendingMessageActionId = null,
                     error = e.message
                 )
+            } finally {
+                val shouldRefreshAgain = pendingHistoryRefresh
+                pendingHistoryRefresh = false
+                historyRefreshJob = null
+                if (shouldRefreshAgain) loadMessages()
             }
         }
     }
@@ -167,18 +189,28 @@ class ChatViewModel @Inject constructor(
             runCatching { conversationManager.getConversation(convId) }
                 .onSuccess { conversation ->
                     conversation ?: return@onSuccess
+                    val isGroup = conversation.conversationType ==
+                        ConversationType.CONVERSATION_TYPE_GROUP
                     _uiState.value = _uiState.value.copy(
                         conversationTitle = conversation.displayName
                             ?.takeIf { it.isNotBlank() }
-                            ?: if (conversation.peerId > 0) {
-                                "User ${conversation.peerId}"
-                            } else {
-                                "Conversation ${conversation.conversationId.takeLast(6)}"
+                            ?: when {
+                                isGroup -> context.getString(
+                                    com.pinealctx.nexus.R.string.chat_group_fallback,
+                                    conversation.conversationId.takeLast(6)
+                                )
+                                conversation.peerId > 0 -> context.getString(
+                                    com.pinealctx.nexus.R.string.chat_user_fallback,
+                                    conversation.peerId
+                                )
+                                else -> context.getString(
+                                    com.pinealctx.nexus.R.string.chat_conversation_fallback,
+                                    conversation.conversationId.takeLast(6)
+                                )
                             },
                         conversationPeerId = conversation.peerId,
                         conversationAvatarUrl = conversation.avatarUrl,
-                        isGroupConversation = conversation.conversationType ==
-                            ConversationType.CONVERSATION_TYPE_GROUP
+                        isGroupConversation = isGroup
                     )
                 }
         }
@@ -308,6 +340,7 @@ class ChatViewModel @Inject constructor(
             runCatching {
                 messageManager.editMessage(convId, messageId, text)
             }.onSuccess {
+                _uiState.value = _uiState.value.copy(pendingMessageActionId = null)
                 loadMessages()
             }.onFailure { error ->
                 _uiState.value = _uiState.value.copy(pendingMessageActionId = null, error = error.message)
@@ -322,6 +355,7 @@ class ChatViewModel @Inject constructor(
             runCatching {
                 messageManager.recallMessage(convId, messageId)
             }.onSuccess {
+                _uiState.value = _uiState.value.copy(pendingMessageActionId = null)
                 loadMessages()
             }.onFailure { error ->
                 _uiState.value = _uiState.value.copy(pendingMessageActionId = null, error = error.message)
@@ -336,6 +370,7 @@ class ChatViewModel @Inject constructor(
             runCatching {
                 messageManager.deleteMessages(convId, listOf(messageId))
             }.onSuccess {
+                _uiState.value = _uiState.value.copy(pendingMessageActionId = null)
                 loadMessages()
             }.onFailure { error ->
                 _uiState.value = _uiState.value.copy(pendingMessageActionId = null, error = error.message)
@@ -368,7 +403,7 @@ class ChatViewModel @Inject constructor(
 
     fun loadMore() {
         val state = _uiState.value
-        if (state.isLoadingMore || !state.hasMore) return
+        if (state.isLoading || state.isRefreshing || state.isLoadingMore || !state.hasMore) return
         val oldest = _uiState.value.messages
             .filterIsInstance<ChatMessageItem.Remote>()
             .lastOrNull()
@@ -472,7 +507,11 @@ class ChatViewModel @Inject constructor(
     private fun sendMedia(uri: Uri, visualOnly: Boolean) {
         viewModelScope.launch(Dispatchers.IO) {
             val convId = conversationId.toLongOrNull() ?: return@launch
-            _uiState.value = _uiState.value.copy(isSending = true, error = null)
+            _uiState.value = _uiState.value.copy(
+                isSending = true,
+                mediaUploadName = context.getString(com.pinealctx.nexus.R.string.media_attachment),
+                error = null
+            )
             try {
                 val metadata = readMediaMetadata(uri)
                 _uiState.value = _uiState.value.copy(mediaUploadName = metadata.fileName)

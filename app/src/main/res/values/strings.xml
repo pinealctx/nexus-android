@@ -22,8 +22,17 @@
     <string name="chat_search">Search in chat</string>
     <string name="chat_close_search">Close search</string>
     <string name="chat_load_failed">Couldn\'t load messages</string>
+    <string name="chat_load_failed_desc">Check your connection and try loading this conversation again.</string>
     <string name="chat_empty">No messages yet</string>
+    <string name="chat_empty_desc">Send a message, photo, file, or voice note to start the conversation.</string>
     <string name="chat_user_fallback">User %1$d</string>
+    <string name="chat_group_fallback">Group %1$s</string>
+    <string name="chat_conversation_fallback">Conversation %1$s</string>
+    <string name="chat_group_details_hint">Tap for group details</string>
+    <string name="chat_today">Today</string>
+    <string name="chat_yesterday">Yesterday</string>
+    <string name="chat_scroll_to_latest">Scroll to latest message</string>
+    <string name="chat_add_attachment">Add attachment</string>
     <string name="chat_send_state_sending">Sending…</string>
     <string name="chat_send_state_failed">Failed to send</string>
     <string name="chat_send_retry">Retry</string>
@@ -60,6 +69,7 @@
     <string name="group_event_field_description">description</string>
     <string name="group_event_field_information">information</string>
     <string name="voice_record">Record voice message</string>
+    <string name="voice_recording">Recording voice message</string>
     <string name="voice_cancel">Cancel recording</string>
     <string name="voice_send">Send voice message</string>
     <string name="voice_message">Voice message</string>
@@ -121,6 +131,7 @@
     <string name="media_camera">Camera</string>
     <string name="media_gallery">Gallery</string>
     <string name="media_file">File</string>
+    <string name="media_attachment">attachment</string>
     <string name="media_uploading">Uploading %1$s…</string>
     <string name="media_send_failed">Couldn\'t send media: %1$s</string>
     <string name="create_group_title">Create Group</string>

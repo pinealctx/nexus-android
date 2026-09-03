@@ -11,15 +11,16 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.EmojiEmotions
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
@@ -52,6 +53,7 @@ fun ChatComposer(
     var recordingStartedAt by remember { mutableLongStateOf(0L) }
     var recordingElapsedMs by remember { mutableLongStateOf(0L) }
     var recordingError by remember { mutableStateOf<String?>(null) }
+    val inputFocusRequester = remember { FocusRequester() }
 
     fun startRecording() {
         runCatching { voiceRecorder.start() }
@@ -88,6 +90,7 @@ fun ChatComposer(
             EmojiPicker(
                 onEmojiSelected = { emoji ->
                     onInputChange(insertTextAtSelection(inputValue, emoji))
+                    inputFocusRequester.requestFocus()
                 }
             )
         }
@@ -103,11 +106,15 @@ fun ChatComposer(
                 }
             )
         }
-        Surface(tonalElevation = 2.dp) {
+        Surface(
+            color = MaterialTheme.colorScheme.surface,
+            shadowElevation = 8.dp
+        ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 8.dp)
+                    .navigationBarsPadding()
+                    .padding(horizontal = 8.dp, vertical = 7.dp)
             ) {
                 replyTarget?.let { target ->
                     ReplyComposerPreview(
@@ -124,71 +131,118 @@ fun ChatComposer(
                     Spacer(modifier = Modifier.height(6.dp))
                 }
                 mediaUploadName?.let { fileName ->
-                    Row(
+                    Surface(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(horizontal = 4.dp, vertical = 3.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.62f),
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                     ) {
-                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = stringResource(R.string.media_uploading, fileName),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1
-                        )
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(9.dp))
+                            Text(
+                                text = stringResource(R.string.media_uploading, fileName),
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 1
+                            )
+                        }
                     }
                 }
                 recordingError?.let { error ->
-                    Text(
-                        text = error,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 3.dp)
-                    )
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 4.dp, vertical = 3.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                    ) {
+                        Text(
+                            text = error,
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                        )
+                    }
                 }
                 if (isRecording) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 52.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        IconButton(onClick = {
-                            voiceRecorder.cancel()
-                            isRecording = false
-                            recordingElapsedMs = 0L
-                        }) {
-                            Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.voice_cancel))
+                        FilledTonalIconButton(
+                            onClick = {
+                                voiceRecorder.cancel()
+                                isRecording = false
+                                recordingElapsedMs = 0L
+                            },
+                            modifier = Modifier.size(46.dp)
+                        ) {
+                            Icon(
+                                Icons.Filled.Delete,
+                                contentDescription = stringResource(R.string.voice_cancel)
+                            )
                         }
+                        Spacer(Modifier.width(10.dp))
                         Box(
                             modifier = Modifier
                                 .size(10.dp)
-                                .background(Color(0xFFE53935), RoundedCornerShape(50))
+                                .background(MaterialTheme.colorScheme.error, RoundedCornerShape(50))
                         )
                         Spacer(Modifier.width(10.dp))
-                        Text(
-                            text = formatRecordingDuration(recordingElapsedMs),
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.weight(1f)
-                        )
-                        IconButton(onClick = {
-                            runCatching { voiceRecorder.stop() }
-                                .onSuccess { recording ->
-                                    isRecording = false
-                                    recordingElapsedMs = 0L
-                                    onSendVoiceRecording(recording)
-                                }
-                                .onFailure {
-                                    isRecording = false
-                                    recordingElapsedMs = 0L
-                                    recordingError = it.message
-                                }
-                        }) {
-                            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(R.string.voice_send))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.voice_recording),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = formatRecordingDuration(recordingElapsedMs),
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        }
+                        FilledIconButton(
+                            onClick = {
+                                runCatching { voiceRecorder.stop() }
+                                    .onSuccess { recording ->
+                                        isRecording = false
+                                        recordingElapsedMs = 0L
+                                        onSendVoiceRecording(recording)
+                                    }
+                                    .onFailure {
+                                        isRecording = false
+                                        recordingElapsedMs = 0L
+                                        recordingError = it.message
+                                    }
+                            },
+                            modifier = Modifier.size(46.dp)
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.Send,
+                                contentDescription = stringResource(R.string.voice_send)
+                            )
                         }
                     }
-                } else Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { showEmojiPicker = !showEmojiPicker; showMediaPicker = false }) {
+                } else Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    FilledTonalIconButton(
+                        onClick = {
+                            showEmojiPicker = !showEmojiPicker
+                            showMediaPicker = false
+                        },
+                        modifier = Modifier.size(46.dp)
+                    ) {
                         Icon(
                             Icons.Filled.EmojiEmotions,
                             contentDescription = stringResource(R.string.chat_emoji),
@@ -196,40 +250,80 @@ fun ChatComposer(
                             else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    OutlinedTextField(
+                    Spacer(Modifier.width(7.dp))
+                    TextField(
                         value = inputValue,
                         onValueChange = onInputChange,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .heightIn(min = 50.dp, max = 128.dp)
+                            .focusRequester(inputFocusRequester),
                         placeholder = { Text(stringResource(R.string.chat_placeholder)) },
                         maxLines = 4,
-                        shape = RoundedCornerShape(24.dp)
-                    )
-                    IconButton(onClick = { showMediaPicker = !showMediaPicker; showEmojiPicker = false }) {
-                        Icon(
-                            Icons.Filled.Image,
-                            contentDescription = null,
-                            tint = if (showMediaPicker) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    if (inputValue.text.isBlank() && editTarget == null) {
-                        IconButton(onClick = {
-                            if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) ==
-                                PackageManager.PERMISSION_GRANTED
+                        shape = RoundedCornerShape(22.dp),
+                        trailingIcon = {
+                            IconButton(
+                                onClick = {
+                                    showMediaPicker = !showMediaPicker
+                                    showEmojiPicker = false
+                                },
+                                enabled = mediaUploadName == null
                             ) {
-                                startRecording()
-                            } else {
-                                recordPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                Icon(
+                                    Icons.Filled.AddCircle,
+                                    contentDescription = stringResource(R.string.chat_add_attachment),
+                                    tint = if (showMediaPicker) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    }
+                                )
                             }
-                        }) {
-                            Icon(Icons.Filled.Mic, contentDescription = stringResource(R.string.voice_record))
+                        },
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
+                            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.48f),
+                            focusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
+                            unfocusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
+                            disabledIndicatorColor = androidx.compose.ui.graphics.Color.Transparent
+                        )
+                    )
+                    Spacer(Modifier.width(7.dp))
+                    if (inputValue.text.isNotBlank() || editTarget != null) {
+                        FilledIconButton(
+                            onClick = {
+                                onSubmit(inputValue.text)
+                                showEmojiPicker = false
+                                showMediaPicker = false
+                            },
+                            enabled = inputValue.text.isNotBlank(),
+                            modifier = Modifier.size(46.dp)
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.Send,
+                                contentDescription = stringResource(R.string.chat_send)
+                            )
                         }
-                    }
-                    IconButton(
-                        onClick = { onSubmit(inputValue.text) },
-                        enabled = inputValue.text.isNotBlank()
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(R.string.chat_send))
+                    } else {
+                        FilledTonalIconButton(
+                            onClick = {
+                                if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) ==
+                                    PackageManager.PERMISSION_GRANTED
+                                ) {
+                                    startRecording()
+                                } else {
+                                    recordPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                }
+                            },
+                            enabled = mediaUploadName == null,
+                            modifier = Modifier.size(46.dp)
+                        ) {
+                            Icon(
+                                Icons.Filled.Mic,
+                                contentDescription = stringResource(R.string.voice_record)
+                            )
+                        }
                     }
                 }
             }

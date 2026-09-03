@@ -22,8 +22,17 @@
     <string name="chat_search">搜索聊天记录</string>
     <string name="chat_close_search">关闭搜索</string>
     <string name="chat_load_failed">消息加载失败</string>
+    <string name="chat_load_failed_desc">请检查网络连接，然后重新加载当前会话。</string>
     <string name="chat_empty">暂无消息</string>
+    <string name="chat_empty_desc">发送文字、图片、文件或语音，开始这段对话。</string>
     <string name="chat_user_fallback">用户 %1$d</string>
+    <string name="chat_group_fallback">群聊 %1$s</string>
+    <string name="chat_conversation_fallback">会话 %1$s</string>
+    <string name="chat_group_details_hint">点按查看群聊详情</string>
+    <string name="chat_today">今天</string>
+    <string name="chat_yesterday">昨天</string>
+    <string name="chat_scroll_to_latest">回到最新消息</string>
+    <string name="chat_add_attachment">添加附件</string>
     <string name="chat_send_state_sending">发送中…</string>
     <string name="chat_send_state_failed">发送失败</string>
     <string name="chat_send_retry">重试</string>
@@ -60,6 +69,7 @@
     <string name="group_event_field_description">描述</string>
     <string name="group_event_field_information">资料</string>
     <string name="voice_record">录制语音消息</string>
+    <string name="voice_recording">正在录制语音</string>
     <string name="voice_cancel">取消录音</string>
     <string name="voice_send">发送语音消息</string>
     <string name="voice_message">语音消息</string>
@@ -121,6 +131,7 @@
     <string name="media_camera">相机</string>
     <string name="media_gallery">相册</string>
     <string name="media_file">文件</string>
+    <string name="media_attachment">附件</string>
     <string name="media_uploading">正在上传 %1$s…</string>
     <string name="media_send_failed">媒体发送失败：%1$s</string>
     <string name="create_group_title">创建群组</string>
