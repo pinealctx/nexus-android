@@ -5,6 +5,7 @@ import com.pinealctx.nexus.core.ContactData
 import com.pinealctx.nexus.core.MessageContent
 import com.pinealctx.nexus.core.MessageData
 import com.pinealctx.nexus.core.MessageReplyContextData
+import com.pinealctx.nexus.core.MessageStreamPhase
 import com.shared.v1.ConversationInfo
 import com.shared.v1.ConversationType
 import com.shared.v1.GroupInfo
@@ -91,9 +92,14 @@ internal fun MessageBody.toMessageContent(): MessageContent {
         MessageBody.ContentCase.FILE -> MessageContent.File(file.fileId, file.filename, file.sizeBytes, file.mimeType)
         MessageBody.ContentCase.MARKDOWN -> MessageContent.Markdown(markdown.rawMarkdown)
         MessageBody.ContentCase.CARD -> MessageContent.Card(card.cardJson, card.fallbackText)
-        MessageBody.ContentCase.STREAM -> stream.accumulatedText.takeIf { it.isNotBlank() }
-            ?.let { MessageContent.Text(it) }
-            ?: MessageContent.Unknown
+        MessageBody.ContentCase.STREAM -> MessageContent.Stream(
+            phase = MessageStreamPhase.fromCode(stream.phaseValue),
+            sequence = stream.seq,
+            delta = stream.delta,
+            contentType = stream.contentType,
+            accumulatedText = stream.accumulatedText,
+            errorMessage = stream.errorMessage.takeIf { it.isNotBlank() }
+        )
         MessageBody.ContentCase.RECALLED -> MessageContent.Recalled
         MessageBody.ContentCase.GROUP -> group.toMessageContent()
         MessageBody.ContentCase.CUSTOM_PAYLOAD,

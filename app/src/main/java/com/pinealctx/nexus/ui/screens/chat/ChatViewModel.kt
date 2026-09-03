@@ -152,10 +152,13 @@ class ChatViewModel @Inject constructor(
                     hasMore = page.hasMore,
                     error = null
                 )
+                val convId = conversationId.toLongOrNull()
+                val recoveredStreams = convId?.let { messageManager.recoverIncompleteStreams(it) } ?: 0
                 Log.i(
                     "NexusChat",
                     "History refreshed: conversation=$conversationId messages=${page.messages.size} " +
-                        "hasMore=${page.hasMore} durationMs=${SystemClock.elapsedRealtime() - startedAt}"
+                        "hasMore=${page.hasMore} recoveredStreams=$recoveredStreams " +
+                        "durationMs=${SystemClock.elapsedRealtime() - startedAt}"
                 )
             } catch (e: Exception) {
                 Log.w("NexusChat", "History refresh failed: conversation=$conversationId", e)

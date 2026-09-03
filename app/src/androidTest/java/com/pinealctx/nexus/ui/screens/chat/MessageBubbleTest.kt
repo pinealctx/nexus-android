@@ -12,6 +12,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.pinealctx.nexus.R
 import com.pinealctx.nexus.core.MessageContent
 import com.pinealctx.nexus.core.MessageData
+import com.pinealctx.nexus.core.MessageStreamPhase
 import com.pinealctx.nexus.ui.theme.NexusTheme
 import org.junit.Rule
 import org.junit.Test
@@ -249,6 +250,51 @@ class MessageBubbleTest {
 
         assert(requestedFileId == "file-21")
         assert(openedFileId == "file-21")
+    }
+
+    @Test
+    fun streamMessageShowsPartialMarkdownAndLifecycleState() {
+        composeRule.setContent {
+            NexusTheme {
+                MessageBubble(
+                    message = remoteMessage(
+                        24,
+                        7,
+                        MessageContent.Stream(
+                            phase = MessageStreamPhase.DELTA,
+                            sequence = 2,
+                            contentType = "text/markdown",
+                            accumulatedText = "**Partial response**"
+                        )
+                    )
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Partial response").assertIsDisplayed()
+        composeRule.onNodeWithText(text(R.string.message_stream_generating)).assertIsDisplayed()
+    }
+
+    @Test
+    fun failedStreamKeepsPartialContentAndShowsReason() {
+        composeRule.setContent {
+            NexusTheme {
+                MessageBubble(
+                    message = remoteMessage(
+                        25,
+                        7,
+                        MessageContent.Stream(
+                            phase = MessageStreamPhase.ERROR,
+                            accumulatedText = "Partial response",
+                            errorMessage = "Agent disconnected"
+                        )
+                    )
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Partial response").assertIsDisplayed()
+        composeRule.onNodeWithText("Agent disconnected").assertIsDisplayed()
     }
 
     private fun remoteMessage(

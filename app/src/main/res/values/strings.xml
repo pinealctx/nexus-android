@@ -56,6 +56,8 @@
     <string name="message_recalled">Message recalled</string>
     <string name="message_edited">(edited)</string>
     <string name="message_unsupported">[Unsupported message type]</string>
+    <string name="message_stream_generating">Generating response…</string>
+    <string name="message_stream_interrupted">Response interrupted</string>
     <string name="message_group_update">Group information updated</string>
     <string name="group_event_joined">%1$s joined the group</string>
     <string name="group_event_invited">%1$s invited %2$s</string>

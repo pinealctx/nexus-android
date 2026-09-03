@@ -65,6 +65,14 @@ sealed interface MessageContent {
     data class File(val fileId: String, val name: String, val size: Long, val mimeType: String = "") : MessageContent
     data class Markdown(val text: String) : MessageContent
     data class Card(val json: String, val fallbackText: String = "") : MessageContent
+    data class Stream(
+        val phase: MessageStreamPhase,
+        val sequence: Int = 0,
+        val delta: String = "",
+        val contentType: String = "",
+        val accumulatedText: String = "",
+        val errorMessage: String? = null
+    ) : MessageContent
     data class GroupEvent(
         val groupId: Int,
         val type: GroupEventType,
@@ -75,6 +83,21 @@ sealed interface MessageContent {
     ) : MessageContent
     data object Recalled : MessageContent
     data object Unknown : MessageContent
+}
+
+enum class MessageStreamPhase(val code: Int) {
+    UNSPECIFIED(0),
+    START(1),
+    DELTA(2),
+    END(3),
+    ERROR(4);
+
+    val isTerminal: Boolean
+        get() = this == END || this == ERROR
+
+    companion object {
+        fun fromCode(code: Int): MessageStreamPhase = entries.firstOrNull { it.code == code } ?: UNSPECIFIED
+    }
 }
 
 enum class GroupEventType {

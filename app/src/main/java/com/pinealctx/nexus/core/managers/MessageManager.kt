@@ -45,6 +45,18 @@ class MessageManager @Inject constructor(
         return page
     }
 
+    suspend fun recoverIncompleteStreams(conversationId: Long): Int {
+        var recovered = 0
+        localDataStore.listIncompleteStreamMessages(conversationId).forEach { cached ->
+            runCatching { messageApi.getMessage(conversationId, cached.messageId) }
+                .onSuccess { current ->
+                    localDataStore.upsertMessage(current)
+                    recovered += 1
+                }
+        }
+        return recovered
+    }
+
     fun getLocalMessages(conversationId: String): List<LocalMessageData> {
         val convId = conversationId.toLongOrNull() ?: return emptyList()
         return localDataStore.listLocalMessages(convId)

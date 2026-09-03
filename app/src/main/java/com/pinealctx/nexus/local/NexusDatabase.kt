@@ -27,7 +27,7 @@ import kotlinx.coroutines.flow.Flow
         GroupMemberEntity::class,
         MediaFileEntity::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = true
 )
 abstract class NexusDatabase : RoomDatabase() {
@@ -40,6 +40,15 @@ abstract class NexusDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE messages ADD COLUMN transcript TEXT")
                 db.execSQL("ALTER TABLE local_messages ADD COLUMN thumbnail_file_id TEXT")
                 db.execSQL("ALTER TABLE local_messages ADD COLUMN transcript TEXT")
+            }
+        }
+
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE messages ADD COLUMN stream_phase INTEGER")
+                db.execSQL("ALTER TABLE messages ADD COLUMN stream_seq INTEGER")
+                db.execSQL("ALTER TABLE messages ADD COLUMN stream_content_type TEXT")
+                db.execSQL("ALTER TABLE messages ADD COLUMN stream_error_message TEXT")
             }
         }
     }
@@ -140,6 +149,10 @@ data class MessageEntity(
     val duration: Int?,
     @ColumnInfo(name = "card_json") val cardJson: String?,
     @ColumnInfo(name = "fallback_text") val fallbackText: String?,
+    @ColumnInfo(name = "stream_phase") val streamPhase: Int?,
+    @ColumnInfo(name = "stream_seq") val streamSequence: Int?,
+    @ColumnInfo(name = "stream_content_type") val streamContentType: String?,
+    @ColumnInfo(name = "stream_error_message") val streamErrorMessage: String?,
     @ColumnInfo(name = "reply_to_message_id") val replyToMessageId: Long?,
     @ColumnInfo(name = "reply_sender_id") val replySenderId: Int?,
     @ColumnInfo(name = "reply_sender_nickname") val replySenderNickname: String?,

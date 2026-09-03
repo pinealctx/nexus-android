@@ -43,6 +43,7 @@ object ChatMessageActionPolicy {
         return when (val content = content) {
             is MessageContent.Text -> content.text
             is MessageContent.Markdown -> content.text
+            is MessageContent.Stream -> content.accumulatedText.takeIf { it.isNotBlank() }
             else -> null
         }
     }

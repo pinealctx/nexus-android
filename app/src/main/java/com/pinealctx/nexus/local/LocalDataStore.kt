@@ -13,6 +13,7 @@ import com.pinealctx.nexus.core.ContactData
 import com.pinealctx.nexus.core.MessageContent
 import com.pinealctx.nexus.core.MessageData
 import com.pinealctx.nexus.core.MessageReplyContextData
+import com.pinealctx.nexus.core.MessageStreamPhase
 import com.pinealctx.nexus.core.MessageSearchResultData
 import com.pinealctx.nexus.core.GroupData
 import com.pinealctx.nexus.core.GroupMemberData
@@ -22,6 +23,7 @@ import com.pinealctx.nexus.core.PendingRequestData
 import com.pinealctx.nexus.core.ProfileData
 import com.pinealctx.nexus.core.MessageSendState
 import com.pinealctx.nexus.core.previewText
+import com.pinealctx.nexus.core.mergeStreamContent
 import com.shared.v1.ConversationActionType
 import com.shared.v1.ConversationType
 import com.shared.v1.MemberRole
@@ -38,7 +40,7 @@ class LocalDataStore @Inject constructor(
     @ApplicationContext context: Context
 ) {
     private val database = Room.databaseBuilder(context, NexusDatabase::class.java, DATABASE_NAME)
-        .addMigrations(NexusDatabase.MIGRATION_7_8)
+        .addMigrations(NexusDatabase.MIGRATION_7_8, NexusDatabase.MIGRATION_8_9)
         .allowMainThreadQueries()
         .build()
 
@@ -650,6 +652,27 @@ class LocalDataStore @Inject constructor(
         }
     }
 
+    fun listIncompleteStreamMessages(conversationId: Long, limit: Int = 20): List<MessageData> {
+        return readableDatabase.rawQuery(
+            """
+            SELECT * FROM messages
+            WHERE conversation_id = ?
+              AND content_kind = 'stream'
+              AND COALESCE(stream_phase, 0) < ${MessageStreamPhase.END.code}
+            ORDER BY message_id DESC
+            LIMIT ?
+            """.trimIndent(),
+            arrayOf(
+                conversationId.toString(),
+                limit.coerceIn(1, 100).toString()
+            )
+        ).use { cursor ->
+            buildList {
+                while (cursor.moveToNext()) add(cursor.toMessageData())
+            }
+        }
+    }
+
     fun upsertLocalMessage(message: LocalMessageData) {
         writableDatabase.transaction {
             insertWithOnConflict(
@@ -939,14 +962,36 @@ class LocalDataStore @Inject constructor(
     }
 
     private fun upsertMessage(message: MessageData, db: SupportSQLiteDatabase) {
-        db.insertWithOnConflict("messages", null, message.toContentValues(), SQLiteDatabase.CONFLICT_REPLACE)
+        val resolvedMessage = if (message.content is MessageContent.Stream) {
+            val existing = db.rawQuery(
+                "SELECT * FROM messages WHERE conversation_id = ? AND message_id = ?",
+                arrayOf(message.conversationId, message.messageId.toString())
+            ).use { cursor ->
+                if (cursor.moveToFirst()) cursor.toMessageData() else null
+            }
+            message.copy(
+                content = mergeStreamContent(existing?.content as? MessageContent.Stream, message.content),
+                replyToMessageId = message.replyToMessageId ?: existing?.replyToMessageId,
+                replyContext = message.replyContext ?: existing?.replyContext,
+                createdAt = message.createdAt.takeIf { it > 0 } ?: existing?.createdAt ?: 0L
+            )
+        } else {
+            message
+        }
+
+        db.insertWithOnConflict(
+            "messages",
+            null,
+            resolvedMessage.toContentValues(),
+            SQLiteDatabase.CONFLICT_REPLACE
+        )
         db.delete(
             "local_messages",
             "conversation_id = ? AND server_message_id = ?",
-            arrayOf(message.conversationId, message.messageId.toString())
+            arrayOf(resolvedMessage.conversationId, resolvedMessage.messageId.toString())
         )
 
-        val conversationId = message.conversationId
+        val conversationId = resolvedMessage.conversationId
         val existing = db.rawQuery(
             "SELECT last_message_id FROM conversations WHERE conversation_id = ?",
             arrayOf(conversationId)
@@ -955,12 +1000,12 @@ class LocalDataStore @Inject constructor(
         }
 
         if (existing == null) {
-            insertStubConversation(message, db)
-        } else if (message.messageId >= existing) {
+            insertStubConversation(resolvedMessage, db)
+        } else if (resolvedMessage.messageId >= existing) {
             val values = ContentValues().apply {
-                put("last_message_id", message.messageId)
-                put("last_message_time", message.createdAt)
-                put("last_message_content", message.previewText())
+                put("last_message_id", resolvedMessage.messageId)
+                put("last_message_time", resolvedMessage.createdAt)
+                put("last_message_content", resolvedMessage.previewText())
                 put("deleted", 0)
                 put("updated_at", System.currentTimeMillis())
             }
@@ -1064,6 +1109,10 @@ class LocalDataStore @Inject constructor(
             putNullable("duration", content.durationValue)
             putNullable("card_json", content.cardJsonValue)
             putNullable("fallback_text", content.fallbackValue)
+            putNullable("stream_phase", content.streamPhaseValue)
+            putNullable("stream_seq", content.streamSequenceValue)
+            putNullable("stream_content_type", content.streamContentTypeValue)
+            putNullable("stream_error_message", content.streamErrorMessageValue)
             putNullable("reply_to_message_id", replyToMessageId)
             putNullable("reply_sender_id", replyContext?.senderId)
             putNullable("reply_sender_nickname", replyContext?.senderNickname)
@@ -1114,6 +1163,10 @@ class LocalDataStore @Inject constructor(
             putNull("duration")
             putNull("card_json")
             putNull("fallback_text")
+            putNull("stream_phase")
+            putNull("stream_seq")
+            putNull("stream_content_type")
+            putNull("stream_error_message")
         }
     }
 
@@ -1471,7 +1524,11 @@ class LocalDataStore @Inject constructor(
         height = height,
         duration = duration,
         cardJson = cardJson,
-        fallbackText = fallbackText
+        fallbackText = fallbackText,
+        streamPhase = streamPhase,
+        streamSequence = streamSequence,
+        streamContentType = streamContentType,
+        streamErrorMessage = streamErrorMessage
     )
 
     private fun LocalMessageEntity.toMessageContent(): MessageContent = messageContent(
@@ -1487,7 +1544,11 @@ class LocalDataStore @Inject constructor(
         height = height,
         duration = duration,
         cardJson = cardJson,
-        fallbackText = fallbackText
+        fallbackText = fallbackText,
+        streamPhase = null,
+        streamSequence = null,
+        streamContentType = null,
+        streamErrorMessage = null
     )
 
     private fun messageContent(
@@ -1503,7 +1564,11 @@ class LocalDataStore @Inject constructor(
         height: Int?,
         duration: Int?,
         cardJson: String?,
-        fallbackText: String?
+        fallbackText: String?,
+        streamPhase: Int?,
+        streamSequence: Int?,
+        streamContentType: String?,
+        streamErrorMessage: String?
     ): MessageContent = when (contentKind) {
         "text" -> MessageContent.Text(text.orEmpty())
         "image" -> MessageContent.Image(fileId.orEmpty(), width ?: 0, height ?: 0)
@@ -1519,6 +1584,13 @@ class LocalDataStore @Inject constructor(
         "file" -> MessageContent.File(fileId.orEmpty(), fileName.orEmpty(), fileSize ?: 0L, mimeType.orEmpty())
         "markdown" -> MessageContent.Markdown(text.orEmpty())
         "card" -> MessageContent.Card(cardJson.orEmpty(), fallbackText.orEmpty())
+        "stream" -> MessageContent.Stream(
+            phase = MessageStreamPhase.fromCode(streamPhase ?: 0),
+            sequence = streamSequence ?: 0,
+            contentType = streamContentType.orEmpty(),
+            accumulatedText = text.orEmpty(),
+            errorMessage = streamErrorMessage
+        )
         "group_event" -> text.toGroupEvent()
         "recalled" -> MessageContent.Recalled
         else -> MessageContent.Unknown
@@ -1557,6 +1629,13 @@ class LocalDataStore @Inject constructor(
                 json = stringOrNull("card_json").orEmpty(),
                 fallbackText = stringOrNull("fallback_text").orEmpty()
             )
+            "stream" -> MessageContent.Stream(
+                phase = MessageStreamPhase.fromCode(intOrNull("stream_phase") ?: 0),
+                sequence = intOrNull("stream_seq") ?: 0,
+                contentType = stringOrNull("stream_content_type").orEmpty(),
+                accumulatedText = stringOrNull("text").orEmpty(),
+                errorMessage = stringOrNull("stream_error_message")
+            )
             "group_event" -> stringOrNull("text").toGroupEvent()
             "recalled" -> MessageContent.Recalled
             else -> MessageContent.Unknown
@@ -1572,6 +1651,7 @@ class LocalDataStore @Inject constructor(
             is MessageContent.File -> "file"
             is MessageContent.Markdown -> "markdown"
             is MessageContent.Card -> "card"
+            is MessageContent.Stream -> "stream"
             is MessageContent.GroupEvent -> "group_event"
             MessageContent.Recalled -> "recalled"
             MessageContent.Unknown -> "unknown"
@@ -1581,6 +1661,7 @@ class LocalDataStore @Inject constructor(
         get() = when (this) {
             is MessageContent.Text -> text
             is MessageContent.Markdown -> text
+            is MessageContent.Stream -> accumulatedText
             is MessageContent.GroupEvent -> toStorageJson()
             else -> null
         }
@@ -1670,6 +1751,18 @@ class LocalDataStore @Inject constructor(
 
     private val MessageContent.fallbackValue: String?
         get() = if (this is MessageContent.Card) fallbackText else null
+
+    private val MessageContent.streamPhaseValue: Int?
+        get() = (this as? MessageContent.Stream)?.phase?.code
+
+    private val MessageContent.streamSequenceValue: Int?
+        get() = (this as? MessageContent.Stream)?.sequence
+
+    private val MessageContent.streamContentTypeValue: String?
+        get() = (this as? MessageContent.Stream)?.contentType
+
+    private val MessageContent.streamErrorMessageValue: String?
+        get() = (this as? MessageContent.Stream)?.errorMessage
 
     private fun List<AgentCommandData>.toJsonString(): String {
         val array = JSONArray()

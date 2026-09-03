@@ -6,6 +6,7 @@ import com.api.v1.Update
 import com.api.v1.getDifferenceRequest
 import com.pinealctx.nexus.core.AppEventBus
 import com.pinealctx.nexus.core.PendingRequestData
+import com.pinealctx.nexus.core.MessageContent
 import com.pinealctx.nexus.local.LocalDataStore
 import com.shared.v1.ConversationActionType
 import com.shared.v1.NonSnUpdate
@@ -139,8 +140,14 @@ class SyncEngine @Inject constructor(
 
     private fun applyNonSnUpdate(update: NonSnUpdate) {
         when (update.updateCase) {
-            NonSnUpdate.UpdateCase.MESSAGE_ENVELOPE ->
-                appEventBus.emitMessagesUpdated(update.messageEnvelope.conversationId.toString())
+            NonSnUpdate.UpdateCase.MESSAGE_ENVELOPE -> {
+                val message = update.messageEnvelope.toMessageData()
+                if (message.content is MessageContent.Stream) {
+                    localDataStore.upsertMessage(message)
+                    appEventBus.emitMessagesUpdated(message.conversationId)
+                    appEventBus.emitConversationsUpdated()
+                }
+            }
             NonSnUpdate.UpdateCase.CARD_ACTION_ANSWER -> {
                 val answer = update.cardActionAnswer
                 if (answer.text.isNotBlank()) {

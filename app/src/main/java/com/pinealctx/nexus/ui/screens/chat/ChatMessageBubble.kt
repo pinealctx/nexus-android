@@ -26,6 +26,7 @@ import com.pinealctx.nexus.R
 import com.pinealctx.nexus.core.MessageContent
 import com.pinealctx.nexus.core.GroupEventType
 import com.pinealctx.nexus.core.MessageSendState
+import com.pinealctx.nexus.core.MessageStreamPhase
 import com.pinealctx.nexus.core.previewText
 import com.pinealctx.nexus.ui.components.AudioMessagePlayer
 import com.pinealctx.nexus.ui.components.ChatMediaController
@@ -465,6 +466,7 @@ fun MessageContentView(
                 onOpenMiniApp = onOpenMiniApp
             )
         }
+        is MessageContent.Stream -> StreamMessageBubble(content)
         is MessageContent.GroupEvent -> {
             Text(
                 text = stringResource(R.string.message_group_update),
@@ -505,6 +507,48 @@ fun MessageContentView(
                 text = stringResource(R.string.message_unsupported),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun StreamMessageBubble(content: MessageContent.Stream) {
+    val isActive = !content.phase.isTerminal
+    Column {
+        if (content.accumulatedText.isNotBlank()) {
+            if (content.contentType.equals("text/plain", ignoreCase = true)) {
+                Text(
+                    text = content.accumulatedText,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            } else {
+                MarkdownBubble(text = content.accumulatedText)
+            }
+        }
+        if (isActive) {
+            Row(
+                modifier = Modifier.padding(top = if (content.accumulatedText.isBlank()) 1.dp else 7.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(13.dp),
+                    strokeWidth = 1.8.dp
+                )
+                Spacer(Modifier.width(7.dp))
+                Text(
+                    text = stringResource(R.string.message_stream_generating),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        } else if (content.phase == MessageStreamPhase.ERROR) {
+            Text(
+                text = content.errorMessage?.takeIf { it.isNotBlank() }
+                    ?: stringResource(R.string.message_stream_interrupted),
+                modifier = Modifier.padding(top = if (content.accumulatedText.isBlank()) 0.dp else 7.dp),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error
             )
         }
     }

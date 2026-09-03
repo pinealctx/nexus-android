@@ -2,6 +2,8 @@ package com.pinealctx.nexus.ui.screens.chat
 
 import com.pinealctx.nexus.core.MessageContent
 import com.pinealctx.nexus.core.MessageData
+import com.pinealctx.nexus.core.LocalMessageData
+import com.pinealctx.nexus.core.MessageSendState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -78,6 +80,19 @@ class ChatTimelinePolicyTest {
         assertEquals("Dec 31, 2025", formatDay("2025-12-31T10:00:00Z", now))
     }
 
+    @Test
+    fun newestOutgoingLocalMessageDrivesScrollToLatest() {
+        val messages = listOf(
+            localMessage(clientMessageId = 103, senderId = 7),
+            localMessage(clientMessageId = 102, senderId = 9),
+            localMessage(clientMessageId = 101, senderId = 7)
+        )
+
+        assertEquals(103L, findNewestOutgoingLocalMessageId(messages, currentUserId = 7))
+        assertEquals(102L, findNewestOutgoingLocalMessageId(messages, currentUserId = 9))
+        assertEquals(null, findNewestOutgoingLocalMessageId(emptyList(), currentUserId = 7))
+    }
+
     private fun message(messageId: Long, senderId: Int, timestamp: String) =
         ChatMessageItem.Remote(
             MessageData(
@@ -92,6 +107,19 @@ class ChatTimelinePolicyTest {
                 recalled = false
             )
         )
+
+    private fun localMessage(clientMessageId: Long, senderId: Int) = ChatMessageItem.Local(
+        LocalMessageData(
+            clientMessageId = clientMessageId,
+            conversationId = "100",
+            serverMessageId = null,
+            senderId = senderId,
+            content = MessageContent.Text("Message $clientMessageId"),
+            replyToMessageId = null,
+            createdAt = clientMessageId,
+            sendState = MessageSendState.SENDING
+        )
+    )
 
     private fun formatDay(timestamp: String, now: Long): String = formatChatDay(
         timestamp = Instant.parse(timestamp).toEpochMilli(),

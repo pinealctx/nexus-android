@@ -3,6 +3,7 @@ package com.pinealctx.nexus.client
 import com.api.v1.DeleteHistoryRequest
 import com.api.v1.DeleteMessagesRequest
 import com.api.v1.EditMessageRequest
+import com.api.v1.GetMessageRequest
 import com.api.v1.GetMessageHistoryRequest
 import com.api.v1.RecallMessageRequest
 import com.api.v1.SendMessageRequest
@@ -33,6 +34,21 @@ class MessageApi @Inject constructor(
 
     suspend fun getMessages(conversationId: Long, limit: Int = 50, beforeId: Long? = null): List<MessageData> {
         return getMessagePage(conversationId, limit, beforeId).messages
+    }
+
+    suspend fun getMessage(conversationId: Long, messageId: Long): MessageData {
+        return apiClientFactory.createClients()
+            .messages
+            .getMessage(
+                request = GetMessageRequest.newBuilder()
+                    .setConversationId(conversationId)
+                    .setMessageId(messageId)
+                    .build(),
+                headers = headers.current()
+            )
+            .requireMessage()
+            .message
+            .toMessageData()
     }
 
     suspend fun getMessagePage(

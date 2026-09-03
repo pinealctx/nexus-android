@@ -2,6 +2,7 @@ package com.pinealctx.nexus.ui.screens.chat
 
 import com.pinealctx.nexus.core.MessageContent
 import com.pinealctx.nexus.core.MessageData
+import com.pinealctx.nexus.core.MessageStreamPhase
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -36,6 +37,25 @@ class ChatMessageActionPolicyTest {
         assertTrue(state.canCopy)
         assertFalse(state.canEdit)
         assertEquals("# hello", state.copyText)
+    }
+
+    @Test
+    fun `stream partial content can be copied but not edited`() {
+        val state = ChatMessageActionPolicy.forMessage(
+            message = remote(
+                content = MessageContent.Stream(
+                    phase = MessageStreamPhase.DELTA,
+                    accumulatedText = "partial response"
+                ),
+                senderId = 8
+            ),
+            currentUserId = 7,
+            pendingActionMessageId = null
+        )
+
+        assertTrue(state.canCopy)
+        assertFalse(state.canEdit)
+        assertEquals("partial response", state.copyText)
     }
 
     @Test

@@ -23,6 +23,17 @@ class NexusDatabaseMigrationTest {
         ).close()
     }
 
+    @Test
+    fun migrate8To9() {
+        helper.createDatabase(DatabaseName, 8).close()
+        helper.runMigrationsAndValidate(
+            DatabaseName,
+            9,
+            true,
+            NexusDatabase.MIGRATION_8_9
+        ).close()
+    }
+
     private companion object {
         const val DatabaseName = "nexus-migration-test"
     }

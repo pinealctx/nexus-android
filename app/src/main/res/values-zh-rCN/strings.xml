@@ -56,6 +56,8 @@
     <string name="message_recalled">消息已撤回</string>
     <string name="message_edited">(已编辑)</string>
     <string name="message_unsupported">[不支持的消息类型]</string>
+    <string name="message_stream_generating">正在生成回复…</string>
+    <string name="message_stream_interrupted">回复已中断</string>
     <string name="message_group_update">群组信息已更新</string>
     <string name="group_event_joined">%1$s 加入了群聊</string>
     <string name="group_event_invited">%1$s 邀请 %2$s 加入了群聊</string>

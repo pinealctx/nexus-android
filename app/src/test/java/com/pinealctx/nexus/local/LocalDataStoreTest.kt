@@ -13,6 +13,7 @@ import com.pinealctx.nexus.core.MessageContent
 import com.pinealctx.nexus.core.MessageData
 import com.pinealctx.nexus.core.MessageReplyContextData
 import com.pinealctx.nexus.core.MessageSendState
+import com.pinealctx.nexus.core.MessageStreamPhase
 import com.pinealctx.nexus.core.PendingRequestData
 import com.pinealctx.nexus.core.ProfileData
 import com.shared.v1.ConversationActionType
@@ -270,6 +271,62 @@ class LocalDataStoreTest {
 
         assertEquals(emptyList<LocalMessageData>(), store.listLocalMessages(100L))
         assertEquals(listOf(601L), store.listMessages(100L).map { it.messageId })
+    }
+
+    @Test
+    fun `stream updates accumulate persist and update the conversation preview`() {
+        store.upsertMessage(
+            message(
+                id = 701L,
+                content = MessageContent.Stream(MessageStreamPhase.START, contentType = "text/markdown")
+            )
+        )
+        store.upsertMessage(
+            message(
+                id = 701L,
+                content = MessageContent.Stream(
+                    phase = MessageStreamPhase.DELTA,
+                    sequence = 1,
+                    delta = "Hello"
+                )
+            )
+        )
+        store.upsertMessage(
+            message(
+                id = 701L,
+                content = MessageContent.Stream(
+                    phase = MessageStreamPhase.DELTA,
+                    sequence = 2,
+                    delta = " world"
+                )
+            )
+        )
+
+        store.close()
+        store = LocalDataStore(context)
+
+        val persisted = store.listMessages(100L).single().content as MessageContent.Stream
+        assertEquals(MessageStreamPhase.DELTA, persisted.phase)
+        assertEquals(2, persisted.sequence)
+        assertEquals("Hello world", persisted.accumulatedText)
+        assertEquals("Hello world", store.getConversation(100L)?.lastMessageContent)
+        assertEquals(listOf(701L), store.listIncompleteStreamMessages(100L).map { it.messageId })
+
+        store.upsertMessage(
+            message(
+                id = 701L,
+                content = MessageContent.Stream(
+                    phase = MessageStreamPhase.END,
+                    accumulatedText = "Final **response**",
+                    contentType = "text/markdown"
+                )
+            )
+        )
+
+        val completed = store.listMessages(100L).single().content as MessageContent.Stream
+        assertEquals(MessageStreamPhase.END, completed.phase)
+        assertEquals("Final **response**", completed.accumulatedText)
+        assertEquals(emptyList<MessageData>(), store.listIncompleteStreamMessages(100L))
     }
 
     @Test

@@ -100,6 +100,10 @@ fun ChatScreen(
     val mediaController = rememberChatMediaController()
     val snackbarHostState = remember { SnackbarHostState() }
     val latestDraftText by rememberUpdatedState(inputValue.text)
+    val newestOutgoingLocalMessageId = remember(uiState.messages, uiState.currentUserId) {
+        findNewestOutgoingLocalMessageId(uiState.messages, uiState.currentUserId)
+    }
+    var lastAutoScrolledLocalMessageId by remember(conversationId) { mutableStateOf<Long?>(null) }
 
     LaunchedEffect(listState) {
         snapshotFlow {
@@ -126,6 +130,14 @@ fun ChatScreen(
             listState.animateScrollToItem(index)
             viewModel.consumeScrollTarget(messageId)
         }
+    }
+
+    LaunchedEffect(newestOutgoingLocalMessageId) {
+        val clientMessageId = newestOutgoingLocalMessageId ?: return@LaunchedEffect
+        if (clientMessageId == lastAutoScrolledLocalMessageId) return@LaunchedEffect
+        lastAutoScrolledLocalMessageId = clientMessageId
+        withFrameNanos { }
+        listState.animateScrollToItem(0)
     }
 
     LaunchedEffect(uiState.error, uiState.messages.isNotEmpty()) {
@@ -535,6 +547,15 @@ internal fun buildChatTimeline(
         }
     }
 }
+
+internal fun findNewestOutgoingLocalMessageId(
+    messages: List<ChatMessageItem>,
+    currentUserId: Int
+): Long? = messages
+    .asSequence()
+    .filterIsInstance<ChatMessageItem.Local>()
+    .filter { currentUserId <= 0 || it.senderId == currentUserId }
+    .maxOfOrNull { it.data.clientMessageId }
 
 @Composable
 internal fun ChatDaySeparator(timestamp: Long) {
