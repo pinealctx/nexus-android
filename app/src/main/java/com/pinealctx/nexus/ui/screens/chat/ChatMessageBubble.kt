@@ -517,7 +517,7 @@ private fun StreamMessageBubble(content: MessageContent.Stream) {
     val isActive = !content.phase.isTerminal
     Column {
         if (content.accumulatedText.isNotBlank()) {
-            if (content.contentType.equals("text/plain", ignoreCase = true)) {
+            if (!streamContentUsesMarkdown(content.contentType)) {
                 Text(
                     text = content.accumulatedText,
                     style = MaterialTheme.typography.bodyMedium
@@ -553,6 +553,12 @@ private fun StreamMessageBubble(content: MessageContent.Stream) {
         }
     }
 }
+
+internal fun streamContentUsesMarkdown(contentType: String): Boolean =
+    contentType
+        .substringBefore(';')
+        .trim()
+        .equals("text/markdown", ignoreCase = true)
 
 @Composable
 fun ImageBubble(model: String?, width: Int, height: Int, onClick: () -> Unit = {}) {

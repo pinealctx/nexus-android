@@ -3,6 +3,7 @@ package com.pinealctx.nexus.ui.screens.chat
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
@@ -271,6 +272,9 @@ class MessageBubbleTest {
             }
         }
 
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithText("Partial response").fetchSemanticsNodes().isNotEmpty()
+        }
         composeRule.onNodeWithText("Partial response").assertIsDisplayed()
         composeRule.onNodeWithText(text(R.string.message_stream_generating)).assertIsDisplayed()
     }
