@@ -17,7 +17,8 @@ import com.pinealctx.nexus.core.ContactData
 import com.pinealctx.nexus.core.managers.GroupManager
 import com.pinealctx.nexus.core.AppEventBus
 import com.pinealctx.nexus.core.MessageSendScheduler
-import com.pinealctx.nexus.core.MessageSearchResultData
+import com.pinealctx.nexus.core.AgentInfoData
+import com.pinealctx.nexus.core.managers.AgentManager
 import com.pinealctx.nexus.core.SyncManager
 import com.pinealctx.nexus.core.managers.ConversationManager
 import com.pinealctx.nexus.core.managers.MediaManager
@@ -38,11 +39,18 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import com.shared.v1.ConversationType
 import java.io.ByteArrayOutputStream
 import javax.inject.Inject
 
 data class ChatUiState(
+    val agentInfo: AgentInfoData? = null,
+    val agentToolsLoadFailed: Boolean = false,
+    val isLoadingAgentTools: Boolean = false,
     val mentionCandidates: List<MentionCandidate> = emptyList(),
     val isLoadingMentions: Boolean = false,
     val mentionsLoadFailed: Boolean = false,
@@ -79,6 +87,7 @@ class ChatViewModel @Inject constructor(
     private val searchManager: SearchManager,
     private val userManager: UserManager,
     private val groupManager: GroupManager,
+    private val agentManager: AgentManager,
     private val messageRepository: MessageRepository,
     private val messageSendScheduler: MessageSendScheduler,
     private val syncManager: SyncManager,
@@ -88,6 +97,12 @@ class ChatViewModel @Inject constructor(
 ) : ViewModel() {
 
     val conversationId: String = savedStateHandle["conversationId"] ?: ""
+    private val searchController = ChatSearchController(viewModelScope) { query, limit, offset ->
+        withContext(Dispatchers.IO) {
+            searchManager.searchMessages(query, conversationId, limit, offset)
+        }
+    }
+    val searchState = searchController.state
     val initialDraft: String = syncManager.getDraft(conversationId)
     val initialDraftEntities: List<TextEntityData> = syncManager.getDraftEntities(conversationId)
 
@@ -98,6 +113,32 @@ class ChatViewModel @Inject constructor(
     private var markReadJob: Job? = null
     private var senderResolutionJob: Job? = null
     private var mentionedUserJob: Job? = null
+    private var revealJob: Job? = null
+
+    fun loadAgentTools() {
+        val state = _uiState.value
+        if (state.isGroupConversation || state.conversationPeerId <= 0 || state.isLoadingAgentTools) return
+        _uiState.value = state.copy(isLoadingAgentTools = true, agentToolsLoadFailed = false)
+        viewModelScope.launch {
+            try {
+                val cached = withContext(Dispatchers.IO) { agentManager.getCachedAgentInfo(state.conversationPeerId) }
+                _uiState.value = _uiState.value.copy(agentInfo = cached)
+                val agent = withContext(Dispatchers.IO) {
+                    val accountType = userManager.getAccountType(state.conversationPeerId)
+                        ?: error("Account type unavailable")
+                    if (accountType == com.shared.v1.AccountType.ACCOUNT_TYPE_AGENT) {
+                        agentManager.fetchAgentInfo(state.conversationPeerId)
+                            ?: error("Agent information unavailable")
+                    } else null
+                }
+                _uiState.value = _uiState.value.copy(agentInfo = agent, isLoadingAgentTools = false)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                _uiState.value = _uiState.value.copy(isLoadingAgentTools = false, agentToolsLoadFailed = true)
+            }
+        }
+    }
 
     init {
         syncManager.activeConversationId = conversationId
@@ -273,6 +314,9 @@ class ChatViewModel @Inject constructor(
                         conversationAvatarUrl = conversation.avatarUrl,
                         isGroupConversation = isGroup
                     )
+                    if (conversation.conversationType == ConversationType.CONVERSATION_TYPE_PRIVATE) {
+                        withContext(Dispatchers.Main) { loadAgentTools() }
+                    }
                 }
         }
     }
@@ -440,19 +484,25 @@ class ChatViewModel @Inject constructor(
     }
 
     fun revealMessage(messageId: Long) {
-        viewModelScope.launch(Dispatchers.IO) {
-            if (ChatMessageIndex.remoteIndexOf(_uiState.value.messages, messageId) >= 0) {
-                _uiState.value = _uiState.value.copy(scrollToMessageId = messageId, error = null)
-                return@launch
+        revealJob?.cancel()
+        _uiState.value = _uiState.value.copy(isLocatingMessage = true, scrollToMessageId = null, error = null)
+        revealJob = viewModelScope.launch {
+            try {
+                val found = ChatMessageIndex.remoteIndexOf(_uiState.value.messages, messageId) >= 0 ||
+                    withContext(Dispatchers.IO) { loadUntilMessage(messageId) }
+                _uiState.value = _uiState.value.copy(
+                    isLocatingMessage = false,
+                    scrollToMessageId = if (found) messageId else null,
+                    error = if (found) null else context.getString(com.pinealctx.nexus.R.string.chat_search_locate_missing)
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isLocatingMessage = false,
+                    error = context.getString(com.pinealctx.nexus.R.string.chat_search_locate_failed)
+                )
             }
-
-            _uiState.value = _uiState.value.copy(isLocatingMessage = true, error = null)
-            val found = loadUntilMessage(messageId)
-            _uiState.value = _uiState.value.copy(
-                isLocatingMessage = false,
-                scrollToMessageId = if (found) messageId else null,
-                error = if (found) null else "Message not found in loaded history"
-            )
         }
     }
 
@@ -753,19 +803,24 @@ class ChatViewModel @Inject constructor(
         if (remoteMessages.any { it.messageId == messageId }) return true
 
         repeat(maxPages) {
+            currentCoroutineContext().ensureActive()
             val oldest = remoteMessages.minByOrNull { it.messageId } ?: return false
-            val page = messageManager.fetchMessagePage(conversationId, beforeId = oldest.messageId)
-            val older = page.messages
+            val cached = messageManager.getCachedMessages(conversationId, beforeId = oldest.messageId)
+            val canUseCache = cached.any { it.messageId == messageId } ||
+                (cached.lastOrNull()?.messageId ?: Long.MIN_VALUE) > messageId
+            val page = if (!canUseCache) messageManager.fetchMessagePage(conversationId, beforeId = oldest.messageId) else null
+            val older = page?.messages ?: cached
             if (older.isEmpty()) return false
 
             remoteMessages = mergeRemoteMessages(remoteMessages, older)
             val localMessages = messageManager.getLocalMessages(conversationId)
+            currentCoroutineContext().ensureActive()
             _uiState.value = _uiState.value.copy(
                 messages = ChatMessageMerger.merge(remoteMessages, localMessages),
                 currentUserId = messageManager.currentUserId()
             )
             if (remoteMessages.any { it.messageId == messageId }) return true
-            if (!page.hasMore) return false
+            if (page != null && !page.hasMore) return false
         }
         return false
     }
@@ -779,27 +834,10 @@ class ChatViewModel @Inject constructor(
             .sortedByDescending { it.messageId }
     }
 
-    private var searchJob: Job? = null
-
-    fun searchInConversation(query: String, onResults: (List<MessageSearchResultData>) -> Unit) {
-        searchJob?.cancel()
-        if (query.isBlank()) {
-            onResults(emptyList())
-            return
-        }
-        searchJob = viewModelScope.launch(Dispatchers.IO) {
-            delay(300)
-            try {
-                val results = searchManager.searchMessages(
-                    query = query,
-                    conversationId = conversationId
-                )
-                onResults(results)
-            } catch (_: Exception) {
-                onResults(emptyList())
-            }
-        }
-    }
+    fun setSearchQuery(query: String) = searchController.setQuery(query)
+    fun closeSearch() = searchController.close()
+    fun loadMoreSearchResults() = searchController.loadMore()
+    fun retrySearch() = searchController.retry()
 }
 
 private data class PickedMediaMetadata(

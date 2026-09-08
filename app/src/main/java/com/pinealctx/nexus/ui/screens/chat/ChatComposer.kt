@@ -43,7 +43,8 @@ fun ChatComposer(
     onSendVisualMedia: (Uri) -> Unit,
     onSendFile: (Uri) -> Unit,
     onSendVoiceRecording: (VoiceRecording) -> Unit,
-    inputEntities: List<com.pinealctx.nexus.core.TextEntityData> = emptyList()
+    inputEntities: List<com.pinealctx.nexus.core.TextEntityData> = emptyList(),
+    focusRequestKey: Int = 0
 ) {
     val context = LocalContext.current
     val voicePermissionDenied = stringResource(R.string.voice_permission_denied)
@@ -55,6 +56,13 @@ fun ChatComposer(
     var recordingElapsedMs by remember { mutableLongStateOf(0L) }
     var recordingError by remember { mutableStateOf<String?>(null) }
     val inputFocusRequester = remember { FocusRequester() }
+    val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    LaunchedEffect(focusRequestKey) {
+        if (focusRequestKey > 0 && !isRecording) {
+            inputFocusRequester.requestFocus()
+            keyboardController?.show()
+        }
+    }
     val mentionColor = MaterialTheme.colorScheme.primary
 
     fun startRecording() {

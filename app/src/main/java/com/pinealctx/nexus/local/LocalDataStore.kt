@@ -873,8 +873,9 @@ class LocalDataStore @Inject constructor(
     ): List<MessageSearchResultData> {
         if (query.isBlank()) return emptyList()
 
-        val clauses = mutableListOf("(text LIKE ? OR fallback_text LIKE ? OR file_name LIKE ?)")
-        val like = "%${query.trim()}%"
+        val clauses = mutableListOf("(text LIKE ? ESCAPE '\\' OR fallback_text LIKE ? ESCAPE '\\' OR file_name LIKE ? ESCAPE '\\')")
+        val literalQuery = query.trim().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        val like = "%$literalQuery%"
         val args = mutableListOf(like, like, like)
         if (!conversationId.isNullOrBlank()) {
             clauses += "conversation_id = ?"
@@ -894,10 +895,9 @@ class LocalDataStore @Inject constructor(
         return readableDatabase.rawQuery(sql, args.toTypedArray()).use { cursor ->
             buildList {
                 while (cursor.moveToNext()) {
-                    val snippet = cursor.stringOrNull("text")
-                        ?: cursor.stringOrNull("fallback_text")
-                        ?: cursor.stringOrNull("file_name")
-                        ?: ""
+                    val fields = listOfNotNull(cursor.stringOrNull("text"), cursor.stringOrNull("fallback_text"), cursor.stringOrNull("file_name"))
+                    val snippet = fields.firstOrNull { it.contains(query.trim(), ignoreCase = true) }
+                        ?: fields.firstOrNull { it.isNotBlank() }.orEmpty()
                     add(
                         MessageSearchResultData(
                             conversationId = cursor.getString(cursor.getColumnIndexOrThrow("conversation_id")),

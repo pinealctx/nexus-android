@@ -81,6 +81,12 @@ class UserApi @Inject constructor(
         return if (response.hasUser()) response.user.toContactData() else null
     }
 
+    suspend fun getAccountType(userId: Int): com.shared.v1.AccountType? =
+        apiClientFactory.createClients().users.batchGetUserInfo(
+            BatchGetUserInfoRequest.newBuilder().addUserIds(userId).build(),
+            headers.current()
+        ).requireMessage().usersMap[userId]?.accountType
+
     suspend fun batchGetUserInfo(userIds: List<Int>): List<ContactData> {
         if (userIds.isEmpty()) return emptyList()
         val response = apiClientFactory.createClients()
@@ -156,4 +162,3 @@ private fun UserInfo.toContactData(): ContactData {
         alias = null
     )
 }
-

@@ -1,5 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="chat_search_local_hint">仅搜索此设备已保存的消息，不代表服务端的全部历史记录。</string>
+    <string name="chat_search_empty">没有找到匹配的消息</string>
+    <string name="chat_search_prompt">输入关键词，查找当前会话中的消息</string>
+    <string name="chat_search_retry">搜索失败，点击重试</string>
+    <string name="chat_search_more">加载更多结果</string>
+    <string name="chat_search_locate_missing">在已加载的历史记录中找不到这条消息。</string>
+    <string name="chat_search_locate_failed">消息定位失败，请检查网络后重试。</string>
+    <string name="chat_agent_tools">Agent 工具</string>
+    <string name="chat_agent_tools_retry">会话工具刷新失败，点击重试</string>
+    <string name="chat_commands_empty">暂无匹配的命令</string>
+    <string name="chat_commands_hint">选择命令后填入输入框，确认内容后再发送。</string>
+    <string name="chat_open_mini_app">打开 Mini App</string>
     <string name="app_name">Nexus</string>
 
     <!-- Navigation -->

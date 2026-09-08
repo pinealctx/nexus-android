@@ -622,6 +622,21 @@ class LocalDataStoreTest {
         assertTrue("Cache stress write took ${elapsedMs}ms", elapsedMs < 30_000)
     }
 
+    @Test
+    fun `search escapes literal wildcards and scopes stable pages to conversation`() {
+        store.upsertMessages(listOf(
+            message(1, text = "100%"), message(2, text = "a_b"),
+            message(3, text = "a\\b"), message(4, text = "1000"),
+            message(5, text = "a_b").copy(conversationId = "200")
+        ))
+        assertEquals(listOf(1L), store.searchMessages("%", "100", 10, 0).map { it.messageId })
+        assertEquals(listOf(2L), store.searchMessages("_", "100", 10, 0).map { it.messageId })
+        assertEquals(listOf(3L), store.searchMessages("\\", "100", 10, 0).map { it.messageId })
+        assertEquals(listOf(3L), store.searchMessages("a", "100", 1, 0).map { it.messageId })
+        assertEquals(listOf(2L), store.searchMessages("a", "100", 1, 1).map { it.messageId })
+        assertTrue(store.searchMessages("a", "100", 1, 2).isEmpty())
+    }
+
     private fun message(
         id: Long,
         text: String = "",

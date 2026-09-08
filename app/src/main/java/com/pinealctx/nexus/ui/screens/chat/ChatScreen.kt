@@ -5,6 +5,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -23,11 +24,15 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SmartToy
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
@@ -38,7 +43,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.pinealctx.nexus.R
 import com.pinealctx.nexus.core.MessageContent
-import com.pinealctx.nexus.core.MessageSearchResultData
 import com.pinealctx.nexus.ui.components.ImagePreviewDialog
 import com.pinealctx.nexus.ui.components.NexusAvatar
 import com.pinealctx.nexus.ui.components.NexusAvatarBadge
@@ -71,6 +75,7 @@ fun ChatScreen(
     viewModel: ChatViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val searchState by viewModel.searchState.collectAsState()
     var inputEntities by remember { mutableStateOf(viewModel.initialDraftEntities) }
     var inputValue by remember {
         mutableStateOf(
@@ -81,13 +86,39 @@ fun ChatScreen(
         )
     }
     var showSearch by remember { mutableStateOf(false) }
-    var searchQuery by remember { mutableStateOf("") }
-    var searchResults by remember { mutableStateOf<List<MessageSearchResultData>>(emptyList()) }
+    var showAgentTools by remember { mutableStateOf(false) }
+    var composerFocusRequest by remember { mutableIntStateOf(0) }
+    val searchFocusRequester = remember { FocusRequester() }
+    val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    LaunchedEffect(showSearch) {
+        if (showSearch) searchFocusRequester.requestFocus()
+    }
+    var highlightedMessageId by remember { mutableStateOf<Long?>(null) }
     var previewImageId by remember { mutableStateOf<String?>(null) }
     var replyTarget by remember { mutableStateOf<ChatMessageItem.Remote?>(null) }
     var editTarget by remember { mutableStateOf<ChatMessageItem.Remote?>(null) }
     var actionConfirmation by remember { mutableStateOf<MessageActionConfirmation?>(null) }
     val context = androidx.compose.ui.platform.LocalContext.current
+    val openMiniApp: (Int, String) -> Unit = { agentUserId, startParam ->
+        if (agentUserId > 0) {
+            context.startActivity(Intent(context, com.pinealctx.nexus.ui.screens.miniapp.MiniAppActivity::class.java).apply {
+                putExtra(com.pinealctx.nexus.ui.screens.miniapp.MiniAppActivity.EXTRA_AGENT_USER_ID, agentUserId)
+                putExtra(com.pinealctx.nexus.ui.screens.miniapp.MiniAppActivity.EXTRA_CONVERSATION_ID, conversationId.toLongOrNull() ?: 0L)
+                putExtra(com.pinealctx.nexus.ui.screens.miniapp.MiniAppActivity.EXTRA_START_PARAM, startParam)
+            })
+        }
+    }
+    val selectCommand: (com.pinealctx.nexus.core.AgentCommandData) -> Unit = { command ->
+        val updated = insertAgentCommand(inputValue, command.command)
+        inputEntities = com.pinealctx.nexus.core.adjustTextEntities(inputValue.text, updated.text, inputEntities, 0)
+        inputValue = updated
+        showAgentTools = false
+        composerFocusRequest++
+    }
+    BackHandler(enabled = showSearch) {
+        showSearch = false
+        viewModel.closeSearch()
+    }
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     val timelineItems = remember(uiState.messages) {
@@ -134,7 +165,15 @@ fun ChatScreen(
         }
         if (index >= 0) {
             listState.animateScrollToItem(index)
+            highlightedMessageId = messageId
             viewModel.consumeScrollTarget(messageId)
+        }
+    }
+
+    LaunchedEffect(highlightedMessageId) {
+        if (highlightedMessageId != null) {
+            kotlinx.coroutines.delay(1800)
+            highlightedMessageId = null
         }
     }
 
@@ -209,6 +248,30 @@ fun ChatScreen(
         }
     }
 
+    if (showAgentTools) {
+        ModalBottomSheet(onDismissRequest = { showAgentTools = false }) {
+            Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+                Text(stringResource(R.string.chat_agent_tools), Modifier.padding(horizontal = 24.dp), style = MaterialTheme.typography.titleLarge)
+                Text(stringResource(R.string.chat_commands_hint), Modifier.padding(24.dp), style = MaterialTheme.typography.bodySmall)
+                if (uiState.isLoadingAgentTools) LinearProgressIndicator(Modifier.fillMaxWidth())
+                if (uiState.agentToolsLoadFailed) {
+                    TextButton(onClick = viewModel::loadAgentTools) { Text(stringResource(R.string.chat_agent_tools_retry)) }
+                }
+                uiState.agentInfo?.let { agent ->
+                    if (agent.miniAppEnabled) {
+                        FilledTonalButton(onClick = {
+                            showAgentTools = false
+                            openMiniApp(agent.userId, "")
+                        }, modifier = Modifier.padding(horizontal = 24.dp)) {
+                            Text(stringResource(R.string.chat_open_mini_app))
+                        }
+                    }
+                    AgentCommandList(agent.commands, "", selectCommand)
+                }
+            }
+        }
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surface,
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -218,14 +281,9 @@ fun ChatScreen(
                     TopAppBar(
                         title = {
                             TextField(
-                                value = searchQuery,
-                                onValueChange = { query ->
-                                    searchQuery = query
-                                    viewModel.searchInConversation(query) { results ->
-                                        searchResults = results
-                                    }
-                                },
-                                modifier = Modifier.fillMaxWidth(),
+                                value = searchState.query,
+                                onValueChange = viewModel::setSearchQuery,
+                                modifier = Modifier.fillMaxWidth().focusRequester(searchFocusRequester),
                                 placeholder = { Text(stringResource(R.string.chat_search)) },
                                 singleLine = true,
                                 shape = RoundedCornerShape(18.dp),
@@ -238,8 +296,7 @@ fun ChatScreen(
                         navigationIcon = {
                             IconButton(onClick = {
                                 showSearch = false
-                                searchQuery = ""
-                                searchResults = emptyList()
+                                viewModel.closeSearch()
                             }) {
                                 Icon(
                                     Icons.Filled.Close,
@@ -298,6 +355,15 @@ fun ChatScreen(
                             }
                         },
                         actions = {
+                            if (uiState.agentInfo != null && editTarget == null) {
+                                IconButton(onClick = { showAgentTools = true; viewModel.loadAgentTools() }) {
+                                    Icon(Icons.Filled.SmartToy, stringResource(R.string.chat_agent_tools))
+                                }
+                            } else if (uiState.agentToolsLoadFailed) {
+                                IconButton(onClick = viewModel::loadAgentTools) {
+                                    Icon(Icons.Filled.Refresh, stringResource(R.string.chat_agent_tools_retry))
+                                }
+                            }
                             if (uiState.isGroupConversation && uiState.conversationPeerId > 0) {
                                 IconButton(onClick = { onGroupDetails(uiState.conversationPeerId) }) {
                                     Icon(
@@ -322,56 +388,64 @@ fun ChatScreen(
             }
         },
         bottomBar = {
-            Column {
-                activeMentionQuery?.let { query ->
-                    MentionSuggestions(
-                        candidates = uiState.mentionCandidates,
-                        query = query,
-                        loading = uiState.isLoadingMentions,
-                        failed = uiState.mentionsLoadFailed,
-                        onRetry = viewModel::loadMentionCandidates,
-                        onSelect = { candidate ->
-                            val (value, entities) = insertMention(inputValue, inputEntities, candidate)
-                            inputValue = value
-                            inputEntities = entities
+            if (!showSearch) {
+                Column {
+                    if (editTarget == null && uiState.agentInfo != null) {
+                        commandQuery(inputValue)?.let { query ->
+                            AgentCommandList(uiState.agentInfo!!.commands, query, selectCommand)
                         }
+                    }
+                    activeMentionQuery?.let { query ->
+                        MentionSuggestions(
+                            candidates = uiState.mentionCandidates,
+                            query = query,
+                            loading = uiState.isLoadingMentions,
+                            failed = uiState.mentionsLoadFailed,
+                            onRetry = viewModel::loadMentionCandidates,
+                            onSelect = { candidate ->
+                                val (value, entities) = insertMention(inputValue, inputEntities, candidate)
+                                inputValue = value
+                                inputEntities = entities
+                            }
+                        )
+                    }
+                    ChatComposer(
+                        focusRequestKey = composerFocusRequest,
+                        inputValue = inputValue,
+                        inputEntities = inputEntities,
+                        onInputChange = {
+                            inputEntities = com.pinealctx.nexus.core.adjustTextEntities(
+                                inputValue.text, it.text, inputEntities, inputValue.selection.min
+                            )
+                            inputValue = it
+                        },
+                        replyTarget = replyTarget,
+                        editTarget = editTarget,
+                        mediaUploadName = uiState.mediaUploadName,
+                        onClearReply = { replyTarget = null },
+                        onClearEdit = {
+                            editTarget = null
+                            inputValue = TextFieldValue("")
+                            inputEntities = emptyList()
+                        },
+                        onSubmit = { text ->
+                            val editing = editTarget
+                            if (editing != null) {
+                                viewModel.editMessage(editing.data.messageId, text, inputEntities)
+                            } else {
+                                viewModel.sendMessage(text, replyTarget?.data?.messageId, inputEntities)
+                            }
+                            inputValue = TextFieldValue("")
+                            inputEntities = emptyList()
+                            replyTarget = null
+                            editTarget = null
+                            viewModel.saveDraft("")
+                        },
+                        onSendVisualMedia = viewModel::sendVisualMedia,
+                        onSendFile = viewModel::sendFile,
+                        onSendVoiceRecording = viewModel::sendVoiceRecording
                     )
                 }
-                ChatComposer(
-                    inputValue = inputValue,
-                    inputEntities = inputEntities,
-                    onInputChange = {
-                        inputEntities = com.pinealctx.nexus.core.adjustTextEntities(
-                            inputValue.text, it.text, inputEntities, inputValue.selection.min
-                        )
-                        inputValue = it
-                    },
-                    replyTarget = replyTarget,
-                    editTarget = editTarget,
-                    mediaUploadName = uiState.mediaUploadName,
-                    onClearReply = { replyTarget = null },
-                    onClearEdit = {
-                        editTarget = null
-                        inputValue = TextFieldValue("")
-                        inputEntities = emptyList()
-                    },
-                    onSubmit = { text ->
-                        val editing = editTarget
-                        if (editing != null) {
-                            viewModel.editMessage(editing.data.messageId, text, inputEntities)
-                        } else {
-                            viewModel.sendMessage(text, replyTarget?.data?.messageId, inputEntities)
-                        }
-                        inputValue = TextFieldValue("")
-                        inputEntities = emptyList()
-                        replyTarget = null
-                        editTarget = null
-                        viewModel.saveDraft("")
-                    },
-                    onSendVisualMedia = viewModel::sendVisualMedia,
-                    onSendFile = viewModel::sendFile,
-                    onSendVoiceRecording = viewModel::sendVoiceRecording
-                )
             }
         }
     ) { padding ->
@@ -428,89 +502,71 @@ fun ChatScreen(
                                 is ChatTimelineItem.DaySeparator -> ChatDaySeparator(item.timestamp)
                                 is ChatTimelineItem.Message -> {
                                     val message = item.message
-                                    MessageBubble(
-                                        onMentionClick = viewModel::showMentionedUser,
-                                        message = message,
-                                        currentUserId = uiState.currentUserId,
-                                        senderName = uiState.senderNames[message.senderId],
-                                        senderAvatarUrl = uiState.senderAvatarUrls[message.senderId],
-                                        groupMemberNames = uiState.senderNames,
-                                        showSenderName = uiState.isGroupConversation && item.showSenderIdentity,
-                                        showSenderAvatar = uiState.isGroupConversation && item.showSenderIdentity,
-                                        reserveSenderAvatarSpace = uiState.isGroupConversation,
-                                        pendingActionMessageId = uiState.pendingMessageActionId,
-                                        onReply = {
-                                            editTarget = null
-                                            replyTarget = it
-                                        },
-                                        onEdit = { target ->
-                                            replyTarget = null
-                                            editTarget = target
-                                            val editText = (target.content as MessageContent.Text).text
-                                            inputEntities = target.content.entities
-                                            inputValue = TextFieldValue(editText, TextRange(editText.length))
-                                        },
-                                        onRecall = { target ->
-                                            actionConfirmation = MessageActionConfirmation(
-                                                MessageActionKind.RECALL,
-                                                target
-                                            )
-                                        },
-                                        onDelete = { target ->
-                                            actionConfirmation = MessageActionConfirmation(
-                                                MessageActionKind.DELETE,
-                                                target
-                                            )
-                                        },
-                                        onCopy = { text ->
-                                            val clipboardManager = context.getSystemService(
-                                                Context.CLIPBOARD_SERVICE
-                                            ) as ClipboardManager
-                                            clipboardManager.setPrimaryClip(
-                                                ClipData.newPlainText("message", text)
-                                            )
-                                        },
-                                        onRetry = viewModel::retryMessage,
-                                        mediaUrls = uiState.mediaUrls,
-                                        mediaController = mediaController,
-                                        onMediaNeeded = viewModel::resolveMediaUrl,
-                                        onImageClick = { fileId ->
-                                            uiState.mediaUrls[fileId]?.let { previewImageId = it }
-                                        },
-                                        onOpenMedia = { fileId ->
-                                            uiState.mediaUrls[fileId]?.let { url ->
-                                                context.startActivity(
-                                                    Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                    Box(Modifier.fillMaxWidth().background(
+                                        if ((message as? ChatMessageItem.Remote)?.data?.messageId == highlightedMessageId && highlightedMessageId != null)
+                                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
+                                        else androidx.compose.ui.graphics.Color.Transparent
+                                    )) {
+                                        MessageBubble(
+                                            onMentionClick = viewModel::showMentionedUser,
+                                            message = message,
+                                            currentUserId = uiState.currentUserId,
+                                            senderName = uiState.senderNames[message.senderId],
+                                            senderAvatarUrl = uiState.senderAvatarUrls[message.senderId],
+                                            groupMemberNames = uiState.senderNames,
+                                            showSenderName = uiState.isGroupConversation && item.showSenderIdentity,
+                                            showSenderAvatar = uiState.isGroupConversation && item.showSenderIdentity,
+                                            reserveSenderAvatarSpace = uiState.isGroupConversation,
+                                            pendingActionMessageId = uiState.pendingMessageActionId,
+                                            onReply = {
+                                                editTarget = null
+                                                replyTarget = it
+                                            },
+                                            onEdit = { target ->
+                                                replyTarget = null
+                                                editTarget = target
+                                                val editText = (target.content as MessageContent.Text).text
+                                                inputEntities = target.content.entities
+                                                inputValue = TextFieldValue(editText, TextRange(editText.length))
+                                            },
+                                            onRecall = { target ->
+                                                actionConfirmation = MessageActionConfirmation(
+                                                    MessageActionKind.RECALL,
+                                                    target
                                                 )
-                                            }
-                                        },
-                                        onCardAction = viewModel::submitCardAction,
-                                        onOpenMiniApp = { agentUserId, startParam ->
-                                            if (agentUserId > 0) {
-                                                val intent = Intent(
-                                                    context,
-                                                    com.pinealctx.nexus.ui.screens.miniapp.MiniAppActivity::class.java
-                                                ).apply {
-                                                    putExtra(
-                                                        com.pinealctx.nexus.ui.screens.miniapp.MiniAppActivity
-                                                            .EXTRA_AGENT_USER_ID,
-                                                        agentUserId
-                                                    )
-                                                    putExtra(
-                                                        com.pinealctx.nexus.ui.screens.miniapp.MiniAppActivity
-                                                            .EXTRA_CONVERSATION_ID,
-                                                        conversationId.toLongOrNull() ?: 0L
-                                                    )
-                                                    putExtra(
-                                                        com.pinealctx.nexus.ui.screens.miniapp.MiniAppActivity
-                                                            .EXTRA_START_PARAM,
-                                                        startParam
+                                            },
+                                            onDelete = { target ->
+                                                actionConfirmation = MessageActionConfirmation(
+                                                    MessageActionKind.DELETE,
+                                                    target
+                                                )
+                                            },
+                                            onCopy = { text ->
+                                                val clipboardManager = context.getSystemService(
+                                                    Context.CLIPBOARD_SERVICE
+                                                ) as ClipboardManager
+                                                clipboardManager.setPrimaryClip(
+                                                    ClipData.newPlainText("message", text)
+                                                )
+                                            },
+                                            onRetry = viewModel::retryMessage,
+                                            mediaUrls = uiState.mediaUrls,
+                                            mediaController = mediaController,
+                                            onMediaNeeded = viewModel::resolveMediaUrl,
+                                            onImageClick = { fileId ->
+                                                uiState.mediaUrls[fileId]?.let { previewImageId = it }
+                                            },
+                                            onOpenMedia = { fileId ->
+                                                uiState.mediaUrls[fileId]?.let { url ->
+                                                    context.startActivity(
+                                                        Intent(Intent.ACTION_VIEW, Uri.parse(url))
                                                     )
                                                 }
-                                                context.startActivity(intent)
-                                            }
-                                        }
-                                    )
+                                            },
+                                            onCardAction = viewModel::submitCardAction,
+                                            onOpenMiniApp = openMiniApp
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -548,14 +604,15 @@ fun ChatScreen(
                 }
             }
 
-            if (showSearch && searchResults.isNotEmpty()) {
+            if (showSearch) {
                 ChatSearchOverlay(
-                    searchResults = searchResults,
-                    isLocatingMessage = uiState.isLocatingMessage,
+                    state = searchState,
+                    onLoadMore = viewModel::loadMoreSearchResults,
+                    onRetry = viewModel::retrySearch,
                     onResultClick = { result ->
+                        keyboardController?.hide()
                         showSearch = false
-                        searchQuery = ""
-                        searchResults = emptyList()
+                        viewModel.closeSearch()
                         viewModel.revealMessage(result.messageId)
                     }
                 )

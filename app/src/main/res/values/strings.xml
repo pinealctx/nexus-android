@@ -1,5 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="chat_search_local_hint">Searches messages saved on this device, not all server history.</string>
+    <string name="chat_search_empty">No matching messages</string>
+    <string name="chat_search_prompt">Enter a keyword to find messages in this chat</string>
+    <string name="chat_search_retry">Search failed. Tap to retry</string>
+    <string name="chat_search_more">Load more results</string>
+    <string name="chat_search_locate_missing">This message is no longer available in the loaded history.</string>
+    <string name="chat_search_locate_failed">Unable to locate the message. Check your connection and try again.</string>
+    <string name="chat_agent_tools">Agent tools</string>
+    <string name="chat_agent_tools_retry">Unable to refresh chat tools. Tap to retry</string>
+    <string name="chat_commands_empty">No matching commands</string>
+    <string name="chat_commands_hint">Choose a command to insert it. Review and send when ready.</string>
+    <string name="chat_open_mini_app">Open Mini App</string>
     <string name="app_name">Nexus</string>
 
     <!-- Navigation -->

@@ -54,6 +54,8 @@ class UserManager @Inject constructor(
         return userIds.mapNotNull { userId -> cached[userId] ?: fetchedById[userId] }
     }
 
+    suspend fun getAccountType(userId: Int): com.shared.v1.AccountType? = userApi.getAccountType(userId)
+
     suspend fun listDevices(): List<DeviceData> = userApi.listDevices()
 
     suspend fun removeDevice(deviceId: String) = userApi.removeDevice(deviceId)

@@ -34,6 +34,9 @@ class MessageManager @Inject constructor(
         return fetchMessagePage(conversationId, limit, beforeId).messages
     }
 
+    fun getCachedMessages(conversationId: String, limit: Int = 50, beforeId: Long? = null): List<MessageData> =
+        conversationId.toLongOrNull()?.let { localDataStore.listMessages(it, limit, beforeId) }.orEmpty()
+
     suspend fun fetchMessagePage(
         conversationId: String,
         limit: Int = 50,

@@ -12,6 +12,11 @@ class AgentManager @Inject constructor(
     private val agentApi: AgentApi,
     private val localDataStore: LocalDataStore
 ) {
+    fun getCachedAgentInfo(agentUserId: Int): AgentInfoData? = localDataStore.getAgent(agentUserId)
+
+    suspend fun fetchAgentInfo(agentUserId: Int): AgentInfoData? =
+        agentApi.getAgentInfo(agentUserId)?.also { localDataStore.upsertAgent(it) }
+
     suspend fun listFeaturedAgents(limit: Int = 50): List<AgentInfoData> {
         val cached = localDataStore.listFeaturedAgents(limit)
         if (cached.isNotEmpty()) return cached
