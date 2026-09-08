@@ -15,6 +15,19 @@ import org.junit.Test
 
 class ModelMappersTest {
     @Test
+    fun textEntitiesSurviveProtocolEncodingAndDecoding() {
+        val text = "😀 @Alice https://example.com"
+        val mention = com.pinealctx.nexus.core.TextEntityData(
+            com.shared.v1.MessageEntityType.MESSAGE_ENTITY_TYPE_MENTION, 3, 6, userId = 7
+        )
+        val body = textBody(text, listOf(mention))
+        val decoded = MessageBody.parseFrom(body.toByteArray()).toMessageContent() as MessageContent.Text
+        assertEquals(text, decoded.text)
+        assertEquals(mention, decoded.entities.first())
+        assertEquals("https://example.com", decoded.entities.last().value)
+    }
+
+    @Test
     fun groupMessageWithoutOneofContentStillMapsToGroupEvent() {
         val body = MessageBody.newBuilder()
             .setType(MessageType.MESSAGE_TYPE_GROUP)

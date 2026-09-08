@@ -12,6 +12,9 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pinealctx.nexus.core.MessageData
+import com.pinealctx.nexus.core.TextEntityData
+import com.pinealctx.nexus.core.ContactData
+import com.pinealctx.nexus.core.managers.GroupManager
 import com.pinealctx.nexus.core.AppEventBus
 import com.pinealctx.nexus.core.MessageSendScheduler
 import com.pinealctx.nexus.core.MessageSearchResultData
@@ -40,6 +43,12 @@ import java.io.ByteArrayOutputStream
 import javax.inject.Inject
 
 data class ChatUiState(
+    val mentionCandidates: List<MentionCandidate> = emptyList(),
+    val isLoadingMentions: Boolean = false,
+    val mentionsLoadFailed: Boolean = false,
+    val mentionedUser: ContactData? = null,
+    val mentionedUserId: Int? = null,
+    val isLoadingMentionedUser: Boolean = false,
     val messages: List<ChatMessageItem> = emptyList(),
     val currentUserId: Int = 0,
     val conversationTitle: String = "",
@@ -69,6 +78,7 @@ class ChatViewModel @Inject constructor(
     private val mediaManager: MediaManager,
     private val searchManager: SearchManager,
     private val userManager: UserManager,
+    private val groupManager: GroupManager,
     private val messageRepository: MessageRepository,
     private val messageSendScheduler: MessageSendScheduler,
     private val syncManager: SyncManager,
@@ -79,6 +89,7 @@ class ChatViewModel @Inject constructor(
 
     val conversationId: String = savedStateHandle["conversationId"] ?: ""
     val initialDraft: String = syncManager.getDraft(conversationId)
+    val initialDraftEntities: List<TextEntityData> = syncManager.getDraftEntities(conversationId)
 
     private val _uiState = MutableStateFlow(ChatUiState())
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
@@ -86,6 +97,7 @@ class ChatViewModel @Inject constructor(
     private var pendingHistoryRefresh = false
     private var markReadJob: Job? = null
     private var senderResolutionJob: Job? = null
+    private var mentionedUserJob: Job? = null
 
     init {
         syncManager.activeConversationId = conversationId
@@ -104,8 +116,54 @@ class ChatViewModel @Inject constructor(
         }
     }
 
-    fun saveDraft(text: String) {
-        syncManager.saveDraft(conversationId, text)
+    fun saveDraft(text: String, entities: List<TextEntityData> = emptyList()) {
+        syncManager.saveDraft(conversationId, text, entities)
+    }
+
+    fun loadMentionCandidates() {
+        val state = _uiState.value
+        if (!state.isGroupConversation || state.isLoadingMentions) return
+        _uiState.value = state.copy(isLoadingMentions = true, mentionsLoadFailed = false)
+        viewModelScope.launch {
+            try {
+                val members = kotlinx.coroutines.withContext(Dispatchers.IO) {
+                    groupManager.fetchGroupMembers(state.conversationPeerId)
+                }
+                _uiState.value = _uiState.value.copy(
+                    mentionCandidates = listOf(MentionCandidate(0, context.getString(com.pinealctx.nexus.R.string.chat_mention_all), true)) +
+                        members.filter { it.userId != messageManager.currentUserId() }.map {
+                            MentionCandidate(it.userId, it.displayName.ifBlank { context.getString(com.pinealctx.nexus.R.string.chat_user_fallback, it.userId) })
+                        },
+                    isLoadingMentions = false
+                )
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                _uiState.value = _uiState.value.copy(isLoadingMentions = false, mentionsLoadFailed = true)
+            }
+        }
+    }
+
+    fun showMentionedUser(userId: Int) {
+        mentionedUserJob?.cancel()
+        _uiState.value = _uiState.value.copy(mentionedUserId = userId, mentionedUser = null, isLoadingMentionedUser = true)
+        mentionedUserJob = viewModelScope.launch {
+            try {
+                val user = kotlinx.coroutines.withContext(Dispatchers.IO) {
+                    userManager.batchGetUserInfo(listOf(userId)).firstOrNull()
+                }
+                _uiState.value = _uiState.value.copy(mentionedUser = user, isLoadingMentionedUser = false)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                _uiState.value = _uiState.value.copy(isLoadingMentionedUser = false)
+            }
+        }
+    }
+
+    fun dismissMentionedUser() {
+        mentionedUserJob?.cancel()
+        _uiState.value = _uiState.value.copy(mentionedUser = null, mentionedUserId = null, isLoadingMentionedUser = false)
     }
 
     private fun observeUpdates() {
@@ -290,7 +348,7 @@ class ChatViewModel @Inject constructor(
         conversationManager.markAsRead(convId, latestMessageId)
     }
 
-    fun sendMessage(text: String, replyToMessageId: Long? = null) {
+    fun sendMessage(text: String, replyToMessageId: Long? = null, entities: List<TextEntityData> = emptyList()) {
         if (text.isBlank()) return
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = _uiState.value.copy(isSending = true)
@@ -299,7 +357,7 @@ class ChatViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(isSending = false)
                 return@launch
             }
-            val localMessage = messageManager.enqueueTextMessage(convId, text, replyToMessageId)
+            val localMessage = messageManager.enqueueTextMessage(convId, text, replyToMessageId, entities)
             refreshLocalMessages(isSending = true, error = null)
             try {
                 messageSendScheduler.enqueue(localMessage.clientMessageId)
@@ -335,13 +393,13 @@ class ChatViewModel @Inject constructor(
         }
     }
 
-    fun editMessage(messageId: Long, text: String) {
+    fun editMessage(messageId: Long, text: String, entities: List<TextEntityData> = emptyList()) {
         if (text.isBlank()) return
         viewModelScope.launch(Dispatchers.IO) {
             val convId = conversationId.toLongOrNull() ?: return@launch
             _uiState.value = _uiState.value.copy(pendingMessageActionId = messageId, error = null)
             runCatching {
-                messageManager.editMessage(convId, messageId, text)
+                messageManager.editMessage(convId, messageId, text, entities)
             }.onSuccess {
                 _uiState.value = _uiState.value.copy(pendingMessageActionId = null)
                 loadMessages()

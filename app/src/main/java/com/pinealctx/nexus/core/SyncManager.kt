@@ -32,7 +32,9 @@ class SyncManager @Inject constructor(
 
     fun stopSession() = syncCoordinator.stopSession()
 
-    fun saveDraft(conversationId: String, text: String) = draftRepository.save(conversationId, text)
+    fun saveDraft(conversationId: String, text: String, entities: List<TextEntityData> = emptyList()) = draftRepository.save(conversationId, text, entities)
+
+    fun getDraftEntities(conversationId: String): List<TextEntityData> = draftRepository.getEntities(conversationId)
 
     fun getDraft(conversationId: String): String = draftRepository.get(conversationId)
 

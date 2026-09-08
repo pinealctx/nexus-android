@@ -60,7 +60,8 @@ fun MessageBubble(
     onImageClick: (String) -> Unit = {},
     onOpenMedia: (String) -> Unit = {},
     onCardAction: (Long, String, String) -> Unit = { _, _, _ -> },
-    onOpenMiniApp: (Int, String) -> Unit = { _, _ -> }
+    onOpenMiniApp: (Int, String) -> Unit = { _, _ -> },
+    onMentionClick: (Int) -> Unit = {}
 ) {
     if (message.senderId <= 0) {
         SystemMessageBubble(message, groupMemberNames)
@@ -134,6 +135,7 @@ fun MessageBubble(
                         Spacer(modifier = Modifier.height(5.dp))
                     }
                     MessageContentView(
+                        onMentionClick = onMentionClick,
                         content = message.content,
                         recalled = message.recalled,
                         mediaUrl = message.content.fileIdOrNull?.let(mediaUrls::get),
@@ -418,7 +420,8 @@ fun MessageContentView(
     onImageClick: (String) -> Unit = {},
     onOpenMedia: (String) -> Unit = {},
     onCardAction: (String, String) -> Unit = { _, _ -> },
-    onOpenMiniApp: (Int, String) -> Unit = { _, _ -> }
+    onOpenMiniApp: (Int, String) -> Unit = { _, _ -> },
+    onMentionClick: (Int) -> Unit = {}
 ) {
     if (recalled) {
         Text(
@@ -436,10 +439,7 @@ fun MessageContentView(
 
     when (content) {
         is MessageContent.Text -> {
-            Text(
-                text = content.text,
-                style = MaterialTheme.typography.bodyMedium
-            )
+            com.pinealctx.nexus.ui.components.RichMessageText(content, onMentionClick)
         }
         is MessageContent.Image -> {
             ImageBubble(

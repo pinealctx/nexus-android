@@ -73,7 +73,7 @@ internal fun MessageBody.toMessageContent(): MessageContent {
     if (type == MessageType.MESSAGE_TYPE_RECALLED) return MessageContent.Recalled
 
     return when (contentCase) {
-        MessageBody.ContentCase.TEXT -> MessageContent.Text(text.text)
+        MessageBody.ContentCase.TEXT -> MessageContent.Text(text.text, text.entitiesList.map { it.toTextEntityData() })
         MessageBody.ContentCase.IMAGE -> MessageContent.Image(image.fileId, image.width, image.height)
         MessageBody.ContentCase.AUDIO -> MessageContent.Audio(
             fileId = audio.fileId,

@@ -71,6 +71,7 @@ fun ChatScreen(
     viewModel: ChatViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var inputEntities by remember { mutableStateOf(viewModel.initialDraftEntities) }
     var inputValue by remember {
         mutableStateOf(
             TextFieldValue(
@@ -100,6 +101,11 @@ fun ChatScreen(
     val mediaController = rememberChatMediaController()
     val snackbarHostState = remember { SnackbarHostState() }
     val latestDraftText by rememberUpdatedState(inputValue.text)
+    val latestDraftEntities by rememberUpdatedState(inputEntities)
+    val activeMentionQuery = if (uiState.isGroupConversation) mentionQuery(inputValue) else null
+    LaunchedEffect(activeMentionQuery?.start) {
+        if (activeMentionQuery != null) viewModel.loadMentionCandidates()
+    }
     val newestOutgoingLocalMessageId = remember(uiState.messages, uiState.currentUserId) {
         findNewestOutgoingLocalMessageId(uiState.messages, uiState.currentUserId)
     }
@@ -174,7 +180,33 @@ fun ChatScreen(
     }
 
     DisposableEffect(Unit) {
-        onDispose { viewModel.saveDraft(latestDraftText) }
+        onDispose { viewModel.saveDraft(latestDraftText, latestDraftEntities) }
+    }
+
+    uiState.mentionedUserId?.let { userId ->
+        ModalBottomSheet(onDismissRequest = viewModel::dismissMentionedUser) {
+            Column(Modifier.fillMaxWidth().padding(24.dp)) {
+                val user = uiState.mentionedUser
+                if (uiState.isLoadingMentionedUser) {
+                    CircularProgressIndicator()
+                } else if (user == null) {
+                    TextButton(onClick = { viewModel.showMentionedUser(userId) }) {
+                        Text(stringResource(R.string.chat_mention_profile_retry))
+                    }
+                } else {
+                    com.pinealctx.nexus.ui.components.NexusAvatar(
+                        id = user.userId,
+                        name = user.nickname.ifBlank { user.username },
+                        avatarUrl = user.avatarUrl,
+                        size = 64.dp
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Text(user.nickname.ifBlank { user.username }, style = MaterialTheme.typography.headlineSmall)
+                    if (user.username.isNotBlank()) Text("@${user.username}", style = MaterialTheme.typography.bodyLarge)
+                }
+                Spacer(Modifier.height(24.dp))
+            }
+        }
     }
 
     Scaffold(
@@ -290,33 +322,57 @@ fun ChatScreen(
             }
         },
         bottomBar = {
-            ChatComposer(
-                inputValue = inputValue,
-                onInputChange = { inputValue = it },
-                replyTarget = replyTarget,
-                editTarget = editTarget,
-                mediaUploadName = uiState.mediaUploadName,
-                onClearReply = { replyTarget = null },
-                onClearEdit = {
-                    editTarget = null
-                    inputValue = TextFieldValue("")
-                },
-                onSubmit = { text ->
-                    val editing = editTarget
-                    if (editing != null) {
-                        viewModel.editMessage(editing.data.messageId, text)
-                    } else {
-                        viewModel.sendMessage(text, replyTarget?.data?.messageId)
-                    }
-                    inputValue = TextFieldValue("")
-                    replyTarget = null
-                    editTarget = null
-                    viewModel.saveDraft("")
-                },
-                onSendVisualMedia = viewModel::sendVisualMedia,
-                onSendFile = viewModel::sendFile,
-                onSendVoiceRecording = viewModel::sendVoiceRecording
-            )
+            Column {
+                activeMentionQuery?.let { query ->
+                    MentionSuggestions(
+                        candidates = uiState.mentionCandidates,
+                        query = query,
+                        loading = uiState.isLoadingMentions,
+                        failed = uiState.mentionsLoadFailed,
+                        onRetry = viewModel::loadMentionCandidates,
+                        onSelect = { candidate ->
+                            val (value, entities) = insertMention(inputValue, inputEntities, candidate)
+                            inputValue = value
+                            inputEntities = entities
+                        }
+                    )
+                }
+                ChatComposer(
+                    inputValue = inputValue,
+                    inputEntities = inputEntities,
+                    onInputChange = {
+                        inputEntities = com.pinealctx.nexus.core.adjustTextEntities(
+                            inputValue.text, it.text, inputEntities, inputValue.selection.min
+                        )
+                        inputValue = it
+                    },
+                    replyTarget = replyTarget,
+                    editTarget = editTarget,
+                    mediaUploadName = uiState.mediaUploadName,
+                    onClearReply = { replyTarget = null },
+                    onClearEdit = {
+                        editTarget = null
+                        inputValue = TextFieldValue("")
+                        inputEntities = emptyList()
+                    },
+                    onSubmit = { text ->
+                        val editing = editTarget
+                        if (editing != null) {
+                            viewModel.editMessage(editing.data.messageId, text, inputEntities)
+                        } else {
+                            viewModel.sendMessage(text, replyTarget?.data?.messageId, inputEntities)
+                        }
+                        inputValue = TextFieldValue("")
+                        inputEntities = emptyList()
+                        replyTarget = null
+                        editTarget = null
+                        viewModel.saveDraft("")
+                    },
+                    onSendVisualMedia = viewModel::sendVisualMedia,
+                    onSendFile = viewModel::sendFile,
+                    onSendVoiceRecording = viewModel::sendVoiceRecording
+                )
+            }
         }
     ) { padding ->
         Box(
@@ -373,6 +429,7 @@ fun ChatScreen(
                                 is ChatTimelineItem.Message -> {
                                     val message = item.message
                                     MessageBubble(
+                                        onMentionClick = viewModel::showMentionedUser,
                                         message = message,
                                         currentUserId = uiState.currentUserId,
                                         senderName = uiState.senderNames[message.senderId],
@@ -390,6 +447,7 @@ fun ChatScreen(
                                             replyTarget = null
                                             editTarget = target
                                             val editText = (target.content as MessageContent.Text).text
+                                            inputEntities = target.content.entities
                                             inputValue = TextFieldValue(editText, TextRange(editText.length))
                                         },
                                         onRecall = { target ->

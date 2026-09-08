@@ -3,6 +3,8 @@
 状态：Android 本地基线已落地，生产外部依赖待联调
 更新时间：2026-09-02
 
+功能增量：2026-09-09 已实现 Android 0.2.0 群聊提及、TEXT 富文本实体与链接交互，详见 [0.2.0 版本说明](releases/0.2.0.md)。数据库版本提升到 10，保留远端消息和本地待发送消息中的实体信息。
+
 ## 技术栈结论
 
 现有原生技术方向合理，不需要跨平台重写，也不需要把 Connect/Protobuf 改成 REST。当前基线为 JDK 21、Gradle 9.5.1、AGP 9.3.2、Kotlin 2.4.10、KSP 2.3.10、Compose BOM 2026.06.01、Hilt 2.60.1、Room 2.8.4、DataStore 1.2.1、WorkManager 2.11.2、Connect-Kotlin 0.9.0、OkHttp 5.4.0 和 Firebase BOM 34.18.0。

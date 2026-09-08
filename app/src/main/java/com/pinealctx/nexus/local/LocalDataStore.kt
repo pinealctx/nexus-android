@@ -1,6 +1,7 @@
 package com.pinealctx.nexus.local
 
 import android.content.ContentValues
+import com.pinealctx.nexus.core.TextEntityData
 import android.content.Context
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
@@ -40,7 +41,7 @@ class LocalDataStore @Inject constructor(
     @ApplicationContext context: Context
 ) {
     private val database = Room.databaseBuilder(context, NexusDatabase::class.java, DATABASE_NAME)
-        .addMigrations(NexusDatabase.MIGRATION_7_8, NexusDatabase.MIGRATION_8_9)
+        .addMigrations(NexusDatabase.MIGRATION_7_8, NexusDatabase.MIGRATION_8_9, NexusDatabase.MIGRATION_9_10)
         .allowMainThreadQueries()
         .build()
 
@@ -768,10 +769,16 @@ class LocalDataStore @Inject constructor(
         )
     }
 
-    fun editMessage(conversationId: Long, messageId: Long, text: String) {
+    fun editMessage(
+        conversationId: Long,
+        messageId: Long,
+        text: String,
+        entities: List<TextEntityData> = emptyList()
+    ) {
         writableDatabase.transaction {
             val values = clearedMessageContentValues("text").apply {
                 put("text", text)
+                put("text_entities", entities.encodeTextEntities())
                 put("edited", 1)
             }
             update(
@@ -1109,6 +1116,7 @@ class LocalDataStore @Inject constructor(
             putNullable("duration", content.durationValue)
             putNullable("card_json", content.cardJsonValue)
             putNullable("fallback_text", content.fallbackValue)
+            putNullable("text_entities", (content as? MessageContent.Text)?.entities?.encodeTextEntities())
             putNullable("stream_phase", content.streamPhaseValue)
             putNullable("stream_seq", content.streamSequenceValue)
             putNullable("stream_content_type", content.streamContentTypeValue)
@@ -1142,6 +1150,7 @@ class LocalDataStore @Inject constructor(
             putNullable("duration", content.durationValue)
             putNullable("card_json", content.cardJsonValue)
             putNullable("fallback_text", content.fallbackValue)
+            putNullable("text_entities", (content as? MessageContent.Text)?.entities?.encodeTextEntities())
             putNullable("reply_to_message_id", replyToMessageId)
             put("created_at", createdAt)
             put("send_state", sendState.code)
@@ -1163,6 +1172,7 @@ class LocalDataStore @Inject constructor(
             putNull("duration")
             putNull("card_json")
             putNull("fallback_text")
+            putNull("text_entities")
             putNull("stream_phase")
             putNull("stream_seq")
             putNull("stream_content_type")
@@ -1514,6 +1524,7 @@ class LocalDataStore @Inject constructor(
     private fun MessageEntity.toMessageContent(): MessageContent = messageContent(
         contentKind = contentKind,
         text = text,
+        textEntities = textEntities,
         fileId = fileId,
         thumbnailFileId = thumbnailFileId,
         transcript = transcript,
@@ -1534,6 +1545,7 @@ class LocalDataStore @Inject constructor(
     private fun LocalMessageEntity.toMessageContent(): MessageContent = messageContent(
         contentKind = contentKind,
         text = text,
+        textEntities = textEntities,
         fileId = fileId,
         thumbnailFileId = thumbnailFileId,
         transcript = transcript,
@@ -1554,6 +1566,7 @@ class LocalDataStore @Inject constructor(
     private fun messageContent(
         contentKind: String,
         text: String?,
+        textEntities: String?,
         fileId: String?,
         thumbnailFileId: String?,
         transcript: String?,
@@ -1570,7 +1583,7 @@ class LocalDataStore @Inject constructor(
         streamContentType: String?,
         streamErrorMessage: String?
     ): MessageContent = when (contentKind) {
-        "text" -> MessageContent.Text(text.orEmpty())
+        "text" -> MessageContent.Text(text.orEmpty(), textEntities.decodeTextEntities())
         "image" -> MessageContent.Image(fileId.orEmpty(), width ?: 0, height ?: 0)
         "audio" -> MessageContent.Audio(fileId.orEmpty(), duration ?: 0, fileSize ?: 0L, transcript)
         "video" -> MessageContent.Video(
@@ -1598,7 +1611,7 @@ class LocalDataStore @Inject constructor(
 
     private fun Cursor.toMessageContent(): MessageContent {
         return when (stringOrNull("content_kind")) {
-            "text" -> MessageContent.Text(stringOrNull("text").orEmpty())
+            "text" -> MessageContent.Text(stringOrNull("text").orEmpty(), stringOrNull("text_entities").decodeTextEntities())
             "image" -> MessageContent.Image(
                 fileId = stringOrNull("file_id").orEmpty(),
                 width = intOrNull("width") ?: 0,

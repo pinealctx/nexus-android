@@ -10,6 +10,8 @@ import com.api.v1.SendMessageRequest
 import com.api.v1.SubmitCardActionRequest
 import com.pinealctx.nexus.core.MessageData
 import com.pinealctx.nexus.core.MessagePageData
+import com.pinealctx.nexus.core.TextEntityData
+import com.pinealctx.nexus.core.withDetectedLinks
 import com.shared.v1.AudioContent
 import com.shared.v1.CardContent
 import com.shared.v1.FileContent
@@ -80,11 +82,12 @@ class MessageApi @Inject constructor(
         conversationId: Long,
         text: String,
         clientMessageId: Long = nextClientMessageId(),
-        replyToMessageId: Long? = null
+        replyToMessageId: Long? = null,
+        entities: List<TextEntityData> = emptyList()
     ): Long =
         send(
             conversationId = conversationId,
-            body = textBody(text),
+            body = textBody(text, entities),
             clientMessageId = clientMessageId,
             replyToMessageId = replyToMessageId
         )
@@ -155,14 +158,19 @@ class MessageApi @Inject constructor(
     ): Long =
         send(conversationId, cardBody(cardJson, fallbackText), clientMessageId = clientMessageId)
 
-    suspend fun editMessage(conversationId: Long, messageId: Long, text: String) {
+    suspend fun editMessage(
+        conversationId: Long,
+        messageId: Long,
+        text: String,
+        entities: List<TextEntityData> = emptyList()
+    ) {
         apiClientFactory.createClients()
             .messages
             .editMessage(
                 request = EditMessageRequest.newBuilder()
                     .setConversationId(conversationId)
                     .setMessageId(messageId)
-                    .setNewBody(textBody(text))
+                    .setNewBody(textBody(text, entities))
                     .build(),
                 headers = headers.current()
             )
@@ -256,10 +264,14 @@ class MessageApi @Inject constructor(
     }
 }
 
-private fun textBody(text: String): MessageBody =
+internal fun textBody(text: String, entities: List<TextEntityData> = emptyList()): MessageBody =
     MessageBody.newBuilder()
         .setType(MessageType.MESSAGE_TYPE_TEXT)
-        .setText(TextContent.newBuilder().setText(text))
+        .setText(
+            TextContent.newBuilder()
+                .setText(text)
+                .addAllEntities(withDetectedLinks(text, entities).map { it.toProto() })
+        )
         .build()
 
 private fun imageBody(fileId: String, width: Int, height: Int): MessageBody =

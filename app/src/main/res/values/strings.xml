@@ -359,4 +359,9 @@
     <string name="about_copyright">Copyright 2024-2025 PinealCtx. All rights reserved.</string>
     <string name="miniapp_agent_not_found">Agent not found</string>
     <string name="miniapp_open_failed">Failed to open Mini App</string>
+    <string name="chat_mention_members">Mention members</string>
+    <string name="chat_mention_all">Everyone</string>
+    <string name="chat_mention_empty">No matching members</string>
+    <string name="chat_mention_retry">Could not load members. Tap to retry</string>
+    <string name="chat_mention_profile_retry">Could not load profile. Tap to retry</string>
 </resources>

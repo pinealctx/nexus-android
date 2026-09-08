@@ -1,6 +1,8 @@
 package com.pinealctx.nexus.core.managers
 
 import com.pinealctx.nexus.client.MessageApi
+import com.pinealctx.nexus.core.TextEntityData
+import com.pinealctx.nexus.core.withDetectedLinks
 import com.pinealctx.nexus.core.LocalMessageData
 import com.pinealctx.nexus.core.MessageContent
 import com.pinealctx.nexus.core.MessageData
@@ -64,8 +66,13 @@ class MessageManager @Inject constructor(
 
     fun currentUserId(): Int = secureStorage.getUserId()
 
-    fun enqueueTextMessage(conversationId: Long, text: String, replyToMessageId: Long? = null): LocalMessageData {
-        return enqueueMessage(conversationId, MessageContent.Text(text), replyToMessageId)
+    fun enqueueTextMessage(
+        conversationId: Long,
+        text: String,
+        replyToMessageId: Long? = null,
+        entities: List<TextEntityData> = emptyList()
+    ): LocalMessageData {
+        return enqueueMessage(conversationId, MessageContent.Text(text, withDetectedLinks(text, entities)), replyToMessageId)
     }
 
     fun enqueueImageMessage(conversationId: Long, fileId: String, width: Int, height: Int): LocalMessageData {
@@ -203,9 +210,15 @@ class MessageManager @Inject constructor(
         return sendQueuedMessage(enqueueCardMessage(conversationId, cardJson, fallbackText))
     }
 
-    suspend fun editMessage(conversationId: Long, messageId: Long, text: String) {
-        messageApi.editMessage(conversationId, messageId, text)
-        localDataStore.editMessage(conversationId, messageId, text)
+    suspend fun editMessage(
+        conversationId: Long,
+        messageId: Long,
+        text: String,
+        entities: List<TextEntityData> = emptyList()
+    ) {
+        val resolved = withDetectedLinks(text, entities)
+        messageApi.editMessage(conversationId, messageId, text, resolved)
+        localDataStore.editMessage(conversationId, messageId, text, resolved)
     }
 
     suspend fun recallMessage(conversationId: Long, messageId: Long) {
@@ -237,7 +250,8 @@ class MessageManager @Inject constructor(
                 conversationId = conversationId,
                 text = content.text,
                 clientMessageId = message.clientMessageId,
-                replyToMessageId = message.replyToMessageId
+                replyToMessageId = message.replyToMessageId,
+                entities = content.entities
             )
             is MessageContent.Image -> messageApi.sendImageMessage(
                 conversationId = conversationId,

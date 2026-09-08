@@ -27,13 +27,19 @@ import kotlinx.coroutines.flow.Flow
         GroupMemberEntity::class,
         MediaFileEntity::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = true
 )
 abstract class NexusDatabase : RoomDatabase() {
     abstract fun cacheDao(): CacheDao
 
     companion object {
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE messages ADD COLUMN text_entities TEXT")
+                db.execSQL("ALTER TABLE local_messages ADD COLUMN text_entities TEXT")
+            }
+        }
         val MIGRATION_7_8 = object : Migration(7, 8) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE messages ADD COLUMN thumbnail_file_id TEXT")
@@ -138,6 +144,7 @@ data class MessageEntity(
     @ColumnInfo(name = "sender_id") val senderId: Int,
     @ColumnInfo(name = "content_kind") val contentKind: String,
     val text: String?,
+    @ColumnInfo(name = "text_entities") val textEntities: String?,
     @ColumnInfo(name = "file_id") val fileId: String?,
     @ColumnInfo(name = "thumbnail_file_id") val thumbnailFileId: String?,
     val transcript: String?,
@@ -182,6 +189,7 @@ data class LocalMessageEntity(
     @ColumnInfo(name = "sender_id") val senderId: Int,
     @ColumnInfo(name = "content_kind") val contentKind: String,
     val text: String?,
+    @ColumnInfo(name = "text_entities") val textEntities: String?,
     @ColumnInfo(name = "file_id") val fileId: String?,
     @ColumnInfo(name = "thumbnail_file_id") val thumbnailFileId: String?,
     val transcript: String?,

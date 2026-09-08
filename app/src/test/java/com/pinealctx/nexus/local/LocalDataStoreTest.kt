@@ -72,6 +72,28 @@ class LocalDataStoreTest {
     }
 
     @Test
+    fun `rich text entities survive restart flows editing and pending sends`() = runBlocking {
+        val entities = listOf(com.pinealctx.nexus.core.TextEntityData(
+            com.shared.v1.MessageEntityType.MESSAGE_ENTITY_TYPE_MENTION, 3, 6, userId = 7
+        ))
+        val content = MessageContent.Text("😀 @Alice", entities)
+        store.upsertMessage(message(1L, content = content))
+        store.upsertLocalMessage(localMessage(2L, content = content))
+        store.close()
+        store = LocalDataStore(context)
+        assertEquals(content, store.listMessages(100L).single().content)
+        assertEquals(content, store.listLocalMessages(100L).single().content)
+        assertEquals(content, store.observeMessages("100").first().single().content)
+        assertEquals(content, store.observeLocalMessages("100").first().single().content)
+        store.editMessage(100L, 1L, "😀 @Alice!", entities)
+        assertEquals(entities, (store.listMessages(100L).single().content as MessageContent.Text).entities)
+        store.editMessage(100L, 1L, "plain")
+        assertEquals(MessageContent.Text("plain"), store.listMessages(100L).single().content)
+        store.deleteMessages(100L, listOf(1L))
+        assertTrue(store.listMessages(100L).isEmpty())
+    }
+
+    @Test
     fun `deleting messages refreshes conversation preview`() {
         store.upsertMessages(
             listOf(

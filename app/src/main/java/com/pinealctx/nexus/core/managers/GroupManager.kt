@@ -41,6 +41,9 @@ class GroupManager @Inject constructor(
             .also { localDataStore.replaceGroupMembers(groupId, it) }
     }
 
+    suspend fun fetchGroupMembers(groupId: Int): List<GroupMemberData> =
+        groupApi.getGroupMembers(groupId).also { localDataStore.replaceGroupMembers(groupId, it) }
+
     suspend fun createGroup(name: String, memberIds: List<Int>): Int {
         val groupId = groupApi.createGroup(name, memberIds)
         groupApi.getGroupInfo(groupId).also { localDataStore.upsertGroup(it) }

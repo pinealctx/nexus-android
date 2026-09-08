@@ -37,4 +37,19 @@ class NexusDatabaseMigrationTest {
     private companion object {
         const val DatabaseName = "nexus-migration-test"
     }
+
+    @Test
+    fun migrate9To10PreservesExistingText() {
+        helper.createDatabase(DatabaseName, 9).apply {
+            execSQL("INSERT INTO messages (conversation_id, message_id, sender_id, content_kind, text, created_at, edited, recalled) VALUES ('100', 1, 7, 'text', 'existing', 1, 0, 0)")
+            close()
+        }
+        helper.runMigrationsAndValidate(DatabaseName, 10, true, NexusDatabase.MIGRATION_9_10).use { db ->
+            db.query("SELECT text, text_entities FROM messages WHERE message_id = 1").use { cursor ->
+                org.junit.Assert.assertTrue(cursor.moveToFirst())
+                org.junit.Assert.assertEquals("existing", cursor.getString(0))
+                org.junit.Assert.assertTrue(cursor.isNull(1))
+            }
+        }
+    }
 }

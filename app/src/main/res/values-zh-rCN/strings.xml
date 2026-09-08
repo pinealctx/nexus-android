@@ -359,4 +359,9 @@
     <string name="about_copyright">Copyright 2024-2025 PinealCtx. All rights reserved.</string>
     <string name="miniapp_agent_not_found">未找到该 Agent</string>
     <string name="miniapp_open_failed">无法打开 Mini App</string>
+    <string name="chat_mention_members">提及群成员</string>
+    <string name="chat_mention_all">所有人</string>
+    <string name="chat_mention_empty">没有匹配的群成员</string>
+    <string name="chat_mention_retry">成员加载失败，点击重试</string>
+    <string name="chat_mention_profile_retry">用户资料加载失败，点击重试</string>
 </resources>

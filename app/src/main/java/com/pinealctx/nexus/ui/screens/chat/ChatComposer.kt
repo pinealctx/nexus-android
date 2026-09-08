@@ -42,7 +42,8 @@ fun ChatComposer(
     onSubmit: (String) -> Unit,
     onSendVisualMedia: (Uri) -> Unit,
     onSendFile: (Uri) -> Unit,
-    onSendVoiceRecording: (VoiceRecording) -> Unit
+    onSendVoiceRecording: (VoiceRecording) -> Unit,
+    inputEntities: List<com.pinealctx.nexus.core.TextEntityData> = emptyList()
 ) {
     val context = LocalContext.current
     val voicePermissionDenied = stringResource(R.string.voice_permission_denied)
@@ -54,6 +55,7 @@ fun ChatComposer(
     var recordingElapsedMs by remember { mutableLongStateOf(0L) }
     var recordingError by remember { mutableStateOf<String?>(null) }
     val inputFocusRequester = remember { FocusRequester() }
+    val mentionColor = MaterialTheme.colorScheme.primary
 
     fun startRecording() {
         runCatching { voiceRecorder.start() }
@@ -254,6 +256,20 @@ fun ChatComposer(
                     TextField(
                         value = inputValue,
                         onValueChange = onInputChange,
+                        visualTransformation = androidx.compose.ui.text.input.VisualTransformation { text ->
+                            val styled = androidx.compose.ui.text.buildAnnotatedString {
+                                append(text)
+                                com.pinealctx.nexus.core.validTextEntities(text.text, inputEntities)
+                                    .filter { it.type == com.shared.v1.MessageEntityType.MESSAGE_ENTITY_TYPE_MENTION }
+                                    .forEach {
+                                        addStyle(
+                                            androidx.compose.ui.text.SpanStyle(color = mentionColor),
+                                            it.offset, it.offset + it.length
+                                        )
+                                    }
+                            }
+                            androidx.compose.ui.text.input.TransformedText(styled, androidx.compose.ui.text.input.OffsetMapping.Identity)
+                        },
                         modifier = Modifier
                             .weight(1f)
                             .heightIn(min = 50.dp, max = 128.dp)

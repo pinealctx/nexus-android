@@ -46,7 +46,7 @@ data class ConversationPageData(
 
 // Messages
 sealed interface MessageContent {
-    data class Text(val text: String) : MessageContent
+    data class Text(val text: String, val entities: List<TextEntityData> = emptyList()) : MessageContent
     data class Image(val fileId: String, val width: Int, val height: Int) : MessageContent
     data class Audio(
         val fileId: String,
