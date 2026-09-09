@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="conversations_load_more_retry">Loading more failed. Tap to retry</string>
+    <string name="conversations_load_more">Load more conversations</string>
+    <string name="conversations_loading_more">Loading…</string>
+    <string name="conversations_draft">[Draft] %1$s</string>
+    <string name="conversations_sending">[Sending] %1$s</string>
+    <string name="conversations_send_failed">[Failed] %1$s</string>
     <string name="chat_search_local_hint">Searches messages saved on this device, not all server history.</string>
     <string name="chat_search_empty">No matching messages</string>
     <string name="chat_search_prompt">Enter a keyword to find messages in this chat</string>

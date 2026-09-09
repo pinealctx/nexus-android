@@ -20,6 +20,9 @@ class MessageManager @Inject constructor(
     private val localDataStore: LocalDataStore,
     private val secureStorage: SecureStorage
 ) {
+    fun observeMessageWindow(conversationId: String, oldestId: Long): Flow<List<MessageData>> =
+        localDataStore.observeMessageWindow(conversationId, oldestId)
+
     fun observeMessages(conversationId: String, limit: Int = 50): Flow<List<MessageData>> =
         localDataStore.observeMessages(conversationId, limit)
 

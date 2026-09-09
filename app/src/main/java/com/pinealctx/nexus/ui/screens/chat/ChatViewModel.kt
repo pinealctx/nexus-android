@@ -38,6 +38,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CancellationException
@@ -79,6 +80,7 @@ data class ChatUiState(
     val error: String? = null
 )
 
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class ChatViewModel @Inject constructor(
     private val conversationManager: ConversationManager,
@@ -114,6 +116,12 @@ class ChatViewModel @Inject constructor(
     private var senderResolutionJob: Job? = null
     private var mentionedUserJob: Job? = null
     private var revealJob: Job? = null
+    private val oldestVisibleMessageId = MutableStateFlow<Long?>(null)
+
+    private fun expandMessageWindow(messages: List<MessageData>) {
+        val oldest = messages.minOfOrNull { it.messageId } ?: return
+        oldestVisibleMessageId.value = minOf(oldestVisibleMessageId.value ?: oldest, oldest)
+    }
 
     fun loadAgentTools() {
         val state = _uiState.value
@@ -209,10 +217,14 @@ class ChatViewModel @Inject constructor(
 
     private fun observeUpdates() {
         combine(
-            messageRepository.observeMessages(conversationId),
+            oldestVisibleMessageId.flatMapLatest { oldest ->
+                if (oldest == null) messageRepository.observeMessages(conversationId)
+                else messageRepository.observeMessageWindow(conversationId, oldest)
+            },
             messageRepository.observeLocalMessages(conversationId)
         ) { remoteMessages, localMessages -> remoteMessages to localMessages }
             .onEach { (remoteMessages, localMessages) ->
+                expandMessageWindow(remoteMessages)
                 val merged = ChatMessageMerger.merge(remoteMessages, localMessages)
                 _uiState.value = _uiState.value.copy(
                     messages = merged,
@@ -379,9 +391,7 @@ class ChatViewModel @Inject constructor(
 
     private suspend fun markCurrentConversationRead(messages: List<MessageData>) {
         val convId = conversationId.toLongOrNull() ?: return
-        val conversation = conversationManager
-            .getConversations()
-            .firstOrNull { it.conversationId == conversationId }
+        val conversation = conversationManager.getCachedConversation(convId)
         val latestMessageId = maxOf(
             conversation?.lastMessageId ?: 0L,
             messages.maxOfOrNull { it.messageId } ?: 0L
@@ -519,13 +529,15 @@ class ChatViewModel @Inject constructor(
             .filterIsInstance<ChatMessageItem.Remote>()
             .lastOrNull()
             ?: return
-        viewModelScope.launch(Dispatchers.IO) {
-            _uiState.value = _uiState.value.copy(isLoadingMore = true)
+        _uiState.value = _uiState.value.copy(isLoadingMore = true)
+        viewModelScope.launch {
             try {
-                val page = messageManager.fetchMessagePage(
-                    conversationId = conversationId,
-                    beforeId = oldest.data.messageId
-                )
+                val page = withContext(Dispatchers.IO) {
+                    val cached = messageManager.getCachedMessages(conversationId, limit = 51, beforeId = oldest.data.messageId)
+                    if (cached.isNotEmpty()) com.pinealctx.nexus.core.MessagePageData(cached.take(50), emptyList(), true)
+                    else messageManager.fetchMessagePage(conversationId, beforeId = oldest.data.messageId)
+                }
+                expandMessageWindow(page.messages)
                 _uiState.value = _uiState.value.copy(
                     isLoadingMore = false,
                     hasMore = page.hasMore,
@@ -815,6 +827,7 @@ class ChatViewModel @Inject constructor(
             remoteMessages = mergeRemoteMessages(remoteMessages, older)
             val localMessages = messageManager.getLocalMessages(conversationId)
             currentCoroutineContext().ensureActive()
+            withContext(Dispatchers.Main) { expandMessageWindow(remoteMessages) }
             _uiState.value = _uiState.value.copy(
                 messages = ChatMessageMerger.merge(remoteMessages, localMessages),
                 currentUserId = messageManager.currentUserId()

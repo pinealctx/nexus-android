@@ -17,11 +17,16 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 data class ConversationListUiState(
+    val hasMore: Boolean = false,
+    val isLoadingMore: Boolean = false,
+    val loadMoreFailed: Boolean = false,
     val conversations: List<ConversationData> = emptyList(),
     val isLoading: Boolean = true,
     val isSyncing: Boolean = false,
@@ -30,6 +35,7 @@ data class ConversationListUiState(
     val error: String? = null
 )
 
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class ConversationListViewModel @Inject constructor(
     private val conversationRepository: ConversationRepository,
@@ -40,9 +46,13 @@ class ConversationListViewModel @Inject constructor(
     val uiState: StateFlow<ConversationListUiState> = _uiState.asStateFlow()
     private var loadJob: Job? = null
     private var scheduledRefreshJob: Job? = null
-    private var activeLoadIsRemote = false
     private var pendingRemoteRefresh = false
     private var pendingPullRefresh = false
+    private val visibleLimit = MutableStateFlow(50)
+    private var remoteHasMore = true
+    private var cachedHasMore = false
+    private var nextBeforeTime: Long? = null
+    private var firstPageLoaded = false
 
     init {
         observeCache()
@@ -51,11 +61,13 @@ class ConversationListViewModel @Inject constructor(
     }
 
     private fun observeCache() {
-        conversationRepository.observeConversations()
+        visibleLimit.flatMapLatest { conversationRepository.observeConversations(it + 1) }
             .onEach { conversations ->
+                cachedHasMore = conversations.size > visibleLimit.value
                 Log.i("ConversationList", "Observed cached conversations: count=${conversations.size}")
                 _uiState.value = _uiState.value.copy(
-                    conversations = conversations,
+                    conversations = conversations.take(visibleLimit.value),
+                    hasMore = cachedHasMore || remoteHasMore,
                     isLoading = conversations.isEmpty() && _uiState.value.isLoading,
                     hasCompletedInitialLoad = conversations.isNotEmpty() ||
                         _uiState.value.hasCompletedInitialLoad
@@ -91,7 +103,7 @@ class ConversationListViewModel @Inject constructor(
         showPullIndicator: Boolean = false
     ) {
         if (loadJob?.isActive == true) {
-            pendingRemoteRefresh = pendingRemoteRefresh || (forceRemote && !activeLoadIsRemote)
+            pendingRemoteRefresh = pendingRemoteRefresh || forceRemote
             if (showPullIndicator) {
                 pendingPullRefresh = true
                 _uiState.value = _uiState.value.copy(isPullRefreshing = true)
@@ -99,7 +111,6 @@ class ConversationListViewModel @Inject constructor(
             return
         }
 
-        activeLoadIsRemote = forceRemote
         loadJob = viewModelScope.launch {
             val currentState = _uiState.value
             val isInitialLoad = currentState.conversations.isEmpty() &&
@@ -111,25 +122,22 @@ class ConversationListViewModel @Inject constructor(
                 error = null
             )
             try {
-                val conversations = withContext(Dispatchers.IO) {
-                    if (forceRemote) {
-                        conversationRepository.fetchFromRemote().also {
-                            Log.i("ConversationList", "Fetched remote conversations: count=${it.size}")
-                        }
-                    } else {
-                        conversationRepository.getConversations().also {
-                            Log.i("ConversationList", "Loaded conversations: count=${it.size}")
-                        }
-                    }
+                val page = withContext(Dispatchers.IO) { conversationRepository.fetchPage() }
+                if (!firstPageLoaded) {
+                    nextBeforeTime = page.conversations.minOfOrNull { it.lastMessageTime }
+                    remoteHasMore = page.hasMore && nextBeforeTime != null
+                    firstPageLoaded = true
                 }
                 _uiState.value = _uiState.value.copy(
-                    conversations = conversations,
-                    isLoading = false,
+                    hasMore = cachedHasMore || remoteHasMore,
+                    isLoading = _uiState.value.conversations.isEmpty() && page.conversations.isNotEmpty(),
                     isSyncing = false,
                     isPullRefreshing = false,
                     hasCompletedInitialLoad = true,
                     error = null
                 )
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 if (e.requiresRelogin()) return@launch
                 Log.w("ConversationList", "Conversation refresh failed", e)
@@ -145,7 +153,6 @@ class ConversationListViewModel @Inject constructor(
                 val showPendingPullIndicator = pendingPullRefresh
                 pendingRemoteRefresh = false
                 pendingPullRefresh = false
-                activeLoadIsRemote = false
                 loadJob = null
                 if (shouldRefreshAgain) {
                     loadConversations(
@@ -159,6 +166,35 @@ class ConversationListViewModel @Inject constructor(
 
     fun refresh() {
         loadConversations(forceRemote = true, showPullIndicator = true)
+    }
+
+    fun loadMore() {
+        if (loadJob?.isActive == true || _uiState.value.isLoadingMore) return
+        visibleLimit.value += 50
+        if (!remoteHasMore) return
+        if (!firstPageLoaded) { refresh(); return }
+        _uiState.value = _uiState.value.copy(isLoadingMore = true, loadMoreFailed = false)
+        loadJob = viewModelScope.launch {
+            try {
+                val cursor = nextBeforeTime
+                val page = withContext(Dispatchers.IO) { conversationRepository.fetchPage(beforeTime = cursor) }
+                val next = page.conversations.minOfOrNull { it.lastMessageTime }
+                remoteHasMore = page.hasMore && next != null && (cursor == null || next < cursor)
+                if (next != null) nextBeforeTime = next
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                if (!e.requiresRelogin()) _uiState.value = _uiState.value.copy(loadMoreFailed = true)
+            } finally {
+                _uiState.value = _uiState.value.copy(isLoadingMore = false, hasMore = cachedHasMore || remoteHasMore)
+                loadJob = null
+                if (pendingRemoteRefresh) {
+                    pendingRemoteRefresh = false
+                    loadConversations(forceRemote = true, showPullIndicator = pendingPullRefresh)
+                    pendingPullRefresh = false
+                }
+            }
+        }
     }
 
     private fun scheduleRemoteRefresh() {

@@ -34,9 +34,12 @@ data class ConversationData(
     val lastMessageTime: Long,
     val lastMessageContent: String?,
     val isMuted: Boolean,
-    val lastReadMessageId: Long
+    val lastReadMessageId: Long,
+    val localPreview: LocalMessageData? = null,
+    val draft: String? = null
 ) {
     val unreadCount: Long get() = (lastMessageId - lastReadMessageId).coerceAtLeast(0)
+    val activityTime: Long get() = maxOf(lastMessageTime, localPreview?.createdAt ?: 0L)
 }
 
 data class ConversationPageData(

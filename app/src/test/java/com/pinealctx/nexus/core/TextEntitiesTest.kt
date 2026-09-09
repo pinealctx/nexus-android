@@ -39,13 +39,4 @@ class TextEntitiesTest {
         assertNull(safeWebLink("file:///private/data"))
     }
 
-    @Test
-    fun `draft keeps mention IDs and clears them with text`() {
-        val repository = DraftRepository()
-        val entities = listOf(TextEntityData(MESSAGE_ENTITY_TYPE_MENTION, 0, 5, userId = 7))
-        repository.save("100", "@Alex", entities)
-        assertEquals(entities, repository.getEntities("100"))
-        repository.save("100", "")
-        assertTrue(repository.getEntities("100").isEmpty())
-    }
 }

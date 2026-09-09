@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="conversations_load_more_retry">加载更多失败，点击重试</string>
+    <string name="conversations_load_more">加载更多会话</string>
+    <string name="conversations_loading_more">正在加载…</string>
+    <string name="conversations_draft">[草稿] %1$s</string>
+    <string name="conversations_sending">[发送中] %1$s</string>
+    <string name="conversations_send_failed">[发送失败] %1$s</string>
     <string name="chat_search_local_hint">仅搜索此设备已保存的消息，不代表服务端的全部历史记录。</string>
     <string name="chat_search_empty">没有找到匹配的消息</string>
     <string name="chat_search_prompt">输入关键词，查找当前会话中的消息</string>

@@ -39,6 +39,25 @@ class NexusDatabaseMigrationTest {
     }
 
     @Test
+    fun migrate10To11PreservesMessagesAndCreatesDraftStorage() {
+        helper.createDatabase(DatabaseName, 10).apply {
+            execSQL("INSERT INTO messages (conversation_id, message_id, sender_id, content_kind, text, created_at, edited, recalled) VALUES ('100', 1, 7, 'text', 'existing', 1, 0, 0)")
+            close()
+        }
+        helper.runMigrationsAndValidate(DatabaseName, 11, true, NexusDatabase.MIGRATION_10_11).use { db ->
+            db.query("SELECT text FROM messages WHERE message_id = 1").use {
+                org.junit.Assert.assertTrue(it.moveToFirst())
+                org.junit.Assert.assertEquals("existing", it.getString(0))
+            }
+            db.execSQL("INSERT INTO drafts (conversation_id, text, text_entities) VALUES ('100', 'draft', '[]')")
+            db.query("SELECT text FROM drafts WHERE conversation_id = '100'").use {
+                org.junit.Assert.assertTrue(it.moveToFirst())
+                org.junit.Assert.assertEquals("draft", it.getString(0))
+            }
+        }
+    }
+
+    @Test
     fun migrate9To10PreservesExistingText() {
         helper.createDatabase(DatabaseName, 9).apply {
             execSQL("INSERT INTO messages (conversation_id, message_id, sender_id, content_kind, text, created_at, edited, recalled) VALUES ('100', 1, 7, 'text', 'existing', 1, 0, 0)")

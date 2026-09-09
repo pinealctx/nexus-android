@@ -41,7 +41,7 @@ class LocalDataStore @Inject constructor(
     @ApplicationContext context: Context
 ) {
     private val database = Room.databaseBuilder(context, NexusDatabase::class.java, DATABASE_NAME)
-        .addMigrations(NexusDatabase.MIGRATION_7_8, NexusDatabase.MIGRATION_8_9, NexusDatabase.MIGRATION_9_10)
+        .addMigrations(NexusDatabase.MIGRATION_7_8, NexusDatabase.MIGRATION_8_9, NexusDatabase.MIGRATION_9_10, NexusDatabase.MIGRATION_10_11)
         .allowMainThreadQueries()
         .build()
 
@@ -56,9 +56,47 @@ class LocalDataStore @Inject constructor(
     }
 
     fun observeConversations(limit: Int = 50, beforeTime: Long? = null): Flow<List<ConversationData>> =
-        database.cacheDao()
-            .observeConversations(limit.coerceAtLeast(1), beforeTime)
-            .map { rows -> rows.map { it.toConversationData() } }
+        database.cacheDao().observeConversationSnapshots().map { rows ->
+            rows.map { row ->
+                val conversation = row.conversation.toConversationData()
+                val pending = row.outbox.map { it.toLocalMessageData() }
+                    .filter { (it.serverMessageId == null || it.serverMessageId > conversation.lastMessageId) &&
+                        it.createdAt >= conversation.lastMessageTime }
+                    .maxWithOrNull(compareBy<LocalMessageData> { it.createdAt }.thenBy { it.clientMessageId })
+                conversation.copy(localPreview = pending, draft = row.drafts.firstOrNull()?.text)
+            }.filter { beforeTime == null || it.activityTime < beforeTime }
+                .sortedWith(compareByDescending<ConversationData> { it.activityTime }
+                    .thenByDescending { it.lastMessageId }.thenBy { it.conversationId })
+                .take(limit.coerceAtLeast(1))
+        }
+
+    fun observeMessageWindow(conversationId: String, oldestId: Long): Flow<List<MessageData>> =
+        database.cacheDao().observeMessageWindow(conversationId, oldestId).map { rows -> rows.map { it.toMessageData() } }
+
+    fun saveDraft(conversationId: String, text: String, entities: List<TextEntityData>) {
+        writableDatabase.transaction {
+            if (text.isBlank()) delete("drafts", "conversation_id = ?", arrayOf(conversationId))
+            else {
+                ensureConversation(conversationId, this)
+                insertWithOnConflict("drafts", null, ContentValues().apply {
+                    put("conversation_id", conversationId)
+                    put("text", text)
+                    put("text_entities", com.pinealctx.nexus.core.validTextEntities(text, entities).encodeTextEntities())
+                }, SQLiteDatabase.CONFLICT_REPLACE)
+            }
+        }
+    }
+
+    fun getDraft(conversationId: String): Pair<String, List<TextEntityData>> =
+        readableDatabase.rawQuery("SELECT text, text_entities FROM drafts WHERE conversation_id = ?", arrayOf(conversationId)).use {
+            if (it.moveToFirst()) it.getString(0) to it.getString(1).decodeTextEntities() else "" to emptyList()
+        }
+
+    fun clearDrafts() { writableDatabase.transaction { delete("drafts", null, null) } }
+
+    fun conversationVersions(): Map<String, Long> = readableDatabase.rawQuery(
+        "SELECT conversation_id, updated_at FROM conversations", emptyArray()
+    ).use { cursor -> buildMap { while (cursor.moveToNext()) put(cursor.getString(0), cursor.getLong(1)) } }
 
     fun observeMessages(conversationId: String, limit: Int = 50): Flow<List<MessageData>> =
         database.cacheDao()
@@ -85,10 +123,10 @@ class LocalDataStore @Inject constructor(
             .observePendingRequests()
             .map { rows -> rows.map { it.toPendingRequestData() } }
 
-    fun upsertConversations(conversations: List<ConversationData>) {
+    fun upsertConversations(conversations: List<ConversationData>, expectedVersions: Map<String, Long>? = null) {
         if (conversations.isEmpty()) return
         writableDatabase.transaction {
-            conversations.forEach { upsertConversation(it, this) }
+            conversations.forEach { upsertConversation(it, this, expectedVersions) }
         }
     }
 
@@ -166,7 +204,7 @@ class LocalDataStore @Inject constructor(
     fun updateContactAlias(userId: Int, alias: String?) {
         val values = ContentValues().apply {
             putNullable("alias", alias)
-            put("updated_at", System.currentTimeMillis())
+            put("updated_at", nextChangeVersion())
         }
         writableDatabase.update("contacts", values, "user_id = ?", arrayOf(userId.toString()))
     }
@@ -298,7 +336,7 @@ class LocalDataStore @Inject constructor(
         val values = ContentValues().apply {
             put("user_id", agentUserId)
             put("status", status)
-            put("updated_at", System.currentTimeMillis())
+            put("updated_at", nextChangeVersion())
         }
         val updated = writableDatabase.update("agents_cache", values, "user_id = ?", arrayOf(agentUserId.toString()))
         if (updated == 0) {
@@ -320,7 +358,7 @@ class LocalDataStore @Inject constructor(
                     put("status", status)
                     put("is_featured", 0)
                     put("is_mine", 0)
-                    put("updated_at", System.currentTimeMillis())
+                    put("updated_at", nextChangeVersion())
                 },
                 SQLiteDatabase.CONFLICT_REPLACE
             )
@@ -595,7 +633,7 @@ class LocalDataStore @Inject constructor(
         val values = ContentValues().apply {
             put("file_id", fileId)
             put("public_url", publicUrl)
-            put("updated_at", System.currentTimeMillis())
+            put("updated_at", nextChangeVersion())
         }
         val updated = writableDatabase.update("media_files", values, "file_id = ?", arrayOf(fileId))
         if (updated == 0) {
@@ -728,12 +766,14 @@ class LocalDataStore @Inject constructor(
             putNull("server_message_id")
             put("send_state", MessageSendState.SENDING.code)
         }
-        writableDatabase.update(
-            "local_messages",
-            values,
-            "client_message_id = ?",
-            arrayOf(clientMessageId.toString())
-        )
+        writableDatabase.transaction {
+            update(
+                "local_messages",
+                values,
+                "client_message_id = ?",
+                arrayOf(clientMessageId.toString())
+            )
+        }
     }
 
     fun markLocalMessageSent(clientMessageId: Long, serverMessageId: Long) {
@@ -741,32 +781,38 @@ class LocalDataStore @Inject constructor(
             put("server_message_id", serverMessageId)
             put("send_state", MessageSendState.SENT.code)
         }
-        writableDatabase.update(
-            "local_messages",
-            values,
-            "client_message_id = ?",
-            arrayOf(clientMessageId.toString())
-        )
+        writableDatabase.transaction {
+            update(
+                "local_messages",
+                values,
+                "client_message_id = ?",
+                arrayOf(clientMessageId.toString())
+            )
+        }
     }
 
     fun markLocalMessageFailed(clientMessageId: Long) {
         val values = ContentValues().apply {
             put("send_state", MessageSendState.FAILED.code)
         }
-        writableDatabase.update(
-            "local_messages",
-            values,
-            "client_message_id = ?",
-            arrayOf(clientMessageId.toString())
-        )
+        writableDatabase.transaction {
+            update(
+                "local_messages",
+                values,
+                "client_message_id = ?",
+                arrayOf(clientMessageId.toString())
+            )
+        }
     }
 
     fun deleteLocalMessage(clientMessageId: Long) {
-        writableDatabase.delete(
-            "local_messages",
-            "client_message_id = ?",
-            arrayOf(clientMessageId.toString())
-        )
+        writableDatabase.transaction {
+            delete(
+                "local_messages",
+                "client_message_id = ?",
+                arrayOf(clientMessageId.toString())
+            )
+        }
     }
 
     fun editMessage(
@@ -809,11 +855,8 @@ class LocalDataStore @Inject constructor(
     fun markConversationRead(conversationId: Long, lastReadMessageId: Long) {
         writableDatabase.transaction {
             ensureConversation(conversationId.toString(), this)
-            val values = ContentValues().apply {
-                put("last_read_message_id", lastReadMessageId)
-                put("updated_at", System.currentTimeMillis())
-            }
-            update("conversations", values, "conversation_id = ?", arrayOf(conversationId.toString()))
+            execSQL("UPDATE conversations SET last_read_message_id = MAX(last_read_message_id, ?), updated_at = ? WHERE conversation_id = ?",
+                arrayOf<Any>(lastReadMessageId, nextChangeVersion(), conversationId.toString()))
         }
     }
 
@@ -920,6 +963,7 @@ class LocalDataStore @Inject constructor(
 
     fun clearAll() {
         writableDatabase.transaction {
+            delete("drafts", null, null)
             delete("media_files", null, null)
             delete("group_members", null, null)
             delete("groups", null, null)
@@ -950,20 +994,26 @@ class LocalDataStore @Inject constructor(
         }
     }
 
-    private fun upsertConversation(conversation: ConversationData, db: SupportSQLiteDatabase) {
+    private fun upsertConversation(conversation: ConversationData, db: SupportSQLiteDatabase, expectedVersions: Map<String, Long>? = null) {
+        val existing = db.rawQuery("SELECT * FROM conversations WHERE conversation_id = ?", arrayOf(conversation.conversationId)).use {
+            if (it.moveToFirst()) Triple(it.toConversationData(), it.getLong(it.getColumnIndexOrThrow("updated_at")), it.getInt(it.getColumnIndexOrThrow("deleted"))) else null
+        }
+        val changedDuringFetch = expectedVersions != null && existing != null && expectedVersions[conversation.conversationId] != existing.second
+        val old = existing?.first
+        val preserveMessage = old != null && (changedDuringFetch || old.lastMessageId > conversation.lastMessageId)
         val values = ContentValues().apply {
             put("conversation_id", conversation.conversationId)
             put("conversation_type", conversation.conversationType.number)
             put("peer_id", conversation.peerId)
             putNullable("display_name", conversation.displayName)
             putNullable("avatar_url", conversation.avatarUrl)
-            put("last_message_id", conversation.lastMessageId)
-            put("last_message_time", conversation.lastMessageTime)
-            putNullable("last_message_content", conversation.lastMessageContent)
-            put("is_muted", conversation.isMuted.toInt())
-            put("last_read_message_id", conversation.lastReadMessageId)
-            put("deleted", 0)
-            put("updated_at", System.currentTimeMillis())
+            put("last_message_id", if (preserveMessage) old!!.lastMessageId else conversation.lastMessageId)
+            put("last_message_time", if (preserveMessage) old!!.lastMessageTime else conversation.lastMessageTime)
+            putNullable("last_message_content", if (preserveMessage) old!!.lastMessageContent else conversation.lastMessageContent)
+            put("is_muted", (if (changedDuringFetch) old!!.isMuted else conversation.isMuted).toInt())
+            put("last_read_message_id", maxOf(old?.lastReadMessageId ?: 0L, conversation.lastReadMessageId))
+            put("deleted", if (changedDuringFetch) existing!!.third else 0)
+            put("updated_at", nextChangeVersion())
         }
         db.insertWithOnConflict("conversations", null, values, SQLiteDatabase.CONFLICT_REPLACE)
     }
@@ -1014,7 +1064,7 @@ class LocalDataStore @Inject constructor(
                 put("last_message_time", resolvedMessage.createdAt)
                 put("last_message_content", resolvedMessage.previewText())
                 put("deleted", 0)
-                put("updated_at", System.currentTimeMillis())
+                put("updated_at", nextChangeVersion())
             }
             db.update("conversations", values, "conversation_id = ?", arrayOf(conversationId))
         }
@@ -1033,7 +1083,7 @@ class LocalDataStore @Inject constructor(
             put("is_muted", 0)
             put("last_read_message_id", 0L)
             put("deleted", 0)
-            put("updated_at", System.currentTimeMillis())
+            put("updated_at", nextChangeVersion())
         }
         db.insertWithOnConflict("conversations", null, values, SQLiteDatabase.CONFLICT_IGNORE)
     }
@@ -1057,7 +1107,7 @@ class LocalDataStore @Inject constructor(
             put("is_muted", 0)
             put("last_read_message_id", 0L)
             put("deleted", 0)
-            put("updated_at", System.currentTimeMillis())
+            put("updated_at", nextChangeVersion())
         }
         db.insert("conversations", null, values)
     }
@@ -1071,7 +1121,7 @@ class LocalDataStore @Inject constructor(
         val values = ContentValues().apply {
             isMuted?.let { put("is_muted", it.toInt()) }
             deleted?.let { put("deleted", it.toInt()) }
-            put("updated_at", System.currentTimeMillis())
+            put("updated_at", nextChangeVersion())
         }
         db.update("conversations", values, "conversation_id = ?", arrayOf(conversationId.toString()))
     }
@@ -1093,7 +1143,7 @@ class LocalDataStore @Inject constructor(
             put("last_message_id", latest?.messageId ?: 0L)
             put("last_message_time", latest?.createdAt ?: 0L)
             putNullable("last_message_content", latest?.previewText())
-            put("updated_at", System.currentTimeMillis())
+            put("updated_at", nextChangeVersion())
         }
         db.update("conversations", values, "conversation_id = ?", arrayOf(conversationId))
     }
@@ -1187,7 +1237,7 @@ class LocalDataStore @Inject constructor(
             put("nickname", nickname)
             put("avatar_url", avatarUrl)
             putNullable("alias", alias)
-            put("updated_at", System.currentTimeMillis())
+            put("updated_at", nextChangeVersion())
         }
     }
 
@@ -1200,7 +1250,7 @@ class LocalDataStore @Inject constructor(
             put("signature", signature)
             putNullable("phone", phone)
             putNullable("email", email)
-            put("updated_at", System.currentTimeMillis())
+            put("updated_at", nextChangeVersion())
         }
     }
 
@@ -1211,7 +1261,7 @@ class LocalDataStore @Inject constructor(
             put("nickname", nickname)
             put("avatar_url", avatarUrl)
             put("signature", signature)
-            put("updated_at", System.currentTimeMillis())
+            put("updated_at", nextChangeVersion())
         }
     }
 
@@ -1222,7 +1272,7 @@ class LocalDataStore @Inject constructor(
             put("nickname", nickname)
             put("avatar_url", avatarUrl)
             put("signature", "")
-            put("updated_at", System.currentTimeMillis())
+            put("updated_at", nextChangeVersion())
         }
     }
 
@@ -1242,7 +1292,7 @@ class LocalDataStore @Inject constructor(
             put("status", status)
             put("is_featured", featured.toInt())
             put("is_mine", mine.toInt())
-            put("updated_at", System.currentTimeMillis())
+            put("updated_at", nextChangeVersion())
         }
     }
 
@@ -1265,7 +1315,7 @@ class LocalDataStore @Inject constructor(
             put("description", description)
             put("owner_id", ownerId)
             put("status", status)
-            put("updated_at", System.currentTimeMillis())
+            put("updated_at", nextChangeVersion())
         }
     }
 
@@ -1290,14 +1340,14 @@ class LocalDataStore @Inject constructor(
             put("duration_ms", durationMs)
             put("thumbnail_file_id", thumbnailFileId)
             put("public_url", publicUrl)
-            put("updated_at", System.currentTimeMillis())
+            put("updated_at", nextChangeVersion())
         }
     }
 
     private fun updateGroupField(groupId: Int, field: String, value: String) {
         val values = ContentValues().apply {
             put(field, value)
-            put("updated_at", System.currentTimeMillis())
+            put("updated_at", nextChangeVersion())
         }
         writableDatabase.update("groups", values, "group_id = ?", arrayOf(groupId.toString()))
     }
@@ -1870,5 +1920,7 @@ class LocalDataStore @Inject constructor(
 
     private companion object {
         const val DATABASE_NAME = "nexus.db"
+        val changeVersion = java.util.concurrent.atomic.AtomicLong(System.currentTimeMillis())
+        fun nextChangeVersion(): Long = changeVersion.updateAndGet { maxOf(it + 1, System.currentTimeMillis()) }
     }
 }

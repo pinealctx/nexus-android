@@ -42,6 +42,10 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.lazy.rememberLazyListState
+import com.pinealctx.nexus.core.previewText
+import com.pinealctx.nexus.core.MessageSendState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -75,7 +79,8 @@ fun ConversationListScreen(
         uiState = uiState,
         onConversationClick = onConversationClick,
         onSearchClick = onSearchClick,
-        onRefresh = viewModel::refresh
+        onRefresh = viewModel::refresh,
+        onLoadMore = viewModel::loadMore
     )
 }
 
@@ -85,7 +90,8 @@ internal fun ConversationListContent(
     uiState: ConversationListUiState,
     onConversationClick: (String) -> Unit,
     onSearchClick: () -> Unit,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    onLoadMore: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -168,7 +174,11 @@ internal fun ConversationListContent(
                     conversations = uiState.conversations,
                     refreshError = uiState.error,
                     onConversationClick = onConversationClick,
-                    onRefresh = onRefresh
+                    onRefresh = onRefresh,
+                    hasMore = uiState.hasMore,
+                    isLoadingMore = uiState.isLoadingMore,
+                    loadMoreFailed = uiState.loadMoreFailed,
+                    onLoadMore = onLoadMore
                 )
             }
         }
@@ -265,9 +275,19 @@ private fun ConversationList(
     conversations: List<ConversationData>,
     refreshError: String?,
     onConversationClick: (String) -> Unit,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    hasMore: Boolean,
+    isLoadingMore: Boolean,
+    loadMoreFailed: Boolean,
+    onLoadMore: () -> Unit
 ) {
+    val listState = rememberLazyListState()
+    val wasAtTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+    LaunchedEffect(conversations.firstOrNull()?.conversationId) {
+        if (wasAtTop) listState.scrollToItem(0)
+    }
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(top = 2.dp, bottom = 12.dp)
     ) {
@@ -280,6 +300,7 @@ private fun ConversationList(
             items = conversations,
             key = { it.conversationId }
         ) { conversation ->
+            Column(Modifier.animateItem()) {
             ConversationRow(
                 conversation = conversation,
                 onClick = { onConversationClick(conversation.conversationId) }
@@ -288,6 +309,18 @@ private fun ConversationList(
                 modifier = Modifier.padding(start = 84.dp),
                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f)
             )
+            }
+        }
+        if (hasMore || isLoadingMore) {
+            item(key = "load-more") {
+                TextButton(onClick = onLoadMore, enabled = !isLoadingMore, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(when {
+                        isLoadingMore -> R.string.conversations_loading_more
+                        loadMoreFailed -> R.string.conversations_load_more_retry
+                        else -> R.string.conversations_load_more
+                    }))
+                }
+            }
         }
     }
 }
@@ -368,7 +401,7 @@ private fun ConversationRow(conversation: ConversationData, onClick: () -> Unit)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = conversation.lastMessageTime.formatConversationTime(
+                    text = conversation.activityTime.formatConversationTime(
                         yesterdayLabel = stringResource(R.string.conversations_yesterday)
                     ),
                     maxLines = 1,
@@ -390,7 +423,8 @@ private fun ConversationRow(conversation: ConversationData, onClick: () -> Unit)
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (conversation.localPreview?.sendState == MessageSendState.FAILED && conversation.draft.isNullOrBlank())
+                        MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 if (conversation.isMuted) {
                     Spacer(modifier = Modifier.width(7.dp))
@@ -521,9 +555,10 @@ private fun ConversationData.displayTitle(): String {
 
 @Composable
 private fun ConversationData.localizedPreviewText(): String {
-    val preview = lastMessageContent?.takeIf { it.isNotBlank() }
+    draft?.takeIf { it.isNotBlank() }?.let { return stringResource(R.string.conversations_draft, it) }
+    val preview = (localPreview?.content?.previewText() ?: lastMessageContent)?.takeIf { it.isNotBlank() }
         ?: return stringResource(R.string.conversations_no_preview)
-    return when {
+    val label = when {
         preview == "[Image]" -> stringResource(R.string.conversations_preview_image)
         preview == "[Audio]" -> stringResource(R.string.conversations_preview_audio)
         preview == "[Video]" -> stringResource(R.string.conversations_preview_video)
@@ -536,6 +571,11 @@ private fun ConversationData.localizedPreviewText(): String {
             preview.removePrefix("[File] ")
         )
         else -> preview
+    }
+    return when (localPreview?.sendState) {
+        MessageSendState.SENDING -> stringResource(R.string.conversations_sending, label)
+        MessageSendState.FAILED -> stringResource(R.string.conversations_send_failed, label)
+        else -> label
     }
 }
 

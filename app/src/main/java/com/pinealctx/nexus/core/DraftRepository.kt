@@ -4,34 +4,23 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class DraftRepository @Inject constructor() {
-
-    private val drafts = mutableMapOf<String, String>()
-    private val draftEntities = mutableMapOf<String, List<TextEntityData>>()
+class DraftRepository @Inject constructor(private val store: com.pinealctx.nexus.local.LocalDataStore) {
 
     fun save(conversationId: String, text: String, entities: List<TextEntityData> = emptyList()) {
-        if (text.isBlank()) draftEntities.remove(conversationId)
-        else draftEntities[conversationId] = validTextEntities(text, entities)
-        if (text.isBlank()) {
-            drafts.remove(conversationId)
-        } else {
-            drafts[conversationId] = text
-        }
+        store.saveDraft(conversationId, text, entities)
     }
 
     fun get(conversationId: String): String {
-        return drafts[conversationId] ?: ""
+        return store.getDraft(conversationId).first
     }
 
-    fun getEntities(conversationId: String): List<TextEntityData> = draftEntities[conversationId].orEmpty()
+    fun getEntities(conversationId: String): List<TextEntityData> = store.getDraft(conversationId).second
 
     fun clear(conversationId: String) {
-        draftEntities.remove(conversationId)
-        drafts.remove(conversationId)
+        store.saveDraft(conversationId, "", emptyList())
     }
 
     fun clearAll() {
-        draftEntities.clear()
-        drafts.clear()
+        store.clearDrafts()
     }
 }

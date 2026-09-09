@@ -14,6 +14,9 @@ class MessageRepository @Inject constructor(
     private val messageManager: MessageManager,
     private val searchManager: SearchManager
 ) {
+    fun observeMessageWindow(conversationId: String, oldestId: Long): Flow<List<MessageData>> =
+        messageManager.observeMessageWindow(conversationId, oldestId)
+
     fun observeMessages(conversationId: String, limit: Int = 50): Flow<List<MessageData>> =
         messageManager.observeMessages(conversationId, limit)
 

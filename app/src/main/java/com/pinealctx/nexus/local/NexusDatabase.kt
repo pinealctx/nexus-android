@@ -8,6 +8,9 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.RoomDatabase
 import androidx.room.Query
+import androidx.room.Embedded
+import androidx.room.Relation
+import androidx.room.Transaction
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.flow.Flow
@@ -15,6 +18,7 @@ import kotlinx.coroutines.flow.Flow
 @Database(
     entities = [
         ConversationEntity::class,
+        DraftEntity::class,
         MessageEntity::class,
         LocalMessageEntity::class,
         ContactEntity::class,
@@ -27,13 +31,18 @@ import kotlinx.coroutines.flow.Flow
         GroupMemberEntity::class,
         MediaFileEntity::class
     ],
-    version = 10,
+    version = 11,
     exportSchema = true
 )
 abstract class NexusDatabase : RoomDatabase() {
     abstract fun cacheDao(): CacheDao
 
     companion object {
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS drafts (conversation_id TEXT NOT NULL PRIMARY KEY, text TEXT NOT NULL, text_entities TEXT NOT NULL)")
+            }
+        }
         val MIGRATION_9_10 = object : Migration(9, 10) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE messages ADD COLUMN text_entities TEXT")
@@ -62,6 +71,13 @@ abstract class NexusDatabase : RoomDatabase() {
 
 @Dao
 interface CacheDao {
+    @Transaction
+    @Query("SELECT * FROM conversations WHERE deleted = 0")
+    fun observeConversationSnapshots(): Flow<List<ConversationSnapshot>>
+
+    @Query("SELECT * FROM messages WHERE conversation_id = :conversationId AND message_id >= :oldestId ORDER BY message_id DESC")
+    fun observeMessageWindow(conversationId: String, oldestId: Long): Flow<List<MessageEntity>>
+
     @Query(
         """
         SELECT * FROM conversations
@@ -105,6 +121,19 @@ interface CacheDao {
     @Query("SELECT * FROM pending_requests ORDER BY created_at DESC")
     fun observePendingRequests(): Flow<List<PendingRequestEntity>>
 }
+
+@Entity(tableName = "drafts")
+data class DraftEntity(
+    @PrimaryKey @ColumnInfo(name = "conversation_id") val conversationId: String,
+    val text: String,
+    @ColumnInfo(name = "text_entities") val textEntities: String
+)
+
+data class ConversationSnapshot(
+    @Embedded val conversation: ConversationEntity,
+    @Relation(parentColumn = "conversation_id", entityColumn = "conversation_id") val outbox: List<LocalMessageEntity>,
+    @Relation(parentColumn = "conversation_id", entityColumn = "conversation_id") val drafts: List<DraftEntity>
+)
 
 @Entity(
     tableName = "conversations",

@@ -97,6 +97,7 @@ fun ChatScreen(
     var previewImageId by remember { mutableStateOf<String?>(null) }
     var replyTarget by remember { mutableStateOf<ChatMessageItem.Remote?>(null) }
     var editTarget by remember { mutableStateOf<ChatMessageItem.Remote?>(null) }
+    var draftBeforeEdit by remember { mutableStateOf<Pair<TextFieldValue, List<com.pinealctx.nexus.core.TextEntityData>>?>(null) }
     var actionConfirmation by remember { mutableStateOf<MessageActionConfirmation?>(null) }
     val context = androidx.compose.ui.platform.LocalContext.current
     val openMiniApp: (Int, String) -> Unit = { agentUserId, startParam ->
@@ -133,6 +134,23 @@ fun ChatScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val latestDraftText by rememberUpdatedState(inputValue.text)
     val latestDraftEntities by rememberUpdatedState(inputEntities)
+    val latestEditTarget by rememberUpdatedState(editTarget)
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP && latestEditTarget == null) {
+                viewModel.saveDraft(latestDraftText, latestDraftEntities)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    LaunchedEffect(inputValue.text, inputEntities, editTarget) {
+        if (editTarget == null) {
+            kotlinx.coroutines.delay(300)
+            viewModel.saveDraft(inputValue.text, inputEntities)
+        }
+    }
     val activeMentionQuery = if (uiState.isGroupConversation) mentionQuery(inputValue) else null
     LaunchedEffect(activeMentionQuery?.start) {
         if (activeMentionQuery != null) viewModel.loadMentionCandidates()
@@ -219,7 +237,7 @@ fun ChatScreen(
     }
 
     DisposableEffect(Unit) {
-        onDispose { viewModel.saveDraft(latestDraftText, latestDraftEntities) }
+        onDispose { if (latestEditTarget == null) viewModel.saveDraft(latestDraftText, latestDraftEntities) }
     }
 
     uiState.mentionedUserId?.let { userId ->
@@ -425,8 +443,9 @@ fun ChatScreen(
                         onClearReply = { replyTarget = null },
                         onClearEdit = {
                             editTarget = null
-                            inputValue = TextFieldValue("")
-                            inputEntities = emptyList()
+                            inputValue = draftBeforeEdit?.first ?: TextFieldValue("")
+                            inputEntities = draftBeforeEdit?.second.orEmpty()
+                            draftBeforeEdit = null
                         },
                         onSubmit = { text ->
                             val editing = editTarget
@@ -435,11 +454,12 @@ fun ChatScreen(
                             } else {
                                 viewModel.sendMessage(text, replyTarget?.data?.messageId, inputEntities)
                             }
-                            inputValue = TextFieldValue("")
-                            inputEntities = emptyList()
+                            inputValue = if (editing != null) draftBeforeEdit?.first ?: TextFieldValue("") else TextFieldValue("")
+                            inputEntities = if (editing != null) draftBeforeEdit?.second.orEmpty() else emptyList()
+                            draftBeforeEdit = null
                             replyTarget = null
                             editTarget = null
-                            viewModel.saveDraft("")
+                            viewModel.saveDraft(inputValue.text, inputEntities)
                         },
                         onSendVisualMedia = viewModel::sendVisualMedia,
                         onSendFile = viewModel::sendFile,
@@ -519,10 +539,19 @@ fun ChatScreen(
                                             reserveSenderAvatarSpace = uiState.isGroupConversation,
                                             pendingActionMessageId = uiState.pendingMessageActionId,
                                             onReply = {
+                                                if (editTarget != null) {
+                                                    inputValue = draftBeforeEdit?.first ?: TextFieldValue("")
+                                                    inputEntities = draftBeforeEdit?.second.orEmpty()
+                                                    draftBeforeEdit = null
+                                                }
                                                 editTarget = null
                                                 replyTarget = it
                                             },
                                             onEdit = { target ->
+                                                if (editTarget == null) {
+                                                    draftBeforeEdit = inputValue to inputEntities
+                                                    viewModel.saveDraft(inputValue.text, inputEntities)
+                                                }
                                                 replyTarget = null
                                                 editTarget = target
                                                 val editText = (target.content as MessageContent.Text).text

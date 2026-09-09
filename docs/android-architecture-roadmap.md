@@ -7,6 +7,8 @@
 
 功能增量：2026-09-09 已实现 Android 0.3.0 Agent 命令面板、会话内 Mini App 入口与本地消息搜索分页/定位体验，详见 [0.3.0 版本说明](releases/0.3.0.md)。沿用现有协议及数据库版本，不新增业务消息类型。
 
+体验修复：2026-09-09 Android 0.3.1 补齐列表实时排序、队列状态预览、陈旧响应保护、会话/历史分页与持久化草稿，详见 [0.3.1 版本说明](releases/0.3.1.md)。Room 升级到 11，仅新增草稿存储，不改变公开协议。
+
 ## 技术栈结论
 
 现有原生技术方向合理，不需要跨平台重写，也不需要把 Connect/Protobuf 改成 REST。当前基线为 JDK 21、Gradle 9.5.1、AGP 9.3.2、Kotlin 2.4.10、KSP 2.3.10、Compose BOM 2026.06.01、Hilt 2.60.1、Room 2.8.4、DataStore 1.2.1、WorkManager 2.11.2、Connect-Kotlin 0.9.0、OkHttp 5.4.0 和 Firebase BOM 34.18.0。

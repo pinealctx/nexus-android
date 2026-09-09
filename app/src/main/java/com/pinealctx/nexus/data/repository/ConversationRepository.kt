@@ -10,6 +10,8 @@ import javax.inject.Singleton
 class ConversationRepository @Inject constructor(
     private val conversationManager: ConversationManager
 ) {
+    suspend fun fetchPage(limit: Int = 50, beforeTime: Long? = null) = conversationManager.fetchConversationPage(limit, beforeTime)
+
     fun observeConversations(limit: Int = 50, beforeTime: Long? = null): Flow<List<ConversationData>> =
         conversationManager.observeConversations(limit, beforeTime)
 
