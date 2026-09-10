@@ -38,7 +38,8 @@ class AuthApi @Inject constructor(
         return ClientConfigData(
             phoneEnabled = response.login.phoneEnabled,
             emailEnabled = response.login.emailEnabled,
-            wsUrl = response.gateway.wsUrl.takeIf { it.isNotBlank() }
+            wsUrl = response.gateway.wsUrl.takeIf { it.isNotBlank() },
+            reactions = response.reactions
         )
     }
 

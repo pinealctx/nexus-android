@@ -20,9 +20,12 @@ class MessageSendWorker(
             applicationContext,
             MessageSendWorkerDependencies::class.java
         )
+        if (!dependencies.notifications().matchesSession(inputData.getInt("recipient_id", 0), inputData.getString("session").orEmpty())) return Result.success()
         return try {
             dependencies.messageManager().retryLocalMessage(clientMessageId)
             Result.success()
+        } catch (error: kotlinx.coroutines.CancellationException) {
+            throw error
         } catch (_: IllegalArgumentException) {
             Result.failure()
         } catch (_: Exception) {
@@ -39,4 +42,5 @@ class MessageSendWorker(
 @InstallIn(SingletonComponent::class)
 interface MessageSendWorkerDependencies {
     fun messageManager(): MessageManager
+    fun notifications(): com.pinealctx.nexus.util.NotificationHelper
 }

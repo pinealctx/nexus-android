@@ -6,6 +6,21 @@ import org.junit.Rule
 import org.junit.Test
 
 class NexusDatabaseMigrationTest {
+    @Test
+    fun migrate11To12PreservesDraftsAndCreatesReactions() {
+        helper.createDatabase(DatabaseName, 11).apply {
+            execSQL("INSERT INTO drafts (conversation_id,text,text_entities) VALUES ('100','draft','[]')")
+            close()
+        }
+        helper.runMigrationsAndValidate(DatabaseName, 12, true, NexusDatabase.MIGRATION_11_12).use { db ->
+            db.query("SELECT text FROM drafts WHERE conversation_id='100'").use {
+                org.junit.Assert.assertTrue(it.moveToFirst())
+                org.junit.Assert.assertEquals("draft", it.getString(0))
+            }
+            db.execSQL("INSERT INTO reaction_snapshots VALUES ('100',1,0,X'')")
+            db.execSQL("INSERT INTO notification_actions VALUES (1,1)")
+        }
+    }
     @get:Rule
     val helper = MigrationTestHelper(
         instrumentation = InstrumentationRegistry.getInstrumentation(),

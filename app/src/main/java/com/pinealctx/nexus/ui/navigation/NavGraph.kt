@@ -23,7 +23,7 @@ import com.pinealctx.nexus.ui.screens.settings.SettingsScreen
 object Routes {
     const val LOGIN = "login"
     const val MAIN = "main"
-    const val CHAT = "chat/{conversationId}"
+    const val CHAT = "chat/{conversationId}?messageId={messageId}"
     const val FRIEND_REQUESTS = "friend_requests"
     const val GROUP_CHATS = "group_chats"
     const val GROUP_DETAIL = "group_detail/{groupId}"
@@ -40,7 +40,7 @@ object Routes {
     const val LANGUAGE_SETTINGS = "settings/language"
     const val ABOUT = "settings/about"
 
-    fun chatRoute(conversationId: String) = "chat/$conversationId"
+    fun chatRoute(conversationId: String, messageId: Long = 0) = "chat/$conversationId?messageId=$messageId"
     fun groupDetailRoute(groupId: Int) = "group_detail/$groupId"
     fun searchRoute(tab: String = SEARCH_TAB_MESSAGES) = "search?tab=$tab"
 }
@@ -124,10 +124,11 @@ fun NexusNavGraph(
             )
         }
 
-        composable(Routes.CHAT) { backStackEntry ->
+        composable(Routes.CHAT, arguments = listOf(navArgument("messageId") { type = NavType.LongType; defaultValue = 0L })) { backStackEntry ->
             val conversationId = backStackEntry.arguments?.getString("conversationId") ?: ""
             ChatScreen(
                 conversationId = conversationId,
+                initialMessageId = backStackEntry.arguments?.getLong("messageId") ?: 0L,
                 onBack = { navController.popBackStack() },
                 onGroupDetails = { groupId ->
                     navController.navigate(Routes.groupDetailRoute(groupId))

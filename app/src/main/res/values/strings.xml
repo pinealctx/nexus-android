@@ -1,5 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="notification_reaction_title">New reaction</string>
+    <string name="notification_reaction_body">%1$s reacted %2$s to your message</string>
+    <string name="reactions_title">React with emoji</string>
+    <string name="reactions_failed">Could not update the reaction. Check your connection and selection limit, then try again.</string>
+    <string name="notification_you">You</string>
+    <string name="notification_reply">Reply</string>
+    <string name="notification_mark_read">Mark as read</string>
+    <string name="notification_preview_setting">Show message previews</string>
+    <string name="notification_friends_setting">Friend requests</string>
+    <string name="notification_reactions_setting">Reactions to my messages</string>
     <string name="conversations_load_more_retry">Loading more failed. Tap to retry</string>
     <string name="conversations_load_more">Load more conversations</string>
     <string name="conversations_loading_more">Loading…</string>

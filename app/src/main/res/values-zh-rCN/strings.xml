@@ -1,5 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="notification_reaction_title">新的表情回应</string>
+    <string name="notification_reaction_body">%1$s 用 %2$s 回应了你的消息</string>
+    <string name="reactions_title">表情回应</string>
+    <string name="reactions_failed">回应未成功，请检查网络和选择数量限制后重试。</string>
+    <string name="notification_you">你</string>
+    <string name="notification_reply">回复</string>
+    <string name="notification_mark_read">标为已读</string>
+    <string name="notification_preview_setting">显示消息预览</string>
+    <string name="notification_friends_setting">好友申请提醒</string>
+    <string name="notification_reactions_setting">对我消息的表情回应</string>
     <string name="conversations_load_more_retry">加载更多失败，点击重试</string>
     <string name="conversations_load_more">加载更多会话</string>
     <string name="conversations_loading_more">正在加载…</string>

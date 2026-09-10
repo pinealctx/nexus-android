@@ -46,9 +46,10 @@ object ManagerModule {
     @Singleton
     fun provideConversationManager(
         conversationApi: ConversationApi,
-        localDataStore: LocalDataStore
+        localDataStore: LocalDataStore,
+        notifications: com.pinealctx.nexus.util.NotificationHelper
     ): ConversationManager =
-        ConversationManager(conversationApi, localDataStore)
+        ConversationManager(conversationApi, localDataStore, notifications)
 
     @Provides
     @Singleton

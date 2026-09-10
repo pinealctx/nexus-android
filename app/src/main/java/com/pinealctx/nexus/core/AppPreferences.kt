@@ -19,7 +19,10 @@ private val Context.appPreferencesDataStore by preferencesDataStore(name = "nexu
 data class AppSettings(
     val localeTag: String = "system",
     val notificationAlerts: Boolean = true,
-    val notificationSound: Boolean = true
+    val notificationSound: Boolean = true,
+    val notificationPreview: Boolean = true,
+    val notificationFriends: Boolean = true,
+    val notificationReactions: Boolean = false
 )
 
 @Singleton
@@ -30,6 +33,9 @@ class AppPreferences @Inject constructor(
         val LocaleTag = stringPreferencesKey("app_locale")
         val NotificationAlerts = booleanPreferencesKey("notification_alerts")
         val NotificationSound = booleanPreferencesKey("notification_sound")
+        val NotificationPreview = booleanPreferencesKey("notification_preview")
+        val NotificationFriends = booleanPreferencesKey("notification_friends")
+        val NotificationReactions = booleanPreferencesKey("notification_reactions")
     }
 
     val settings: Flow<AppSettings> = context.appPreferencesDataStore.data
@@ -41,7 +47,10 @@ class AppPreferences @Inject constructor(
             AppSettings(
                 localeTag = preferences[LocaleTag] ?: "system",
                 notificationAlerts = preferences[NotificationAlerts] ?: true,
-                notificationSound = preferences[NotificationSound] ?: true
+                notificationSound = preferences[NotificationSound] ?: true,
+                notificationPreview = preferences[NotificationPreview] ?: true,
+                notificationFriends = preferences[NotificationFriends] ?: true,
+                notificationReactions = preferences[NotificationReactions] ?: false
             )
         }
 
@@ -58,4 +67,8 @@ class AppPreferences @Inject constructor(
     }
 
     suspend fun currentSettings(): AppSettings = settings.first()
+
+    suspend fun setNotificationPreview(enabled: Boolean) { context.appPreferencesDataStore.edit { it[NotificationPreview] = enabled } }
+    suspend fun setNotificationFriends(enabled: Boolean) { context.appPreferencesDataStore.edit { it[NotificationFriends] = enabled } }
+    suspend fun setNotificationReactions(enabled: Boolean) { context.appPreferencesDataStore.edit { it[NotificationReactions] = enabled } }
 }

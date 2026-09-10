@@ -37,6 +37,9 @@ class NotificationSettingsViewModel @Inject constructor(
     fun setSoundEnabled(enabled: Boolean) {
         viewModelScope.launch { appPreferences.setNotificationSound(enabled) }
     }
+    fun setPreview(enabled: Boolean) { viewModelScope.launch { appPreferences.setNotificationPreview(enabled) } }
+    fun setFriends(enabled: Boolean) { viewModelScope.launch { appPreferences.setNotificationFriends(enabled) } }
+    fun setReactions(enabled: Boolean) { viewModelScope.launch { appPreferences.setNotificationReactions(enabled) } }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -60,6 +63,15 @@ fun NotificationSettingsScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            ListItem(headlineContent = { Text(stringResource(R.string.notification_preview_setting)) }, trailingContent = {
+                Switch(settings.notificationPreview, viewModel::setPreview)
+            })
+            ListItem(headlineContent = { Text(stringResource(R.string.notification_friends_setting)) }, trailingContent = {
+                Switch(settings.notificationFriends, viewModel::setFriends)
+            })
+            ListItem(headlineContent = { Text(stringResource(R.string.notification_reactions_setting)) }, trailingContent = {
+                Switch(settings.notificationReactions, viewModel::setReactions)
+            })
             ListItem(
                 headlineContent = { Text(stringResource(R.string.notification_settings_alerts)) },
                 supportingContent = { Text(stringResource(R.string.notification_settings_alerts_desc)) },

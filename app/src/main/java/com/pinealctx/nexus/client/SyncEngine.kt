@@ -23,7 +23,9 @@ class SyncEngine @Inject constructor(
     private val stateStore: SyncStateStore,
     private val updateDecoder: GatewayUpdateDecoder,
     private val localDataStore: LocalDataStore,
-    private val appEventBus: AppEventBus
+    private val appEventBus: AppEventBus,
+    private val notifications: com.pinealctx.nexus.util.NotificationHelper,
+    private val secureStorage: com.pinealctx.nexus.core.SecureStorage
 ) {
     private val syncMutex = Mutex()
 
@@ -109,6 +111,7 @@ class SyncEngine @Inject constructor(
         )) {
             SyncSequenceDecision.IGNORE -> return
             SyncSequenceDecision.APPLY -> {
+                notifications.onUpdate(update, alert = isPush)
                 Log.i("NexusSync", "Applied sn=${update.sn} kind=${update.updateCase} push=$isPush")
                 return
             }
@@ -117,6 +120,7 @@ class SyncEngine @Inject constructor(
         if (update.sn > currentSn + 1) {
             Log.w("NexusSync", "Gap detected: local_sn=$currentSn received=${update.sn}")
             fetchDifference()
+            notifications.onUpdate(update, alert = isPush)
         }
     }
 
@@ -166,7 +170,9 @@ class SyncEngine @Inject constructor(
     }
 
     private fun dispatchSnUpdate(update: SnUpdate) {
+        notifications.onUpdate(update, alert = false)
         when (update.updateCase) {
+            SnUpdate.UpdateCase.MESSAGE_REACTIONS_CHANGED -> localDataStore.applyReactionEvent(update.messageReactionsChanged, secureStorage.getUserId())
             SnUpdate.UpdateCase.MESSAGE_ENVELOPE -> {
                 localDataStore.upsertMessage(update.messageEnvelope.toMessageData())
                 appEventBus.emitMessagesUpdated(update.messageEnvelope.conversationId.toString())

@@ -42,6 +42,9 @@ class SecureStorage @Inject constructor(
     }
 
     fun saveTokens(accessToken: String, refreshToken: String, expiresIn: Int, userId: Int) {
+        if (!hasTokens() || getUserId() != userId) {
+            prefs.edit().putString("notification_session", UUID.randomUUID().toString()).apply()
+        }
         prefs.edit()
             .putString(KEY_ACCESS_TOKEN, encrypt(accessToken))
             .putString(KEY_REFRESH_TOKEN, encrypt(refreshToken))
@@ -64,6 +67,13 @@ class SecureStorage @Inject constructor(
     }
     fun getUserId(): Int = readEncrypted(KEY_USER_ID)?.toIntOrNull() ?: 0
     fun hasTokens(): Boolean = getAccessToken() != null
+    @Synchronized
+    fun notificationSession(): String {
+        if (!hasTokens()) return ""
+        return prefs.getString("notification_session", null) ?: UUID.randomUUID().toString().also {
+            check(prefs.edit().putString("notification_session", it).commit())
+        }
+    }
 
     fun getCacheOwnerUserId(): Int = cacheBindingPrefs.getInt(KEY_CACHE_OWNER_USER_ID, 0)
 
@@ -109,6 +119,7 @@ class SecureStorage @Inject constructor(
 
     fun clearTokens() {
         prefs.edit()
+            .remove("notification_session")
             .remove(KEY_ACCESS_TOKEN)
             .remove(KEY_REFRESH_TOKEN)
             .remove(KEY_EXPIRES_IN)

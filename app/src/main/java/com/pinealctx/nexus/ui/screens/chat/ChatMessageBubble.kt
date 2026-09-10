@@ -61,7 +61,12 @@ fun MessageBubble(
     onOpenMedia: (String) -> Unit = {},
     onCardAction: (Long, String, String) -> Unit = { _, _, _ -> },
     onOpenMiniApp: (Int, String) -> Unit = { _, _ -> },
-    onMentionClick: (Int) -> Unit = {}
+    onMentionClick: (Int) -> Unit = {},
+    reactionEnabled: Boolean = false,
+    reactionOperation: ReactionOperation? = null,
+    onReactionPicker: () -> Unit = {},
+    onReaction: (String) -> Unit = {},
+    onReactionDetails: (String) -> Unit = {}
 ) {
     if (message.senderId <= 0) {
         SystemMessageBubble(message, groupMemberNames)
@@ -177,6 +182,9 @@ fun MessageBubble(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+                if (remoteMessage != null && !remoteMessage.recalled) {
+                    ReactionBar(remoteMessage.data, reactionOperation, reactionEnabled, onReaction, onReactionDetails)
+                }
             }
         }
         if (remoteMessage != null) {
@@ -194,6 +202,7 @@ fun MessageBubble(
                     )
                 }
                 if (!remoteMessage.recalled) {
+                    if (reactionEnabled) DropdownMenuItem(text = { Text(stringResource(R.string.reactions_title)) }, onClick = { menuExpanded = false; onReactionPicker() })
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.chat_action_reply)) },
                         enabled = actionState.canReply,

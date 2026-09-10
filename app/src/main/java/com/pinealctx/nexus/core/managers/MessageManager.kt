@@ -168,6 +168,7 @@ class MessageManager @Inject constructor(
     suspend fun retryLocalMessage(clientMessageId: Long): Long {
         val message = localDataStore.getLocalMessage(clientMessageId)
             ?: throw IllegalArgumentException("Local message not found")
+        if (message.sendState == MessageSendState.SENT && message.serverMessageId != null) return message.serverMessageId
         localDataStore.markLocalMessageSending(clientMessageId)
         return sendQueuedMessage(message)
     }
