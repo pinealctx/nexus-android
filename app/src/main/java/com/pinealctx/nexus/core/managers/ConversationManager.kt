@@ -11,7 +11,8 @@ import javax.inject.Singleton
 @Singleton
 class ConversationManager @Inject constructor(
     private val conversationApi: ConversationApi,
-    private val localDataStore: LocalDataStore
+    private val localDataStore: LocalDataStore,
+    private val notifications: com.pinealctx.nexus.util.NotificationHelper
 ) {
     fun observeConversations(
         limit: Int = 50,
@@ -62,6 +63,7 @@ class ConversationManager @Inject constructor(
     suspend fun markAsRead(conversationId: Long, upToMessageId: Long) {
         conversationApi.markAsRead(conversationId, upToMessageId)
         localDataStore.markConversationRead(conversationId, upToMessageId)
+        notifications.clearRead(conversationId, upToMessageId)
     }
 
     fun getCachedConversation(conversationId: Long): ConversationData? = localDataStore.getConversation(conversationId)

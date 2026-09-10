@@ -23,6 +23,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: pinealctx/nexus-proto
+          ref: f2f9de6611f82ea6cc222f165500d4b4a7b8fa3e
           path: nexus-proto
 
       - name: Set up JDK 21
@@ -83,6 +84,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: pinealctx/nexus-proto
+          ref: f2f9de6611f82ea6cc222f165500d4b4a7b8fa3e
           path: nexus-proto
 
       - name: Set up JDK 21

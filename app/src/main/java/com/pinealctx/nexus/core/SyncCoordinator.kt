@@ -26,13 +26,14 @@ class SyncCoordinator @Inject constructor(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     var onForceLogout: (() -> Unit)? = null
-    var activeConversationId: String? = null
+    var activeConversationId: String?
+        get() = notificationHelper.activeConversationId
+        set(value) { notificationHelper.activeConversationId = value }
 
     fun initialize() {
         observeTokenRefresh()
         observeForceLogout()
         observeColdStartRequired()
-        observeMessagesForNotification()
     }
 
     fun startSession() {
@@ -49,6 +50,7 @@ class SyncCoordinator @Inject constructor(
     }
 
     fun stopSession() {
+        notificationHelper.cancelAll()
         syncBridge.stopSync()
         syncScheduler.cancelAll()
         messageSendScheduler.cancelAll()
@@ -72,6 +74,7 @@ class SyncCoordinator @Inject constructor(
     private fun observeForceLogout() {
         appEventBus.forceLogout()
             .onEach {
+                notificationHelper.cancelAll()
                 syncBridge.stopSync()
                 syncScheduler.cancelAll()
                 messageSendScheduler.cancelAll()
@@ -91,22 +94,6 @@ class SyncCoordinator @Inject constructor(
                 } catch (error: Exception) {
                     Log.w("NexusSync", "Cold-start recovery failed", error)
                     syncScheduler.enqueueImmediateSync()
-                }
-            }
-            .launchIn(scope)
-    }
-
-    private fun observeMessagesForNotification() {
-        appEventBus.messagesUpdated()
-            .onEach { event ->
-                if (event.conversationId != activeConversationId &&
-                    !notificationHelper.shouldSuppressSyncedMessage(event.conversationId)
-                ) {
-                    notificationHelper.showMessageNotification(
-                        senderName = notificationHelper.newMessageTitle(),
-                        messageText = notificationHelper.newMessageBody(),
-                        conversationId = event.conversationId
-                    )
                 }
             }
             .launchIn(scope)

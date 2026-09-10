@@ -53,7 +53,8 @@ internal fun MessageEnvelope.toMessageData(): MessageData {
         replyContext = if (hasReplyTo()) replyTo.toMessageReplyContextData() else null,
         createdAt = createdAt,
         edited = edited,
-        recalled = content is MessageContent.Recalled || (hasBody() && body.type == MessageType.MESSAGE_TYPE_RECALLED)
+        recalled = content is MessageContent.Recalled || (hasBody() && body.type == MessageType.MESSAGE_TYPE_RECALLED),
+        reactions = if (hasReactions()) reactions else null
     )
 }
 

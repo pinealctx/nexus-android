@@ -18,14 +18,16 @@ import javax.inject.Singleton
 @Singleton
 class MessageSendScheduler @Inject constructor(
     @ApplicationContext context: Context,
-    private val localDataStore: LocalDataStore
+    private val localDataStore: LocalDataStore,
+    private val secure: SecureStorage
 ) {
     private val workManager = WorkManager.getInstance(context)
 
     fun enqueue(clientMessageId: Long) {
         val request = OneTimeWorkRequestBuilder<MessageSendWorker>()
             .addTag(MESSAGE_SEND_WORK_TAG)
-            .setInputData(Data.Builder().putLong(MessageSendWorker.CLIENT_MESSAGE_ID, clientMessageId).build())
+            .setInputData(Data.Builder().putLong(MessageSendWorker.CLIENT_MESSAGE_ID, clientMessageId)
+                .putInt("recipient_id", secure.getUserId()).putString("session", secure.notificationSession()).build())
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.SECONDS)
             .build()

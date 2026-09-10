@@ -135,14 +135,17 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleNotificationIntent(intent: Intent) {
+        val recipient = intent.getStringExtra("recipient_id")?.toIntOrNull()
+        if (recipient != null && !notificationHelper.matchesSession(recipient, intent.getStringExtra("session").orEmpty())) return
         val conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID)
         pendingNotificationRoute.value = when {
-            !conversationId.isNullOrBlank() -> Routes.chatRoute(conversationId)
+            !conversationId.isNullOrBlank() -> Routes.chatRoute(conversationId, intent.getStringExtra("messageId")?.toLongOrNull() ?: 0)
             intent.getStringExtra(EXTRA_NAVIGATE_TO) == NAVIGATE_FRIEND_REQUESTS ->
                 Routes.FRIEND_REQUESTS
             else -> return
         }
         intent.removeExtra(EXTRA_CONVERSATION_ID)
+        intent.removeExtra("messageId")
         intent.removeExtra(EXTRA_NAVIGATE_TO)
     }
 
@@ -185,12 +188,17 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        notificationHelper.cancelAll()
+        notificationHelper.isForeground = true
         if (secureStorage.hasTokens()) {
             lifecycleScope.launch(Dispatchers.IO) {
                 runCatching { pushManager.clearBadge() }
             }
         }
+    }
+
+    override fun onPause() {
+        notificationHelper.isForeground = false
+        super.onPause()
     }
 
     private companion object {

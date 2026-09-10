@@ -71,10 +71,21 @@ private data class MessageActionConfirmation(
 fun ChatScreen(
     conversationId: String,
     onBack: () -> Unit,
+    initialMessageId: Long = 0,
     onGroupDetails: (Int) -> Unit = {},
-    viewModel: ChatViewModel = hiltViewModel()
+    viewModel: ChatViewModel = hiltViewModel(),
+    reactionsModel: ReactionsViewModel = hiltViewModel()
 ) {
+    val reactionsState by reactionsModel.state.collectAsState()
+    ReactionSheets(reactionsState, reactionsModel)
     val uiState by viewModel.uiState.collectAsState()
+    var initialMessageHandled by remember(conversationId, initialMessageId) { mutableStateOf(false) }
+    LaunchedEffect(initialMessageId, uiState.messages.isNotEmpty()) {
+        if (!initialMessageHandled && initialMessageId > 0 && uiState.messages.any { it is ChatMessageItem.Remote }) {
+            initialMessageHandled = true
+            viewModel.revealMessage(initialMessageId)
+        }
+    }
     val searchState by viewModel.searchState.collectAsState()
     var inputEntities by remember { mutableStateOf(viewModel.initialDraftEntities) }
     var inputValue by remember {
@@ -528,6 +539,11 @@ fun ChatScreen(
                                         else androidx.compose.ui.graphics.Color.Transparent
                                     )) {
                                         MessageBubble(
+                                            reactionEnabled = reactionsState.config.enabled,
+                                            reactionOperation = (message as? ChatMessageItem.Remote)?.let { reactionsState.pending[it.data.messageId] },
+                                            onReactionPicker = { (message as? ChatMessageItem.Remote)?.let { reactionsModel.picker(it.data) } },
+                                            onReaction = { emoji -> (message as? ChatMessageItem.Remote)?.let { reactionsModel.toggle(it.data, emoji) } },
+                                            onReactionDetails = { emoji -> (message as? ChatMessageItem.Remote)?.let { reactionsModel.details(it.data, emoji) } },
                                             onMentionClick = viewModel::showMentionedUser,
                                             message = message,
                                             currentUserId = uiState.currentUserId,

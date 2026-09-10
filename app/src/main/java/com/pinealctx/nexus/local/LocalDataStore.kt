@@ -41,7 +41,7 @@ class LocalDataStore @Inject constructor(
     @ApplicationContext context: Context
 ) {
     private val database = Room.databaseBuilder(context, NexusDatabase::class.java, DATABASE_NAME)
-        .addMigrations(NexusDatabase.MIGRATION_7_8, NexusDatabase.MIGRATION_8_9, NexusDatabase.MIGRATION_9_10, NexusDatabase.MIGRATION_10_11)
+        .addMigrations(NexusDatabase.MIGRATION_7_8, NexusDatabase.MIGRATION_8_9, NexusDatabase.MIGRATION_9_10, NexusDatabase.MIGRATION_10_11, NexusDatabase.MIGRATION_11_12)
         .allowMainThreadQueries()
         .build()
 
@@ -71,7 +71,43 @@ class LocalDataStore @Inject constructor(
         }
 
     fun observeMessageWindow(conversationId: String, oldestId: Long): Flow<List<MessageData>> =
-        database.cacheDao().observeMessageWindow(conversationId, oldestId).map { rows -> rows.map { it.toMessageData() } }
+        withReactionSnapshots(conversationId, database.cacheDao().observeMessageWindow(conversationId, oldestId))
+
+    private fun withReactionSnapshots(conversationId: String, messages: Flow<List<MessageEntity>>): Flow<List<MessageData>> =
+        kotlinx.coroutines.flow.combine(messages, database.cacheDao().observeReactions(conversationId)) { rows, reactions ->
+            val views = reactions.associate { it.messageId to com.shared.v1.MessageReactionView.parseFrom(it.payload) }
+            rows.map { it.toMessageData().copy(reactions = views[it.messageId]) }
+        }
+
+    fun getReactionState(conversationId: String, messageId: Long): com.pinealctx.nexus.core.ReactionState? =
+        readableDatabase.rawQuery("SELECT payload, own_revision FROM reaction_snapshots WHERE conversation_id = ? AND message_id = ?", arrayOf(conversationId, "$messageId")).use {
+            if (it.moveToFirst()) com.pinealctx.nexus.core.ReactionState(com.shared.v1.MessageReactionView.parseFrom(it.getBlob(0)), it.getLong(1)) else null
+        }
+
+    fun upsertReactions(view: com.shared.v1.MessageReactionView) {
+        writableDatabase.transaction {
+            val old = getReactionState("${view.state.conversationId}", view.state.messageId)
+                ?: com.pinealctx.nexus.core.ReactionState(com.shared.v1.MessageReactionView.getDefaultInstance())
+            saveReactionState(old.merge(view), this)
+        }
+    }
+
+    fun applyReactionEvent(event: com.shared.v1.MessageReactionsChangedEvent, userId: Int) {
+        writableDatabase.transaction {
+            val old = getReactionState("${event.state.conversationId}", event.state.messageId)
+                ?: com.pinealctx.nexus.core.ReactionState(com.shared.v1.MessageReactionView.newBuilder().setState(event.state.toBuilder().setRevision(0).clearCounts()).build())
+            saveReactionState(old.apply(event, userId), this)
+        }
+    }
+
+    private fun saveReactionState(state: com.pinealctx.nexus.core.ReactionState, db: SupportSQLiteDatabase) {
+        db.insertWithOnConflict("reaction_snapshots", null, ContentValues().apply {
+            put("conversation_id", "${state.view.state.conversationId}")
+            put("message_id", state.view.state.messageId)
+            put("own_revision", state.ownRevision)
+            put("payload", state.view.toByteArray())
+        }, SQLiteDatabase.CONFLICT_REPLACE)
+    }
 
     fun saveDraft(conversationId: String, text: String, entities: List<TextEntityData>) {
         writableDatabase.transaction {
@@ -99,9 +135,7 @@ class LocalDataStore @Inject constructor(
     ).use { cursor -> buildMap { while (cursor.moveToNext()) put(cursor.getString(0), cursor.getLong(1)) } }
 
     fun observeMessages(conversationId: String, limit: Int = 50): Flow<List<MessageData>> =
-        database.cacheDao()
-            .observeMessages(conversationId, limit.coerceAtLeast(1))
-            .map { rows -> rows.map { it.toMessageData() } }
+        withReactionSnapshots(conversationId, database.cacheDao().observeMessages(conversationId, limit.coerceAtLeast(1)))
 
     fun observeLocalMessages(conversationId: String): Flow<List<LocalMessageData>> =
         database.cacheDao()
@@ -724,6 +758,16 @@ class LocalDataStore @Inject constructor(
         }
     }
 
+    fun enqueueNotificationReply(message: LocalMessageData) {
+        writableDatabase.transaction {
+            val receipt = ContentValues().apply { put("client_message_id", message.clientMessageId); put("created_at", message.createdAt) }
+            if (insertWithOnConflict("notification_actions", null, receipt, SQLiteDatabase.CONFLICT_IGNORE) != -1L) {
+                insertWithOnConflict("local_messages", null, message.toContentValues(), SQLiteDatabase.CONFLICT_IGNORE)
+                ensureConversation(message.conversationId, this)
+            }
+        }
+    }
+
     fun listLocalMessages(conversationId: Long): List<LocalMessageData> {
         return readableDatabase.rawQuery(
             """
@@ -963,6 +1007,8 @@ class LocalDataStore @Inject constructor(
 
     fun clearAll() {
         writableDatabase.transaction {
+            delete("notification_actions", null, null)
+            delete("reaction_snapshots", null, null)
             delete("drafts", null, null)
             delete("media_files", null, null)
             delete("group_members", null, null)
@@ -981,6 +1027,7 @@ class LocalDataStore @Inject constructor(
 
     fun clearSyncedData() {
         writableDatabase.transaction {
+            delete("reaction_snapshots", null, null)
             delete("group_members", null, null)
             delete("groups", null, null)
             delete("agents_cache", null, null)
@@ -1019,6 +1066,11 @@ class LocalDataStore @Inject constructor(
     }
 
     private fun upsertMessage(message: MessageData, db: SupportSQLiteDatabase) {
+        message.reactions?.let { view ->
+            val old = getReactionState(message.conversationId, message.messageId)
+                ?: com.pinealctx.nexus.core.ReactionState(com.shared.v1.MessageReactionView.getDefaultInstance())
+            saveReactionState(old.merge(view), db)
+        }
         val resolvedMessage = if (message.content is MessageContent.Stream) {
             val existing = db.rawQuery(
                 "SELECT * FROM messages WHERE conversation_id = ? AND message_id = ?",
@@ -1514,7 +1566,8 @@ class LocalDataStore @Inject constructor(
             replyContext = toMessageReplyContextData(),
             createdAt = getLong(getColumnIndexOrThrow("created_at")),
             edited = int("edited") == 1,
-            recalled = int("recalled") == 1
+            recalled = int("recalled") == 1,
+            reactions = getReactionState(getString(getColumnIndexOrThrow("conversation_id")), getLong(getColumnIndexOrThrow("message_id")))?.view
         )
     }
 

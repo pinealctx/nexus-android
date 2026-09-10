@@ -15,7 +15,8 @@ data class LoginResult(
 data class ClientConfigData(
     val phoneEnabled: Boolean,
     val emailEnabled: Boolean,
-    val wsUrl: String?
+    val wsUrl: String?,
+    val reactions: com.shared.v1.ReactionConfig = com.shared.v1.ReactionConfig.getDefaultInstance()
 )
 
 data class VerifyCodeData(
@@ -120,7 +121,8 @@ data class MessageData(
     val replyContext: MessageReplyContextData?,
     val createdAt: Long,
     val edited: Boolean,
-    val recalled: Boolean
+    val recalled: Boolean,
+    val reactions: com.shared.v1.MessageReactionView? = null
 )
 
 data class MessagePageData(

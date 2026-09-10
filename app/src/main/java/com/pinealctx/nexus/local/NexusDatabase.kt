@@ -19,6 +19,8 @@ import kotlinx.coroutines.flow.Flow
     entities = [
         ConversationEntity::class,
         DraftEntity::class,
+        ReactionEntity::class,
+        NotificationActionEntity::class,
         MessageEntity::class,
         LocalMessageEntity::class,
         ContactEntity::class,
@@ -31,13 +33,19 @@ import kotlinx.coroutines.flow.Flow
         GroupMemberEntity::class,
         MediaFileEntity::class
     ],
-    version = 11,
+    version = 12,
     exportSchema = true
 )
 abstract class NexusDatabase : RoomDatabase() {
     abstract fun cacheDao(): CacheDao
 
     companion object {
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS reaction_snapshots (conversation_id TEXT NOT NULL, message_id INTEGER NOT NULL, own_revision INTEGER NOT NULL, payload BLOB NOT NULL, PRIMARY KEY(conversation_id, message_id))")
+                db.execSQL("CREATE TABLE IF NOT EXISTS notification_actions (client_message_id INTEGER NOT NULL PRIMARY KEY, created_at INTEGER NOT NULL)")
+            }
+        }
         val MIGRATION_10_11 = object : Migration(10, 11) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("CREATE TABLE IF NOT EXISTS drafts (conversation_id TEXT NOT NULL PRIMARY KEY, text TEXT NOT NULL, text_entities TEXT NOT NULL)")
@@ -71,6 +79,8 @@ abstract class NexusDatabase : RoomDatabase() {
 
 @Dao
 interface CacheDao {
+    @Query("SELECT * FROM reaction_snapshots WHERE conversation_id = :conversationId")
+    fun observeReactions(conversationId: String): Flow<List<ReactionEntity>>
     @Transaction
     @Query("SELECT * FROM conversations WHERE deleted = 0")
     fun observeConversationSnapshots(): Flow<List<ConversationSnapshot>>
@@ -121,6 +131,20 @@ interface CacheDao {
     @Query("SELECT * FROM pending_requests ORDER BY created_at DESC")
     fun observePendingRequests(): Flow<List<PendingRequestEntity>>
 }
+
+@Entity(tableName = "reaction_snapshots", primaryKeys = ["conversation_id", "message_id"])
+data class ReactionEntity(
+    @ColumnInfo(name = "conversation_id") val conversationId: String,
+    @ColumnInfo(name = "message_id") val messageId: Long,
+    @ColumnInfo(name = "own_revision") val ownRevision: Long,
+    val payload: ByteArray
+)
+
+@Entity(tableName = "notification_actions")
+data class NotificationActionEntity(
+    @PrimaryKey @ColumnInfo(name = "client_message_id") val clientMessageId: Long,
+    @ColumnInfo(name = "created_at") val createdAt: Long
+)
 
 @Entity(tableName = "drafts")
 data class DraftEntity(
